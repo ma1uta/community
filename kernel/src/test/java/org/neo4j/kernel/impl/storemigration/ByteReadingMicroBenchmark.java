@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
@@ -40,7 +41,7 @@ import org.neo4j.test.TargetDirectory;
 public class ByteReadingMicroBenchmark
 {
     public static final int NUMBER_OF_RECORDS = 1000 * 1000;
-    public static final int INTEGERS_PER_RECORD = 2;
+    public static final int INTEGERS_PER_RECORD = 16;
     public static final int BYTES_PER_INTEGER = 4;
     public static final int TOTAL_BYTES = NUMBER_OF_RECORDS * INTEGERS_PER_RECORD * BYTES_PER_INTEGER;
 
@@ -55,6 +56,7 @@ public class ByteReadingMicroBenchmark
         time( new PersistenceWindow() );
         time( new TotallyMappedWindowPool() );
         time( new BufferedInputStream() );
+        time( new JustInputStream() );
     }
 
     private static long nanosToMillis( long nanos )
@@ -141,7 +143,7 @@ public class ByteReadingMicroBenchmark
             {
                 FileChannel fileChannel = new RandomAccessFile( file, "r" ).getChannel();
                 PersistenceWindowPool windowPool = new PersistenceWindowPool( file.getName(),
-                        INTEGERS_PER_RECORD * BYTES_PER_INTEGER, fileChannel, MILLION, true, true );
+                        INTEGERS_PER_RECORD * BYTES_PER_INTEGER, fileChannel, TOTAL_BYTES, true, true );
 
                 int sum = 0;
                 for ( int i = 0; i < NUMBER_OF_RECORDS; i++ )
@@ -207,6 +209,35 @@ public class ByteReadingMicroBenchmark
             try
             {
                 java.io.BufferedInputStream inputStream = new java.io.BufferedInputStream( new FileInputStream( file ) );
+                int sum = 0;
+                byte[] bytes = new byte[INTEGERS_PER_RECORD * BYTES_PER_INTEGER];
+                for ( int i = 0; i < NUMBER_OF_RECORDS; i++ )
+                {
+                    inputStream.read( bytes );
+                    for ( int j = 0; j < INTEGERS_PER_RECORD; j++ )
+                    {
+                        sum += LegacyStore.readUnsignedInt( bytes, j * BYTES_PER_INTEGER );
+                    }
+                }
+                if ( sum != NUMBER_OF_RECORDS * INTEGERS_PER_RECORD )
+                {
+                    throw new IllegalStateException( "unexpected sum: " + sum );
+                }
+                inputStream.close();
+            }
+            catch ( IOException e )
+            {
+                throw new RuntimeException( e );
+            }
+        }
+    }
+    private class JustInputStream implements FileProcessor
+    {
+        public void run( File file )
+        {
+            try
+            {
+                InputStream inputStream = new FileInputStream( file );
                 int sum = 0;
                 byte[] bytes = new byte[INTEGERS_PER_RECORD * BYTES_PER_INTEGER];
                 for ( int i = 0; i < NUMBER_OF_RECORDS; i++ )
