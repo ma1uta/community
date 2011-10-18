@@ -33,8 +33,9 @@ import java.nio.channels.FileChannel;
 import org.junit.Test;
 import org.neo4j.kernel.impl.nioneo.store.Buffer;
 import org.neo4j.kernel.impl.nioneo.store.OperationType;
+import org.neo4j.kernel.impl.nioneo.store.PersistenceWindow;
 import org.neo4j.kernel.impl.nioneo.store.PersistenceWindowPool;
-import org.neo4j.kernel.impl.nioneo.store.WindowPool;
+import org.neo4j.kernel.impl.nioneo.store.SingleThreadPersistenceWindowPool;
 import org.neo4j.kernel.impl.storemigration.legacystore.LegacyStore;
 import org.neo4j.test.TargetDirectory;
 
@@ -53,7 +54,8 @@ public class ByteReadingMicroBenchmark
     public void shouldReadBytes() throws IOException
     {
         time( new SingleByteBuffer() );
-        time( new PersistenceWindow() );
+        time( new WindowPool() );
+        time( new SingleThreadWindowPool() );
         time( new TotallyMappedWindowPool() );
         time( new BufferedInputStream() );
         time( new JustInputStream() );
@@ -135,7 +137,7 @@ public class ByteReadingMicroBenchmark
         }
     }
 
-    private class PersistenceWindow implements FileProcessor
+    private class WindowPool implements FileProcessor
     {
         public void run( File file )
         {
@@ -143,6 +145,40 @@ public class ByteReadingMicroBenchmark
             {
                 FileChannel fileChannel = new RandomAccessFile( file, "r" ).getChannel();
                 PersistenceWindowPool windowPool = new PersistenceWindowPool( file.getName(),
+                        INTEGERS_PER_RECORD * BYTES_PER_INTEGER, fileChannel, TOTAL_BYTES, true, true );
+
+                int sum = 0;
+                for ( int i = 0; i < NUMBER_OF_RECORDS; i++ )
+                {
+                    PersistenceWindow window = windowPool.acquire( i, OperationType.READ );
+                    Buffer buffer = window.getOffsettedBuffer( i );
+                    for ( int j = 0; j < INTEGERS_PER_RECORD; j++ )
+                    {
+                        sum += buffer.getInt();
+                    }
+                    windowPool.release( window );
+                }
+                if ( sum != NUMBER_OF_RECORDS * INTEGERS_PER_RECORD )
+                {
+                    throw new IllegalStateException( "unexpected sum: " + sum );
+                }
+                fileChannel.close();
+            }
+            catch ( IOException e )
+            {
+                throw new RuntimeException( e );
+            }
+        }
+    }
+
+    private class SingleThreadWindowPool implements FileProcessor
+    {
+        public void run( File file )
+        {
+            try
+            {
+                FileChannel fileChannel = new RandomAccessFile( file, "r" ).getChannel();
+                org.neo4j.kernel.impl.nioneo.store.WindowPool windowPool = new SingleThreadPersistenceWindowPool( file.getName(),
                         INTEGERS_PER_RECORD * BYTES_PER_INTEGER, fileChannel, TOTAL_BYTES, true, true );
 
                 int sum = 0;
@@ -176,7 +212,7 @@ public class ByteReadingMicroBenchmark
             try
             {
                 FileChannel fileChannel = new RandomAccessFile( file, "r" ).getChannel();
-                WindowPool windowPool = new org.neo4j.kernel.impl.nioneo.store.TotallyMappedWindowPool( file.getName(), 4, fileChannel, MILLION, true, true );
+                org.neo4j.kernel.impl.nioneo.store.WindowPool windowPool = new org.neo4j.kernel.impl.nioneo.store.TotallyMappedWindowPool( file.getName(), 4, fileChannel, MILLION, true, true );
 
                 int sum = 0;
                 for ( int i = 0; i < NUMBER_OF_RECORDS; i++ )
