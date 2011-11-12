@@ -215,6 +215,20 @@ public class Config
     
     public static final String SUPER_NODE_THRESHOLD = "super_node_threshold";
 
+    /**
+     * Integer value that sets the maximum number of open lucene index searchers.
+     * The default is Integer.MAX_VALUE
+     */
+    @Documented
+    public static final String LUCENE_SEARCHER_CACHE_SIZE = "lucene_searcher_cache_size";
+
+    /**
+     * Integer value that sets the maximum number of open lucene index writers.
+     * The default is Integer.MAX_VALUE
+     */
+    @Documented
+    public static final String LUCENE_WRITER_CACHE_SIZE = "lucene_writer_cache_size";
+
     static final String LOAD_EXTENSIONS = "load_kernel_extensions";
 
     private final AdaptiveCacheManager cacheManager;
