@@ -893,9 +893,10 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     }
 
     public Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships( long nodeId,
-        RelationshipLoadingPosition position, RelationshipType[] types )
+        RelationshipLoadingPosition position, Direction direction, RelationshipType[] types )
     {
-        return ReadTransaction.getMoreRelationships( nodeId, position, getRelGrabSize(), getRelationshipStore(), types );
+        return ReadTransaction.getMoreRelationships( nodeId, position, getRelGrabSize(), getRelationshipStore(),
+                direction, types );
     }
 
     private void updateNodesForDeletedRelationship( RelationshipRecord rel )

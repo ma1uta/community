@@ -29,14 +29,17 @@ import org.neo4j.helpers.collection.ArrayIterator;
 import org.neo4j.kernel.impl.nioneo.store.Record;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipGroupRecord;
 
-public class PerTypeChainPosition implements RelationshipLoadingPosition
+/**
+ * TODO Make use of direction in the arguments
+ */
+public class SuperNodeChainPosition implements RelationshipLoadingPosition
 {
     private final Map<String, RelationshipLoadingPosition> positions = new HashMap<String, RelationshipLoadingPosition>();
     private final Map<Integer, RelationshipGroupRecord> rawGroups;
     private Map<String, RelationshipGroupRecord> groups;
     private RelationshipType[] types;
     
-    public PerTypeChainPosition( Map<Integer, RelationshipGroupRecord> groups )
+    public SuperNodeChainPosition( Map<Integer, RelationshipGroupRecord> groups )
     {
         this.rawGroups = groups;
     }
@@ -56,13 +59,13 @@ public class PerTypeChainPosition implements RelationshipLoadingPosition
     }
     
     @Override
-    public long position( RelationshipType... types )
+    public long position( Direction direction, RelationshipType[] types )
     {
         if ( types.length == 0 ) types = this.types;
         for ( RelationshipType type : types )
         {
             RelationshipLoadingPosition position = getTypePosition( type );
-            if ( position.hasMore( types ) ) return position.position( types );
+            if ( position.hasMore( direction, types ) ) return position.position( direction, types );
         }
         return Record.NO_NEXT_RELATIONSHIP.intValue();
     }
@@ -80,29 +83,29 @@ public class PerTypeChainPosition implements RelationshipLoadingPosition
     }
 
     @Override
-    public long nextPosition( long nextPosition, RelationshipType... types )
+    public long nextPosition( long nextPosition, Direction direction, RelationshipType[] types )
     {
         if ( types.length == 0 ) types = this.types;
         for ( RelationshipType type : types )
         {
             RelationshipLoadingPosition position = getTypePosition( type );
-            if ( position.hasMore( types ) )
+            if ( position.hasMore( direction, types ) )
             {
-                long result = position.nextPosition( nextPosition );
-                if ( position.hasMore( types ) ) return result;
+                long result = position.nextPosition( nextPosition, direction, types );
+                if ( position.hasMore( direction, types ) ) return result;
             }
         }
         return Record.NO_NEXT_RELATIONSHIP.intValue();
     }
     
     @Override
-    public boolean hasMore( RelationshipType... types )
+    public boolean hasMore( Direction direction, RelationshipType[] types )
     {
         if ( types.length == 0 ) types = this.types;
         for ( RelationshipType type : types )
         {
             RelationshipLoadingPosition position = positions.get( type.name() );
-            if ( position == null || position.hasMore() ) return true;
+            if ( position == null || position.hasMore( direction, types ) ) return true;
         }
         return false;
     }
@@ -116,19 +119,19 @@ public class PerTypeChainPosition implements RelationshipLoadingPosition
         }
         
         @Override
-        public long position( RelationshipType... types )
+        public long position( Direction direction, RelationshipType[] types )
         {
             return Record.NO_NEXT_RELATIONSHIP.intValue();
         }
         
         @Override
-        public long nextPosition( long position, RelationshipType... types )
+        public long nextPosition( long position, Direction direction, RelationshipType[] types )
         {
             return Record.NO_NEXT_RELATIONSHIP.intValue();
         }
         
         @Override
-        public boolean hasMore( RelationshipType... types )
+        public boolean hasMore( Direction direction, RelationshipType[] types )
         {
             return false;
         }
@@ -176,7 +179,7 @@ public class PerTypeChainPosition implements RelationshipLoadingPosition
         }
 
         @Override
-        public long position( RelationshipType... types )
+        public long position( Direction direction, RelationshipType[] types )
         {
             assert !end;
             if ( position == Record.NO_NEXT_RELATIONSHIP.intValue() ) gotoNextPosition();
@@ -184,7 +187,7 @@ public class PerTypeChainPosition implements RelationshipLoadingPosition
         }
 
         @Override
-        public long nextPosition( long position, RelationshipType... types )
+        public long nextPosition( long position, Direction direction, RelationshipType[] types )
         {
             if ( position != Record.NO_NEXT_RELATIONSHIP.intValue() )
             {
@@ -195,7 +198,7 @@ public class PerTypeChainPosition implements RelationshipLoadingPosition
         }
         
         @Override
-        public boolean hasMore( RelationshipType... types )
+        public boolean hasMore( Direction direction, RelationshipType[] types )
         {
             return !end;
         }

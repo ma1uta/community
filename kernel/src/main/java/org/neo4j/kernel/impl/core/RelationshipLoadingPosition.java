@@ -19,15 +19,16 @@
  */
 package org.neo4j.kernel.impl.core;
 
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.RelationshipType;
 
 public interface RelationshipLoadingPosition
 {
-    long position( RelationshipType... types );
+    long position( Direction direction, RelationshipType[] types );
     
-    long nextPosition( long position, RelationshipType... types );
+    long nextPosition( long position, Direction direction, RelationshipType[] types );
     
-    boolean hasMore( RelationshipType... types );
+    boolean hasMore( Direction direction, RelationshipType[] types );
     
     void setNodeManager( NodeManager nodeManager );
 }

@@ -19,6 +19,7 @@
  */
 package org.neo4j.kernel.impl.core;
 
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.kernel.impl.nioneo.store.Record;
 
@@ -32,20 +33,20 @@ public class SingleChainPosition implements RelationshipLoadingPosition
     }
     
     @Override
-    public long position( RelationshipType... types )
+    public long position( Direction direction, RelationshipType[] types )
     {
         return this.position;
     }
 
     @Override
-    public long nextPosition( long nextRel, RelationshipType... types )
+    public long nextPosition( long nextRel, Direction direction, RelationshipType[] types )
     {
         this.position = nextRel;
         return nextRel;
     }
     
     @Override
-    public boolean hasMore( RelationshipType... types )
+    public boolean hasMore( Direction direction, RelationshipType[] types )
     {
         return position != Record.NO_NEXT_RELATIONSHIP.intValue();
     }

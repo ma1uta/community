@@ -40,6 +40,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
@@ -353,7 +354,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
     private Iterable<RelationshipRecord> getMore( NeoStoreXaConnection xaCon, long node, RelationshipLoadingPosition pos )
     {
         Map<DirectionWrapper, Iterable<RelationshipRecord>> rels =
-                xaCon.getWriteTransaction().getMoreRelationships( node, pos, new RelationshipType[0] );
+                xaCon.getWriteTransaction().getMoreRelationships( node, pos, Direction.BOTH, new RelationshipType[0] );
         List<Iterable<RelationshipRecord>> list = new ArrayList<Iterable<RelationshipRecord>>();
         for ( Map.Entry<DirectionWrapper, Iterable<RelationshipRecord>> entry : rels.entrySet() )
         {

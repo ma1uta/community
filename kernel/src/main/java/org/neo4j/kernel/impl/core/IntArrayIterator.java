@@ -88,7 +88,7 @@ class IntArrayIterator extends PrefetchingIterator<Relationship> implements Iter
                 {
                     currentTypeIterator = typeIterator.next();
                 }
-                else if ( fromNode.getMoreRelationships( nodeManager, types ) ||
+                else if ( fromNode.getMoreRelationships( nodeManager, direction.direction(), types ) ||
                         // This is here to guard for that someone else might have loaded
                         // stuff in this relationship chain (and exhausted it) while I
                         // iterated over my batch of relationships. It will only happen
@@ -138,7 +138,7 @@ class IntArrayIterator extends PrefetchingIterator<Relationship> implements Iter
                     
                     typeIterator = rels.iterator();
                     currentTypeIterator = typeIterator.hasNext() ? typeIterator.next() : RelIdArray.EMPTY.iterator( direction );
-                    isFullyLoaded = !fromNode.hasMoreRelationshipsToLoad( types );
+                    isFullyLoaded = !fromNode.hasMoreRelationshipsToLoad( direction.direction(), types );
                 }
                 else
                 {

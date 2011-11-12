@@ -106,9 +106,9 @@ public class PersistenceManager
     }
 
     public Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships(
-            long nodeId, RelationshipLoadingPosition position, RelationshipType[] types )
+            long nodeId, RelationshipLoadingPosition position, Direction direction, RelationshipType[] types )
     {
-        return getReadOnlyResource().getMoreRelationships( nodeId, position, types );
+        return getReadOnlyResource().getMoreRelationships( nodeId, position, direction, types );
     }
 
     public ArrayMap<Integer,PropertyData> loadNodeProperties( long nodeId,

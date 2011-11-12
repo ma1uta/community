@@ -582,12 +582,13 @@ public class NodeManager
         return result;
     }
 
-    Pair<ArrayMap<String,RelIdArray>,Map<Long,RelationshipImpl>> getMoreRelationships( NodeImpl node, RelationshipType[] types )
+    Pair<ArrayMap<String,RelIdArray>,Map<Long,RelationshipImpl>> getMoreRelationships( NodeImpl node, Direction direction,
+            RelationshipType[] types )
     {
         long nodeId = node.getId();
         RelationshipLoadingPosition position = node.getRelChainPosition();
         Map<DirectionWrapper, Iterable<RelationshipRecord>> rels =
-            persistenceManager.getMoreRelationships( nodeId, position, types );
+            persistenceManager.getMoreRelationships( nodeId, position, direction, types );
         ArrayMap<String,RelIdArray> newRelationshipMap =
             new ArrayMap<String,RelIdArray>();
         Map<Long,RelationshipImpl> relsMap = new HashMap<Long,RelationshipImpl>( 150 );

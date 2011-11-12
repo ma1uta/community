@@ -31,7 +31,7 @@ import javax.transaction.xa.XAResource;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.kernel.impl.core.PerTypeChainPosition;
+import org.neo4j.kernel.impl.core.SuperNodeChainPosition;
 import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.core.RelationshipLoadingPosition;
 import org.neo4j.kernel.impl.core.SingleChainPosition;
@@ -116,7 +116,7 @@ class ReadTransaction implements NeoStoreTransaction
         NodeRecord node = neoStore.getNodeStore().getRecord( nodeId );
         if ( node.isSuperNode() )
         {
-            return new PerTypeChainPosition( loadRelationshipGroups( node, neoStore.getRelationshipGroupStore() ) );
+            return new SuperNodeChainPosition( loadRelationshipGroups( node, neoStore.getRelationshipGroupStore() ) );
         }
         else
         {
@@ -140,14 +140,14 @@ class ReadTransaction implements NeoStoreTransaction
     
     @Override
     public Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships( long nodeId,
-            RelationshipLoadingPosition position, RelationshipType[] types )
+            RelationshipLoadingPosition position, Direction direction, RelationshipType[] types )
     {
-        return getMoreRelationships( nodeId, position, getRelGrabSize(), getRelationshipStore(), types );
+        return getMoreRelationships( nodeId, position, getRelGrabSize(), getRelationshipStore(), direction, types );
     }
 
     static Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships(
             long nodeId, RelationshipLoadingPosition loadPosition, int grabSize, RelationshipStore relStore,
-            RelationshipType... types )
+            Direction direction, RelationshipType[] types )
     {
         // initialCapacity=grabSize saves the lists the trouble of resizing
         List<RelationshipRecord> out = new ArrayList<RelationshipRecord>();
@@ -157,11 +157,12 @@ class ReadTransaction implements NeoStoreTransaction
             new EnumMap<DirectionWrapper, Iterable<RelationshipRecord>>( DirectionWrapper.class );
         result.put( DirectionWrapper.OUTGOING, out );
         result.put( DirectionWrapper.INCOMING, in );
-        long position = loadPosition.position( types );
+        long position = loadPosition.position( direction, types );
         for ( int i = 0; i < grabSize &&
             position != Record.NO_NEXT_RELATIONSHIP.intValue(); i++ )
         {
             RelationshipRecord relRecord = relStore.getChainRecord( position );
+            System.out.println( "loaded " + relRecord );
             if ( relRecord == null )
             {
                 // return what we got so far
@@ -211,7 +212,7 @@ class ReadTransaction implements NeoStoreTransaction
                     "] is neither firstNode[" + firstNode +
                     "] nor secondNode[" + secondNode + "] for Relationship[" + relRecord.getId() + "]" );
             }
-            position = loadPosition.nextPosition( next, types );
+            position = loadPosition.nextPosition( next, direction, types );
         }
         return result;
     }

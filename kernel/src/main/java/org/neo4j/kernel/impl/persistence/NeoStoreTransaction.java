@@ -269,7 +269,7 @@ public interface NeoStoreTransaction
      * batch of relationships has been loaded.
      */
     public Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships(
-            long nodeId, RelationshipLoadingPosition position, RelationshipType[] types );
+            long nodeId, RelationshipLoadingPosition position, Direction direction, RelationshipType[] types );
 
     /**
      * Returns an array view of the ids of the nodes that have been created in
