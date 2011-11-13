@@ -19,8 +19,6 @@
  */
 package org.neo4j.kernel.impl.core;
 
-import java.util.Arrays;
-
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -61,7 +59,6 @@ class NodeProxy implements Node
 
     public Iterable<Relationship> getRelationships()
     {
-        System.out.println( nodeId + ".getRelationships" );
         return nm.getNodeForProxy( nodeId ).getRelationships( nm );
     }
 
@@ -72,7 +69,6 @@ class NodeProxy implements Node
 
     public Iterable<Relationship> getRelationships( Direction dir )
     {
-        System.out.println( nodeId + ".getRelationships " + dir );
         return nm.getNodeForProxy( nodeId ).getRelationships( nm, dir );
     }
 
@@ -83,14 +79,12 @@ class NodeProxy implements Node
 
     public Iterable<Relationship> getRelationships( RelationshipType... types )
     {
-        System.out.println( nodeId + ".getRelationships " + Arrays.asList( types ) );
         return nm.getNodeForProxy( nodeId ).getRelationships( nm, types );
     }
     
     @Override
     public Iterable<Relationship> getRelationships( Direction direction, RelationshipType... types )
     {
-        System.out.println( nodeId + ".getRelationships " + direction + ", " + Arrays.asList( types ) );
         return nm.getNodeForProxy( nodeId ).getRelationships( nm, direction, types );
     }
 
@@ -107,7 +101,6 @@ class NodeProxy implements Node
     public Iterable<Relationship> getRelationships( RelationshipType type,
         Direction dir )
     {
-        System.out.println( nodeId + ".getRelationships " + type + ", " + dir );
         return nm.getNodeForProxy( nodeId ).getRelationships( nm, type, dir );
     }
 
