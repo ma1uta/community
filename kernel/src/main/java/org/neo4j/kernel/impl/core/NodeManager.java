@@ -60,8 +60,8 @@ import org.neo4j.kernel.impl.transaction.LockException;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.LockType;
 import org.neo4j.kernel.impl.util.ArrayMap;
+import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
-import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArrayWithLoops;
 
 public class NodeManager
@@ -578,12 +578,12 @@ public class NodeManager
     RelationshipLoadingPosition getRelationshipChainPosition( NodeImpl node )
     {
         RelationshipLoadingPosition result = persistenceManager.getRelationshipChainPosition( node.getId() );
-        result.setNodeManager( this );
+        result.resolveRawTypes( this );
         return result;
     }
 
-    Pair<ArrayMap<String,RelIdArray>,Map<Long,RelationshipImpl>> getMoreRelationships( NodeImpl node, Direction direction,
-            RelationshipType[] types )
+    Pair<ArrayMap<String,RelIdArray>,Map<Long,RelationshipImpl>> getMoreRelationships( NodeImpl node,
+            DirectionWrapper direction, RelationshipType[] types )
     {
         long nodeId = node.getId();
         RelationshipLoadingPosition position = node.getRelChainPosition();

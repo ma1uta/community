@@ -48,8 +48,8 @@ import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeData;
 import org.neo4j.kernel.impl.nioneo.xa.NioNeoDbPersistenceSource;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.util.ArrayMap;
+import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
-import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 
 public class PersistenceManager
 {
@@ -106,7 +106,7 @@ public class PersistenceManager
     }
 
     public Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships(
-            long nodeId, RelationshipLoadingPosition position, Direction direction, RelationshipType[] types )
+            long nodeId, RelationshipLoadingPosition position, DirectionWrapper direction, RelationshipType[] types )
     {
         return getReadOnlyResource().getMoreRelationships( nodeId, position, direction, types );
     }

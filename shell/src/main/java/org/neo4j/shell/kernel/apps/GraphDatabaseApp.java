@@ -661,6 +661,7 @@ public abstract class GraphDatabaseApp extends AbstractApp
         defaultDirection = defaultDirection != null ? defaultDirection : Direction.BOTH;
         Map<String, Direction> matches = filterMapToTypes( db, defaultDirection, relationshipTypes,
                 caseInsensitiveFilters, looseFilters );
+        if ( matches == null ) return null;
         Expander expander = Traversal.emptyExpander();
         for ( Map.Entry<String, Direction> entry : matches.entrySet() )
         {

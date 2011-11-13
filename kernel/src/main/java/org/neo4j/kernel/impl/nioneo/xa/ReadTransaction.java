@@ -56,8 +56,8 @@ import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeData;
 import org.neo4j.kernel.impl.persistence.NeoStoreTransaction;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.util.ArrayMap;
+import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
-import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 
 class ReadTransaction implements NeoStoreTransaction
 {
@@ -140,14 +140,14 @@ class ReadTransaction implements NeoStoreTransaction
     
     @Override
     public Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships( long nodeId,
-            RelationshipLoadingPosition position, Direction direction, RelationshipType[] types )
+            RelationshipLoadingPosition position, DirectionWrapper direction, RelationshipType[] types )
     {
         return getMoreRelationships( nodeId, position, getRelGrabSize(), getRelationshipStore(), direction, types );
     }
 
     static Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships(
             long nodeId, RelationshipLoadingPosition loadPosition, int grabSize, RelationshipStore relStore,
-            Direction direction, RelationshipType[] types )
+            DirectionWrapper direction, RelationshipType[] types )
     {
         // initialCapacity=grabSize saves the lists the trouble of resizing
         List<RelationshipRecord> out = new ArrayList<RelationshipRecord>();
@@ -162,7 +162,6 @@ class ReadTransaction implements NeoStoreTransaction
             position != Record.NO_NEXT_RELATIONSHIP.intValue(); i++ )
         {
             RelationshipRecord relRecord = relStore.getChainRecord( position );
-            System.out.println( "loaded " + relRecord );
             if ( relRecord == null )
             {
                 // return what we got so far

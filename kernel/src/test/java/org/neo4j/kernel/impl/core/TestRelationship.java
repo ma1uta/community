@@ -25,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.neo4j.graphdb.DynamicRelationshipType.withName;
 import static org.neo4j.helpers.collection.IteratorUtil.addToCollection;
+import static org.neo4j.helpers.collection.IteratorUtil.asSet;
 import static org.neo4j.helpers.collection.IteratorUtil.count;
 import static org.neo4j.helpers.collection.MapUtil.stringMap;
 import static org.neo4j.kernel.impl.MyRelTypes.TEST;
@@ -34,8 +35,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Set;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.DynamicRelationshipType;
@@ -935,9 +936,10 @@ public class TestRelationship extends AbstractNeo4jTestCase
         Node node1 = db.createNode();
         Node node2 = db.createNode();
         RelationshipType type = DynamicRelationshipType.withName( "type" );
+        Set<Relationship> relationships = new HashSet<Relationship>();
         for ( int i = 0; i < grabSize + 2; i++ )
         {
-            node1.createRelationshipTo( node2, type );
+            relationships.add( node1.createRelationshipTo( node2, type ) );
         }
         tx.success();
         tx.finish();
@@ -945,21 +947,14 @@ public class TestRelationship extends AbstractNeo4jTestCase
         ( (AbstractGraphDatabase) db ).getConfig().getGraphDbModule().getNodeManager().clearCache();
 
         tx = db.beginTx();
-
-        node1.getRelationships().iterator().next().delete();
+        Relationship delrel = node1.getRelationships().iterator().next();
+        delrel.delete();
         node1.setProperty( "foo", "bar" );
-        int relCount = 0;
-        for ( Relationship rel : node2.getRelationships() )
-        {
-            relCount++;
-        }
-        assertEquals( relCount, grabSize + 1 );
-        relCount = 0;
-        for (Relationship rel : node1.getRelationships())
-        {
-            relCount++;
-        }
-        assertEquals( relCount, grabSize + 1 );
+        relationships.remove( delrel );
+        assertEquals( relationships.size(), count( node2.getRelationships() ) );
+        assertEquals( relationships, asSet( node2.getRelationships() ) );
+        assertEquals( relationships.size(), count( node1.getRelationships() ) );
+        assertEquals( relationships, asSet( node1.getRelationships() ) );
         assertEquals( "bar", node1.getProperty( "foo" ) );
         tx.success();
         tx.finish();
@@ -1043,7 +1038,6 @@ public class TestRelationship extends AbstractNeo4jTestCase
         assertEquals( expectedCount, count( node2.getRelationships() ) );
     }
 
-    @Ignore( "Triggers a bug, enable this test when fixed, https://github.com/neo4j/community/issues/52" )
     @Test
     public void deleteRelsWithCommitInMiddle() throws Exception
     {

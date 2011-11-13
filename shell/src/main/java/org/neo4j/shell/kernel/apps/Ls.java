@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.helpers.Predicate;
 import org.neo4j.helpers.Service;
 import org.neo4j.helpers.collection.FilteringIterator;
@@ -220,31 +220,33 @@ public class Ls extends ReadOnlyGraphDatabaseApp
                 caseInsensitiveFilters, looseFilters, sortByType|brief );
         if ( brief )
         {
-            Iterator<Relationship> iterator = relationships.iterator();
-            if ( !iterator.hasNext() )
-            {
-                return;
-            }
-
-            Relationship sampleRelationship = iterator.next();
-            RelationshipType lastType = sampleRelationship.getType();
-            int currentCounter = 1;
-            while ( iterator.hasNext() )
-            {
-                Relationship rel = iterator.next();
-                if ( !rel.isType( lastType ) )
-                {
-                    displayBriefRelationships( thing, session, out, sampleRelationship, currentCounter );
-                    sampleRelationship = rel;
-                    lastType = sampleRelationship.getType();
-                    currentCounter = 1;
-                }
-                else
-                {
-                    currentCounter++;
-                }
-            }
-            displayBriefRelationships( thing, session, out, sampleRelationship, currentCounter );
+            
+            
+//            Iterator<Relationship> iterator = relationships.iterator();
+//            if ( !iterator.hasNext() )
+//            {
+//                return;
+//            }
+//
+//            Relationship sampleRelationship = iterator.next();
+//            RelationshipType lastType = sampleRelationship.getType();
+//            int currentCounter = 1;
+//            while ( iterator.hasNext() )
+//            {
+//                Relationship rel = iterator.next();
+//                if ( !rel.isType( lastType ) )
+//                {
+//                    displayBriefRelationships( thing, session, out, sampleRelationship, currentCounter );
+//                    sampleRelationship = rel;
+//                    lastType = sampleRelationship.getType();
+//                    currentCounter = 1;
+//                }
+//                else
+//                {
+//                    currentCounter++;
+//                }
+//            }
+//            displayBriefRelationships( thing, session, out, sampleRelationship, currentCounter );
         }
         else
         {
@@ -341,7 +343,8 @@ public class Ls extends ReadOnlyGraphDatabaseApp
             }
             else
             {
-                return toExpander( getServer().getDb(), Direction.BOTH, filterMap, caseInsensitiveFilters, looseFilters ).expand( node );
+                RelationshipExpander expander = toExpander( getServer().getDb(), Direction.BOTH, filterMap, caseInsensitiveFilters, looseFilters );
+                return expander != null ? expander.expand( node ) : Collections.<Relationship>emptyList();
             }
         }
     }

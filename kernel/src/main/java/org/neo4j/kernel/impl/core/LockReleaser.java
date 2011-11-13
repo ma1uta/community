@@ -43,8 +43,8 @@ import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeData;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.LockType;
 import org.neo4j.kernel.impl.util.ArrayMap;
+import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
-import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArrayWithLoops;
 import org.neo4j.kernel.impl.util.RelIdIterator;
 

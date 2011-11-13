@@ -22,9 +22,9 @@ package org.neo4j.kernel.impl.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper.BOTH;
-import static org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper.INCOMING;
-import static org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper.OUTGOING;
+import static org.neo4j.kernel.impl.util.DirectionWrapper.BOTH;
+import static org.neo4j.kernel.impl.util.DirectionWrapper.INCOMING;
+import static org.neo4j.kernel.impl.util.DirectionWrapper.OUTGOING;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,8 +34,8 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.junit.Test;
+import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
-import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdIterator;
 
 // TODO Add some tests for loops, i.e. add with direction BOTH.

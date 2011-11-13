@@ -22,15 +22,13 @@ package org.neo4j.kernel.impl.util;
 import java.util.Collection;
 import java.util.NoSuchElementException;
 
-import org.neo4j.graphdb.Direction;
-
 public class RelIdArray
 {
-    private static final DirectionWrapper[] DIRECTIONS_FOR_OUTGOING =
+    static final DirectionWrapper[] DIRECTIONS_FOR_OUTGOING =
             new DirectionWrapper[] { DirectionWrapper.OUTGOING, DirectionWrapper.BOTH };
-    private static final DirectionWrapper[] DIRECTIONS_FOR_INCOMING =
+    static final DirectionWrapper[] DIRECTIONS_FOR_INCOMING =
             new DirectionWrapper[] { DirectionWrapper.INCOMING, DirectionWrapper.BOTH };
-    private static final DirectionWrapper[] DIRECTIONS_FOR_BOTH =
+    static final DirectionWrapper[] DIRECTIONS_FOR_BOTH =
             new DirectionWrapper[] { DirectionWrapper.OUTGOING, DirectionWrapper.INCOMING, DirectionWrapper.BOTH };
     
     public static class EmptyRelIdArray extends RelIdArray
@@ -79,8 +77,8 @@ public class RelIdArray
     public static RelIdArray EMPTY = new EmptyRelIdArray( "" );
     
     private final String type;
-    private IdBlock lastOutBlock;
-    private IdBlock lastInBlock;
+    IdBlock lastOutBlock;
+    IdBlock lastInBlock;
     
     public RelIdArray( String type )
     {
@@ -259,105 +257,6 @@ public class RelIdArray
     }
     
     public static final IdBlock EMPTY_BLOCK = new LowIdBlock();
-    
-    public static enum DirectionWrapper
-    {
-        OUTGOING( Direction.OUTGOING )
-        {
-            @Override
-            RelIdIterator iterator( RelIdArray ids )
-            {
-                return new RelIdIteratorImpl( ids, DIRECTIONS_FOR_OUTGOING );
-            }
-
-            @Override
-            IdBlock getLastBlock( RelIdArray ids )
-            {
-                return ids.lastOutBlock;
-            }
-
-            @Override
-            void setLastBlock( RelIdArray ids, IdBlock block )
-            {
-                ids.lastOutBlock = block;
-            }
-        },
-        INCOMING( Direction.INCOMING )
-        {
-            @Override
-            RelIdIterator iterator( RelIdArray ids )
-            {
-                return new RelIdIteratorImpl( ids, DIRECTIONS_FOR_INCOMING );
-            }
-
-            @Override
-            IdBlock getLastBlock( RelIdArray ids )
-            {
-                return ids.lastInBlock;
-            }
-
-            @Override
-            void setLastBlock( RelIdArray ids, IdBlock block )
-            {
-                ids.lastInBlock = block;
-            }
-        },
-        BOTH( Direction.BOTH )
-        {
-            @Override
-            RelIdIterator iterator( RelIdArray ids )
-            {
-                return new RelIdIteratorImpl( ids, DIRECTIONS_FOR_BOTH );
-            }
-
-            @Override
-            IdBlock getLastBlock( RelIdArray ids )
-            {
-                return ids.getLastLoopBlock();
-            }
-
-            @Override
-            void setLastBlock( RelIdArray ids, IdBlock block )
-            {
-                ids.setLastLoopBlock( block );
-            }
-        };
-        
-        private final Direction direction;
-
-        private DirectionWrapper( Direction direction )
-        {
-            this.direction = direction;
-        }
-        
-        abstract RelIdIterator iterator( RelIdArray ids );
-        
-        /*
-         * Only used during add
-         */
-        abstract IdBlock getLastBlock( RelIdArray ids );
-        
-        /*
-         * Only used during add
-         */
-        abstract void setLastBlock( RelIdArray ids, IdBlock block );
-        
-        public Direction direction()
-        {
-            return this.direction;
-        }
-    }
-    
-    public static DirectionWrapper wrap( Direction direction )
-    {
-        switch ( direction )
-        {
-        case OUTGOING: return DirectionWrapper.OUTGOING;
-        case INCOMING: return DirectionWrapper.INCOMING;
-        case BOTH: return DirectionWrapper.BOTH;
-        default: throw new IllegalArgumentException( "" + direction );
-        }
-    }
     
     public static abstract class IdBlock
     {
@@ -554,7 +453,6 @@ public class RelIdArray
         private int blockIndex;
         private IdBlock block;
         private int relativePosition;
-        private int absolutePosition;
         
         public IteratorState( IdBlock block, int relativePosition )
         {
@@ -584,7 +482,6 @@ public class RelIdArray
          */
         long next()
         {
-            absolutePosition++;
             return block.get( relativePosition++ );
         }
 

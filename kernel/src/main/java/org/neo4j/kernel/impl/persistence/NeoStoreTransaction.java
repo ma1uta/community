@@ -34,8 +34,8 @@ import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeData;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.util.ArrayMap;
+import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
-import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 
 /**
  * A connection to a {@link PersistenceSource}. <CODE>ResourceConnection</CODE>
@@ -269,7 +269,7 @@ public interface NeoStoreTransaction
      * batch of relationships has been loaded.
      */
     public Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships(
-            long nodeId, RelationshipLoadingPosition position, Direction direction, RelationshipType[] types );
+            long nodeId, RelationshipLoadingPosition position, DirectionWrapper direction, RelationshipType[] types );
 
     /**
      * Returns an array view of the ids of the nodes that have been created in

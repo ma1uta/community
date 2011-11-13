@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.Traverser;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
 import org.neo4j.graphdb.traversal.Evaluation;
@@ -128,8 +129,14 @@ public class Trav extends ReadOnlyGraphDatabaseApp
         if ( relationshipTypes != null )
         {
             Map<String, Object> types = parseFilter( relationshipTypes, out );
-            description = description.expand( toExpander( getServer().getDb(), null, types,
-                    caseInsensitiveFilters, looseFilters ) );
+            RelationshipExpander expander = toExpander( getServer().getDb(), null, types,
+                    caseInsensitiveFilters, looseFilters );
+            if ( expander == null )
+            {
+                out.println( "No matching relationships found for the given filter" );
+                return null;
+            }
+            description = description.expand( expander );
         }
         
         // Uniqueness

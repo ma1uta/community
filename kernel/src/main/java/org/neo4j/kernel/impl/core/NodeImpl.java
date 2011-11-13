@@ -19,6 +19,7 @@
  */
 package org.neo4j.kernel.impl.core;
 
+import static org.neo4j.kernel.impl.util.DirectionWrapper.wrapDirection;
 import static org.neo4j.kernel.impl.util.RelIdArray.empty;
 
 import java.util.Collection;
@@ -43,8 +44,8 @@ import org.neo4j.kernel.impl.transaction.LockType;
 import org.neo4j.kernel.impl.traversal.OldTraverserWrapper;
 import org.neo4j.kernel.impl.util.ArrayMap;
 import org.neo4j.kernel.impl.util.CombinedRelIdIterator;
+import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
-import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdIterator;
 
 class NodeImpl extends Primitive
@@ -198,14 +199,14 @@ class NodeImpl extends Primitive
     {
         return new IntArrayIterator( getAllRelationships( nodeManager, DirectionWrapper.BOTH ), this,
             DirectionWrapper.BOTH, nodeManager, new RelationshipType[0], !hasMoreRelationshipsToLoad(
-                    Direction.BOTH, NO_RELATIONSHIP_TYPES ) );
+                    DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES ) );
     }
 
     public Iterable<Relationship> getRelationships( NodeManager nodeManager, Direction dir )
     {
-        DirectionWrapper direction = RelIdArray.wrap( dir );
+        DirectionWrapper direction = wrapDirection( dir );
         return new IntArrayIterator( getAllRelationships( nodeManager, direction ), this, direction,
-            nodeManager, new RelationshipType[0], !hasMoreRelationshipsToLoad( dir, NO_RELATIONSHIP_TYPES ) );
+            nodeManager, new RelationshipType[0], !hasMoreRelationshipsToLoad( direction, NO_RELATIONSHIP_TYPES ) );
     }
 
     public Iterable<Relationship> getRelationships( NodeManager nodeManager, RelationshipType type )
@@ -213,32 +214,32 @@ class NodeImpl extends Primitive
         RelationshipType types[] = new RelationshipType[] { type };
         return new IntArrayIterator( getAllRelationshipsOfType( nodeManager, DirectionWrapper.BOTH, types ),
             this, DirectionWrapper.BOTH, nodeManager, types, !hasMoreRelationshipsToLoad(
-                    Direction.BOTH, new RelationshipType[] {type} ) );
+                    DirectionWrapper.BOTH, new RelationshipType[] {type} ) );
     }
 
     public Iterable<Relationship> getRelationships( NodeManager nodeManager,
             RelationshipType... types )
     {
         return new IntArrayIterator( getAllRelationshipsOfType( nodeManager, DirectionWrapper.BOTH, types ),
-            this, DirectionWrapper.BOTH, nodeManager, types, !hasMoreRelationshipsToLoad( Direction.BOTH, types ) );
+            this, DirectionWrapper.BOTH, nodeManager, types, !hasMoreRelationshipsToLoad( DirectionWrapper.BOTH, types ) );
     }
 
     public Iterable<Relationship> getRelationships( NodeManager nodeManager,
             Direction direction, RelationshipType... types )
     {
-        DirectionWrapper dir = RelIdArray.wrap( direction );
+        DirectionWrapper dir = wrapDirection( direction );
         return new IntArrayIterator( getAllRelationshipsOfType( nodeManager, dir, types ),
-            this, dir, nodeManager, types, !hasMoreRelationshipsToLoad( direction, types ) );
+            this, dir, nodeManager, types, !hasMoreRelationshipsToLoad( dir, types ) );
     }
 
     public Relationship getSingleRelationship( NodeManager nodeManager, RelationshipType type,
         Direction dir )
     {
-        DirectionWrapper direction = RelIdArray.wrap( dir );
+        DirectionWrapper direction = wrapDirection( dir );
         RelationshipType types[] = new RelationshipType[] { type };
         Iterator<Relationship> rels = new IntArrayIterator( getAllRelationshipsOfType( nodeManager,
                 direction, types ), this, direction, nodeManager, types, !hasMoreRelationshipsToLoad(
-                        dir, new RelationshipType[] {type} ) );
+                        direction, new RelationshipType[] {type} ) );
         if ( !rels.hasNext() )
         {
             return null;
@@ -256,9 +257,9 @@ class NodeImpl extends Primitive
         Direction dir )
     {
         RelationshipType types[] = new RelationshipType[] { type };
-        DirectionWrapper direction = RelIdArray.wrap( dir );
+        DirectionWrapper direction = wrapDirection( dir );
         return new IntArrayIterator( getAllRelationshipsOfType( nodeManager, direction, types ),
-            this, direction, nodeManager, types, !hasMoreRelationshipsToLoad( dir, new RelationshipType[] {type} ) );
+            this, direction, nodeManager, types, !hasMoreRelationshipsToLoad( direction, new RelationshipType[] {type} ) );
     }
 
     public void delete( NodeManager nodeManager )
@@ -368,12 +369,12 @@ class NodeImpl extends Primitive
     protected Pair<ArrayMap<String,RelIdArray>,Map<Long,RelationshipImpl>> getInitialRelationships(
             NodeManager nodeManager, ArrayMap<String,RelIdArray> tmpRelMap )
     {
-        if ( !hasMoreRelationshipsToLoad( Direction.BOTH, NO_RELATIONSHIP_TYPES ) )
+        if ( !hasMoreRelationshipsToLoad( DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES ) )
         {
             return null;
         }
         Pair<ArrayMap<String,RelIdArray>,Map<Long,RelationshipImpl>> rels =
-            nodeManager.getMoreRelationships( this, Direction.OUTGOING, NO_RELATIONSHIP_TYPES );
+            nodeManager.getMoreRelationships( this, DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES );
         ArrayMap<String,RelIdArray> addMap = rels.first();
         if ( addMap.size() == 0 )
         {
@@ -401,12 +402,12 @@ class NodeImpl extends Primitive
         // nodeManager.putAllInRelCache( pair.other() );
     }
 
-    boolean hasMoreRelationshipsToLoad( Direction direction, RelationshipType[] types )
+    boolean hasMoreRelationshipsToLoad( DirectionWrapper direction, RelationshipType[] types )
     {
         return relChainPosition == null || relChainPosition.hasMore( direction, types );
     }
 
-    boolean getMoreRelationships( NodeManager nodeManager, Direction direction, RelationshipType[] types )
+    boolean getMoreRelationships( NodeManager nodeManager, DirectionWrapper direction, RelationshipType[] types )
     {
         Pair<ArrayMap<String,RelIdArray>,Map<Long,RelationshipImpl>> rels;
         if ( !hasMoreRelationshipsToLoad( direction, types ) ) return false;

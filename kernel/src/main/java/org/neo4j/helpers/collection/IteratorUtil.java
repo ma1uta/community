@@ -25,9 +25,10 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 /**
  * Contains common functionality regarding {@link Iterator}s and
@@ -401,9 +402,18 @@ public abstract class IteratorUtil
      */
     public static <T> Collection<T> asCollection( Iterable<T> iterable )
     {
-        List<T> list = new ArrayList<T>();
-        addToCollection( iterable, list );
-        return list;
+        return addToCollection( iterable, new ArrayList<T>() );
+    }
+    
+    /**
+     * Creates a {@link Set} out of an {@link Iterable}. Conflicting items
+     * will be overwritten.
+     * @param iterable the {@link Iterable} to pull items from.
+     * @return a {@link Set} containing unique items from {@code iterable}
+     */
+    public static <T> Set<T> asSet( Iterable<T> iterable )
+    {
+        return addToCollection( iterable, new HashSet<T>() );
     }
     
     /**

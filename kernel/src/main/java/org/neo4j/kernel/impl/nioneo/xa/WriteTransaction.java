@@ -75,8 +75,8 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
 import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 import org.neo4j.kernel.impl.util.ArrayMap;
+import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
-import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 
 /**
  * Transaction containing {@link Command commands} reflecting the operations
@@ -893,7 +893,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     }
 
     public Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships( long nodeId,
-        RelationshipLoadingPosition position, Direction direction, RelationshipType[] types )
+        RelationshipLoadingPosition position, DirectionWrapper direction, RelationshipType[] types )
     {
         return ReadTransaction.getMoreRelationships( nodeId, position, getRelGrabSize(), getRelationshipStore(),
                 direction, types );
@@ -914,9 +914,9 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             Map<Integer, RelationshipGroupRecord> groups = getRelationshipGroups( firstNode );
             RelationshipGroupRecord group = groups.get( rel.getType() );
             assert group != null;
-            Dir dir = getRelationshipDir( rel, firstNode );
-            if ( rel.isFirstInFirstChain() ) dir.setNextGroupRel( group, rel.getFirstNextRel() );
-            decrementRelationshipCount( firstNode.getId(), rel, dir.getNextGroupRel( group ) );
+            DirectionWrapper dir = wrapDirection( rel, firstNode );
+            if ( rel.isFirstInFirstChain() ) dir.setNextRel( group, rel.getFirstNextRel() );
+            decrementRelationshipCount( firstNode.getId(), rel, dir.getNextRel( group ) );
         }
         
         if ( !secondNode.isSuperNode() )
@@ -929,19 +929,19 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             Map<Integer, RelationshipGroupRecord> groups = getRelationshipGroups( secondNode );
             RelationshipGroupRecord group = groups.get( rel.getType() );
             assert group != null;
-            Dir dir = getRelationshipDir( rel, secondNode );
-            if ( rel.isFirstInSecondChain() ) dir.setNextGroupRel( group, rel.getSecondNextRel() );
-            decrementRelationshipCount( secondNode.getId(), rel, dir.getNextGroupRel( group ) );
+            DirectionWrapper dir = wrapDirection( rel, secondNode );
+            if ( rel.isFirstInSecondChain() ) dir.setNextRel( group, rel.getSecondNextRel() );
+            decrementRelationshipCount( secondNode.getId(), rel, dir.getNextRel( group ) );
         }
     }
 
-    private Dir getRelationshipDir( RelationshipRecord rel, NodeRecord firstNode )
+    private DirectionWrapper wrapDirection( RelationshipRecord rel, NodeRecord firstNode )
     {
         boolean isOut = rel.getFirstNode() == firstNode.getId();
         boolean isIn = rel.getSecondNode() == firstNode.getId();
         assert isOut|isIn;
-        if ( isOut&isIn ) return Dir.LOOP;
-        return isOut ? Dir.OUT : Dir.IN;
+        if ( isOut&isIn ) return DirectionWrapper.BOTH;
+        return isOut ? DirectionWrapper.OUTGOING : DirectionWrapper.INCOMING;
     }
 
     /**
@@ -1466,25 +1466,25 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     private void connectRelationshipToSuperNode( NodeRecord node, RelationshipRecord rel )
     {
         RelationshipGroupRecord group = getOrCreateRelationshipGroup( node, rel.getType() );
-        Dir dir = getRelationshipDir( rel, node );
+        DirectionWrapper dir = wrapDirection( rel, node );
         
         // TODO inverse to enum instead
         switch ( dir )
         {
-        case LOOP:
+        case BOTH:
             setCorrectNextRel( node, rel, group.getNextLoop() );
             connect( node.getId(), group.getNextLoop(), rel );
             break;
-        case OUT:
+        case OUTGOING:
             setCorrectNextRel( node, rel, group.getNextOut() );
             connect( node.getId(), group.getNextOut(), rel );
             break;
-        case IN:
+        case INCOMING:
             setCorrectNextRel( node, rel, group.getNextIn() );
             connect( node.getId(), group.getNextIn(), rel );
             break;
         }
-        dir.setNextGroupRel( group, rel.getId() );
+        dir.setNextRel( group, rel.getId() );
     }
     
     private void setCorrectNextRel( NodeRecord node, RelationshipRecord rel, long nextRel )
@@ -2135,66 +2135,4 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         RelationshipRecord rel = getRelationshipRecord( relId, true );
         return (int) (node.getId() == rel.getFirstNode() ? rel.getFirstPrevRel() : rel.getSecondPrevRel());
     }
-    
-    private static enum Dir
-    {
-        OUT
-        {
-            @Override
-            public void setNextGroupRel( RelationshipGroupRecord group, long relId )
-            {
-                group.setNextOut( relId );
-            }
-            
-            @Override
-            public long getNextGroupRel( RelationshipGroupRecord group )
-            {
-                return group.getNextOut();
-            }
-        },
-        IN
-        {
-            @Override
-            public void setNextGroupRel( RelationshipGroupRecord group, long relId )
-            {
-                group.setNextIn( relId );
-            }
-            
-            @Override
-            public long getNextGroupRel( RelationshipGroupRecord group )
-            {
-                return group.getNextIn();
-            }
-        },
-        LOOP
-        {
-            @Override
-            public void setNextGroupRel( RelationshipGroupRecord group, long relId )
-            {
-                group.setNextLoop( relId );
-            }
-            
-            @Override
-            public long getNextGroupRel( RelationshipGroupRecord group )
-            {
-                return group.getNextLoop();
-            }
-        };
-        
-        public abstract void setNextGroupRel( RelationshipGroupRecord group, long relId );
-        
-        public abstract long getNextGroupRel( RelationshipGroupRecord group );
-    }
-    
-//    @Override
-//    public int getRelationshipCount( long id )
-//    {
-//        NodeRecord node = getCachedNodeRecord( id );
-//        if ( node == null ) node = getNodeStore().getRecord( id );
-//        long nextRel = node.getNextRel();
-//        if ( nextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ) return 0;
-//        RelationshipRecord rel = getCachedRelationshipRecord( nextRel );
-//        if ( rel == null ) rel = getRelationshipStore().getRecord( nextRel );
-//        return (int) (id == rel.getFirstNode() ? rel.getFirstPrevRel() : rel.getSecondPrevRel());
-//    }
 }

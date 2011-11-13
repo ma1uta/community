@@ -29,8 +29,9 @@ import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.helpers.collection.PrefetchingIterator;
+import org.neo4j.kernel.impl.util.CombinedRelIdIterator;
+import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
-import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdIterator;
 
 class IntArrayIterator extends PrefetchingIterator<Relationship> implements Iterable<Relationship>
@@ -88,7 +89,7 @@ class IntArrayIterator extends PrefetchingIterator<Relationship> implements Iter
                 {
                     currentTypeIterator = typeIterator.next();
                 }
-                else if ( fromNode.getMoreRelationships( nodeManager, direction.direction(), types ) ||
+                else if ( fromNode.getMoreRelationships( nodeManager, direction, types ) ||
                         // This is here to guard for that someone else might have loaded
                         // stuff in this relationship chain (and exhausted it) while I
                         // iterated over my batch of relationships. It will only happen
@@ -122,7 +123,7 @@ class IntArrayIterator extends PrefetchingIterator<Relationship> implements Iter
                             {
                                 Collection<Long> remove = nodeManager.getCowRelationshipRemoveMap( fromNode, type );
                                 itr = remove == null ? ids.iterator( direction ) :
-                                        RelIdArray.from( ids, null, remove ).iterator( direction );
+                                        new CombinedRelIdIterator( type, direction, ids, null, remove );
                                 newRels.put( type, itr );
                             }
                             else
@@ -138,7 +139,7 @@ class IntArrayIterator extends PrefetchingIterator<Relationship> implements Iter
                     
                     typeIterator = rels.iterator();
                     currentTypeIterator = typeIterator.hasNext() ? typeIterator.next() : RelIdArray.EMPTY.iterator( direction );
-                    isFullyLoaded = !fromNode.hasMoreRelationshipsToLoad( direction.direction(), types );
+                    isFullyLoaded = !fromNode.hasMoreRelationshipsToLoad( direction, types );
                 }
                 else
                 {

@@ -19,25 +19,22 @@
  */
 package org.neo4j.kernel.impl.core;
 
+import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
-import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.helpers.collection.ArrayIterator;
 import org.neo4j.kernel.impl.nioneo.store.Record;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipGroupRecord;
+import org.neo4j.kernel.impl.util.DirectionWrapper;
 
-/**
- * TODO Make use of direction in the arguments
- */
 public class SuperNodeChainPosition implements RelationshipLoadingPosition
 {
     private final Map<String, RelationshipLoadingPosition> positions = new HashMap<String, RelationshipLoadingPosition>();
     private final Map<Integer, RelationshipGroupRecord> rawGroups;
     private Map<String, RelationshipGroupRecord> groups;
     private RelationshipType[] types;
+    private RelationshipLoadingPosition currentPosition;
     
     public SuperNodeChainPosition( Map<Integer, RelationshipGroupRecord> groups )
     {
@@ -45,7 +42,7 @@ public class SuperNodeChainPosition implements RelationshipLoadingPosition
     }
     
     @Override
-    public void setNodeManager( NodeManager nodeManager )
+    public void resolveRawTypes( NodeManager nodeManager )
     {
         groups = new HashMap<String, RelationshipGroupRecord>();
         types = new RelationshipType[rawGroups.size()];
@@ -59,13 +56,17 @@ public class SuperNodeChainPosition implements RelationshipLoadingPosition
     }
     
     @Override
-    public long position( Direction direction, RelationshipType[] types )
+    public long position( DirectionWrapper direction, RelationshipType[] types )
     {
         if ( types.length == 0 ) types = this.types;
         for ( RelationshipType type : types )
         {
             RelationshipLoadingPosition position = getTypePosition( type );
-            if ( position.hasMore( direction, types ) ) return position.position( direction, types );
+            if ( position.hasMore( direction, types ) )
+            {
+                currentPosition = position;
+                return position.position( direction, types );
+            }
         }
         return Record.NO_NEXT_RELATIONSHIP.intValue();
     }
@@ -83,23 +84,15 @@ public class SuperNodeChainPosition implements RelationshipLoadingPosition
     }
 
     @Override
-    public long nextPosition( long nextPosition, Direction direction, RelationshipType[] types )
+    public long nextPosition( long nextPosition, DirectionWrapper direction, RelationshipType[] types )
     {
-        if ( types.length == 0 ) types = this.types;
-        for ( RelationshipType type : types )
-        {
-            RelationshipLoadingPosition position = getTypePosition( type );
-            if ( position.hasMore( direction, types ) )
-            {
-                long result = position.nextPosition( nextPosition, direction, types );
-                if ( position.hasMore( direction, types ) ) return result;
-            }
-        }
-        return Record.NO_NEXT_RELATIONSHIP.intValue();
+        currentPosition.nextPosition( nextPosition, direction, types );
+        if ( nextPosition != Record.NO_NEXT_RELATIONSHIP.intValue() ) return nextPosition;
+        return position( direction, types );
     }
     
     @Override
-    public boolean hasMore( Direction direction, RelationshipType[] types )
+    public boolean hasMore( DirectionWrapper direction, RelationshipType[] types )
     {
         if ( types.length == 0 ) types = this.types;
         for ( RelationshipType type : types )
@@ -113,25 +106,25 @@ public class SuperNodeChainPosition implements RelationshipLoadingPosition
     private static final RelationshipLoadingPosition EMPTY_POSITION = new RelationshipLoadingPosition()
     {
         @Override
-        public void setNodeManager( NodeManager nodeManager )
+        public void resolveRawTypes( NodeManager nodeManager )
         {
             throw new UnsupportedOperationException();
         }
         
         @Override
-        public long position( Direction direction, RelationshipType[] types )
+        public long position( DirectionWrapper direction, RelationshipType[] types )
         {
             return Record.NO_NEXT_RELATIONSHIP.intValue();
         }
         
         @Override
-        public long nextPosition( long position, Direction direction, RelationshipType[] types )
+        public long nextPosition( long position, DirectionWrapper direction, RelationshipType[] types )
         {
             return Record.NO_NEXT_RELATIONSHIP.intValue();
         }
         
         @Override
-        public boolean hasMore( Direction direction, RelationshipType[] types )
+        public boolean hasMore( DirectionWrapper direction, RelationshipType[] types )
         {
             return false;
         }
@@ -139,68 +132,75 @@ public class SuperNodeChainPosition implements RelationshipLoadingPosition
     
     private static class TypePosition implements RelationshipLoadingPosition
     {
-        private final Iterator<Direction> directions = new ArrayIterator<Direction>( Direction.values() );
-        private Direction direction = null;
-        private RelationshipGroupRecord record;
-        private long position = Record.NO_NEXT_RELATIONSHIP.intValue();
-        private boolean end;
+        private final EnumMap<DirectionWrapper, RelationshipLoadingPosition> directions =
+                new EnumMap<DirectionWrapper,RelationshipLoadingPosition>( DirectionWrapper.class );
+        private RelationshipLoadingPosition currentPosition;
         
         TypePosition( RelationshipGroupRecord record )
         {
-            this.record = record;
+            for ( DirectionWrapper dir : DirectionWrapper.values() )
+            {
+                directions.put( dir, new SingleChainPosition( dir.getNextRel( record ) ) );
+            }
         }
         
         @Override
-        public void setNodeManager( NodeManager nodeManager )
+        public void resolveRawTypes( NodeManager nodeManager )
         {
             throw new UnsupportedOperationException();
         }
 
-        private long gotoNextPosition()
+        @Override
+        public long position( DirectionWrapper direction, RelationshipType[] types )
         {
-            while ( directions.hasNext() )
+            if ( direction == DirectionWrapper.BOTH )
             {
-                direction = directions.next();
-                this.position = positionForDirection( direction );
-                if ( this.position != Record.NO_NEXT_RELATIONSHIP.intValue() ) return this.position;
+                for ( RelationshipLoadingPosition position : directions.values() )
+                {
+                    if ( position.hasMore( direction, types ) )
+                    {
+                        currentPosition = position;
+                        return position.position( direction, types );
+                    }
+                }
             }
-            end = true;
-            return this.position;
-        }
-
-        private long positionForDirection( Direction direction )
-        {
-            switch ( direction )
+            else
             {
-            case OUTGOING: return record.getNextOut();
-            case INCOMING: return record.getNextIn();
-            default: return record.getNextLoop();
+                for ( DirectionWrapper dir : new DirectionWrapper[] {direction, DirectionWrapper.BOTH} )
+                {
+                    RelationshipLoadingPosition position = directions.get( dir );
+                    if ( position.hasMore( dir, types ) )
+                    {
+                        currentPosition = position;
+                        return position.position( dir, types );
+                    }
+                }
             }
+            return Record.NO_NEXT_RELATIONSHIP.intValue();
         }
 
         @Override
-        public long position( Direction direction, RelationshipType[] types )
+        public long nextPosition( long position, DirectionWrapper direction, RelationshipType[] types )
         {
-            assert !end;
-            if ( position == Record.NO_NEXT_RELATIONSHIP.intValue() ) gotoNextPosition();
-            return position;
-        }
-
-        @Override
-        public long nextPosition( long position, Direction direction, RelationshipType[] types )
-        {
-            if ( position != Record.NO_NEXT_RELATIONSHIP.intValue() )
-            {
-                this.position = position;
-                return position;
-            }
-            return gotoNextPosition();
+            currentPosition.nextPosition( position, direction, types );
+            if ( position != Record.NO_NEXT_RELATIONSHIP.intValue() ) return position;
+            return position( direction, types );
         }
         
         @Override
-        public boolean hasMore( Direction direction, RelationshipType[] types )
+        public boolean hasMore( DirectionWrapper direction, RelationshipType[] types )
         {
-            return !end;
+            if ( direction == DirectionWrapper.BOTH )
+            {
+                return directions.get( DirectionWrapper.OUTGOING ).hasMore( direction, types ) ||
+                        directions.get( DirectionWrapper.INCOMING ).hasMore( direction, types ) ||
+                        directions.get( DirectionWrapper.BOTH ).hasMore( direction, types );
+            }
+            else
+            {
+                return directions.get( direction ).hasMore( direction, types ) ||
+                        directions.get( DirectionWrapper.BOTH ).hasMore( direction, types );
+            }
         }
     }
 }
