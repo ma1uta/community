@@ -29,12 +29,11 @@ import java.util.Map;
 
 import javax.transaction.xa.XAResource;
 
-import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.kernel.impl.core.SuperNodeChainPosition;
 import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.core.RelationshipLoadingPosition;
 import org.neo4j.kernel.impl.core.SingleChainPosition;
+import org.neo4j.kernel.impl.core.SuperNodeChainPosition;
 import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
@@ -477,7 +476,7 @@ class ReadTransaction implements NeoStoreTransaction
     }
     
     @Override
-    public int getRelationshipCount( long id, int type, Direction direction )
+    public int getRelationshipCount( long id, int type, DirectionWrapper direction )
     {
         NodeRecord node = getNodeStore().getRecord( id );
         long nextRel = node.getNextRel();
@@ -485,13 +484,13 @@ class ReadTransaction implements NeoStoreTransaction
         if ( !node.isSuperNode() )
         {
             assert type == -1;
-            assert direction == null;
+            assert direction == DirectionWrapper.BOTH;
             return getRelationshipCount( node, nextRel );
         }
         else
         {
             Map<Integer, RelationshipGroupRecord> groups = loadRelationshipGroups( node, getRelationshipGroupStore() );
-            if ( type == -1 && direction == null )
+            if ( type == -1 && direction == DirectionWrapper.BOTH )
             {   // Count for all types/directions
                 int count = 0;
                 for ( RelationshipGroupRecord group : groups.values() )
@@ -511,7 +510,7 @@ class ReadTransaction implements NeoStoreTransaction
                 }
                 return count;
             }
-            else if ( direction == null )
+            else if ( direction == DirectionWrapper.BOTH )
             {   // Count for a type
                 RelationshipGroupRecord group = groups.get( type );
                 if ( group == null ) return 0;
@@ -530,20 +529,23 @@ class ReadTransaction implements NeoStoreTransaction
         }
     }
     
-    private int getRelationshipCount( NodeRecord node, RelationshipGroupRecord group, Direction direction )
+    private int getRelationshipCount( NodeRecord node, RelationshipGroupRecord group, DirectionWrapper direction )
     {
-        long relId = -1;
-        switch ( direction )
+        if ( direction == DirectionWrapper.BOTH )
         {
-        case OUTGOING: relId = group.getNextOut(); break;
-        case INCOMING: relId = group.getNextIn(); break;
-        default: relId = group.getNextLoop(); break;
+            return getRelationshipCount( node, DirectionWrapper.OUTGOING.getNextRel( group ) ) +
+                    getRelationshipCount( node, DirectionWrapper.INCOMING.getNextRel( group ) ) +
+                    getRelationshipCount( node, DirectionWrapper.BOTH.getNextRel( group ) );
         }
-        return getRelationshipCount( node, relId );
+        else
+        {
+            return getRelationshipCount( node, direction.getNextRel( group ) ) +
+                    getRelationshipCount( node, DirectionWrapper.BOTH.getNextRel( group ) );
+        }
     }
 
     private int getRelationshipCount( NodeRecord node, long relId )
-    {
+    {   // Relationship count is in a PREV field of the first record in a chain
         if ( relId == Record.NO_NEXT_RELATIONSHIP.intValue() ) return 0;
         RelationshipRecord rel = getRelationshipStore().getRecord( relId );
         return (int) (node.getId() == rel.getFirstNode() ? rel.getFirstPrevRel() : rel.getSecondPrevRel());

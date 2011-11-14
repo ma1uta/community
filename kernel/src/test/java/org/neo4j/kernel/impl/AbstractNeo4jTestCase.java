@@ -24,6 +24,8 @@ import static org.neo4j.kernel.Config.KEEP_LOGICAL_LOGS;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -216,5 +218,12 @@ public abstract class AbstractNeo4jTestCase
     {
         XaDataSourceManager dsMgr = ((AbstractGraphDatabase)graphDb).getConfig().getTxModule().getXaDataSourceManager();
         return ( (NeoStoreXaConnection) dsMgr.getXaDataSource( "nioneodb" ).getXaConnection() ).getPropertyStore();
+    }
+
+    protected <T> Set<T> join( Set<T>... sets )
+    {
+        Set<T> result = new HashSet<T>();
+        for ( Set<T> set : sets ) result.addAll( set );
+        return result;
     }
 }

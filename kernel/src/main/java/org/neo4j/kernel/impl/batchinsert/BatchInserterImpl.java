@@ -398,7 +398,7 @@ public class BatchInserterImpl implements BatchInserter
     public long createNode( Map<String,Object> properties )
     {
         long nodeId = getNodeStore().nextId();
-        NodeRecord nodeRecord = new NodeRecord( nodeId );
+        NodeRecord nodeRecord = new NodeRecord( nodeId, false );
         nodeRecord.setInUse( true );
         nodeRecord.setCreated();
         nodeRecord.setNextProp( createPropertyChain( properties ) );
@@ -424,7 +424,7 @@ public class BatchInserterImpl implements BatchInserter
         {
             nodeStore.setHighId( nodeId + 1 );
         }
-        NodeRecord nodeRecord = new NodeRecord( nodeId );
+        NodeRecord nodeRecord = new NodeRecord( nodeId, false );
         nodeRecord.setInUse( true );
         nodeRecord.setCreated();
         nodeRecord.setNextProp( createPropertyChain( properties ) );

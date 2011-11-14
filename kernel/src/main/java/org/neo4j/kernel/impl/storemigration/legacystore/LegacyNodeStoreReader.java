@@ -81,7 +81,7 @@ public class LegacyNodeStoreReader
                             long inUseByte = buffer.get();
 
                             boolean inUse = (inUseByte & 0x1) == Record.IN_USE.intValue();
-                            nodeRecord = new NodeRecord( id );
+                            nodeRecord = new NodeRecord( id, false );
                             nodeRecord.setInUse( inUse );
                             if ( inUse )
                             {

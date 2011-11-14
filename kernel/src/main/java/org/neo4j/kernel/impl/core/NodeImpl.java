@@ -398,6 +398,7 @@ class NodeImpl extends Primitive
                 }
             }
         }
+        moreRelationshipsLoaded();
         return rels;
         // nodeManager.putAllInRelCache( pair.other() );
     }
@@ -440,6 +441,7 @@ class NodeImpl extends Primitive
                     }
                 }
             }
+            moreRelationshipsLoaded();
         }
         nodeManager.putAllInRelCache( rels.other() );
         return true;
@@ -625,18 +627,17 @@ class NodeImpl extends Primitive
         return relChainPosition;
     }
 
-//    void setRelChainPosition( long position )
-//    {
-//        this.relChainPosition = position;
-//        if ( !hasMoreRelationshipsToLoad() )
-//        {
-//            // Shrink arrays
-//            for ( int i = 0; i < relationships.length; i++ )
-//            {
-//                relationships[i] = relationships[i].shrink();
-//            }
-//        }
-//    }
+    private void moreRelationshipsLoaded()
+    {
+        if ( relationships != null && !hasMoreRelationshipsToLoad( DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES ) )
+        {
+            // Shrink arrays
+            for ( int i = 0; i < relationships.length; i++ )
+            {
+                relationships[i] = relationships[i].shrink();
+            }
+        }
+    }
 
     RelIdArray getRelationshipIds( String type )
     {
@@ -650,7 +651,7 @@ class NodeImpl extends Primitive
 
     public int getDegree( NodeManager nm )
     {
-        return nm.getRelationshipCount( this, null, null );
+        return nm.getRelationshipCount( this, null, DirectionWrapper.BOTH );
     }
 
     public int getDegree( NodeManager nm, RelationshipType type )

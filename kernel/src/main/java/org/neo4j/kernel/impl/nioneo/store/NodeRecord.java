@@ -23,10 +23,12 @@ public class NodeRecord extends PrimitiveRecord
 {
     private long nextRel = Record.NO_NEXT_RELATIONSHIP.intValue();
     private boolean superNode;
+    private boolean superNodeChanged;
 
-    public NodeRecord( long id )
+    public NodeRecord( long id, boolean superNode )
     {
         super( id );
+        this.superNode = superNode;
     }
 
     public long getNextRel()
@@ -48,11 +50,17 @@ public class NodeRecord extends PrimitiveRecord
 
     public void setSuperNode( boolean superNode )
     {
+        if ( superNode != this.superNode ) superNodeChanged = true;
         this.superNode = superNode;
     }
     
     public boolean isSuperNode()
     {
         return superNode;
+    }
+    
+    public boolean isSuperNodeChanged()
+    {
+        return superNodeChanged;
     }
 }

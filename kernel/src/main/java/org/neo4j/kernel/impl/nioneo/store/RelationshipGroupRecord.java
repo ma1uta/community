@@ -27,6 +27,9 @@ public class RelationshipGroupRecord extends Abstract64BitRecord
     private long nextIn = Record.NO_NEXT_RELATIONSHIP.intValue();
     private long nextLoop = Record.NO_NEXT_RELATIONSHIP.intValue();
     
+    // Not stored, just kept in memory temporarily when loading the group chain
+    private long prev = Record.NO_NEXT_RELATIONSHIP.intValue();
+    
     public RelationshipGroupRecord( long id, int type )
     {
         super( id );
@@ -78,6 +81,16 @@ public class RelationshipGroupRecord extends Abstract64BitRecord
         this.next = next;
     }
     
+    public void setPrev( long prev )
+    {
+        this.prev = prev;
+    }
+    
+    public long getPrev()
+    {
+        return prev;
+    }
+    
     @Override
     public String toString()
     {
@@ -86,6 +99,8 @@ public class RelationshipGroupRecord extends Abstract64BitRecord
                 .append( ",out=" + nextOut )
                 .append( ",in=" + nextIn )
                 .append( ",loop=" + nextLoop )
-                .append( ",next=" + next ).toString();
+                .append( ",prev=" + prev )
+                .append( ",next=" + next )
+                .append( "]" ).toString();
     }
 }

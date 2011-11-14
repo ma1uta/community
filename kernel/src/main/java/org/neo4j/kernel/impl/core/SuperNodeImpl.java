@@ -19,6 +19,8 @@
  */
 package org.neo4j.kernel.impl.core;
 
+import static org.neo4j.kernel.impl.util.DirectionWrapper.wrapDirection;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,6 +28,7 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.helpers.Pair;
 import org.neo4j.kernel.impl.util.ArrayMap;
+import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
 
 public class SuperNodeImpl extends NodeImpl
@@ -49,18 +52,18 @@ public class SuperNodeImpl extends NodeImpl
     @Override
     public int getDegree( NodeManager nm, RelationshipType type )
     {
-        return nm.getRelationshipCount( this, type, null );
+        return nm.getRelationshipCount( this, type, DirectionWrapper.BOTH );
     }
     
     @Override
     public int getDegree( NodeManager nm, Direction direction )
     {
-        return nm.getRelationshipCount( this, null, direction );
+        return nm.getRelationshipCount( this, null, wrapDirection( direction ) );
     }
     
     @Override
     public int getDegree( NodeManager nm, RelationshipType type, Direction direction )
     {
-        return nm.getRelationshipCount( this, type, direction );
+        return nm.getRelationshipCount( this, type, wrapDirection( direction ) );
     }
 }

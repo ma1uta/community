@@ -34,7 +34,6 @@ import java.util.Map;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 
-import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -195,7 +194,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             Command.NodeCommand command = new Command.NodeCommand(
                 neoStore.getNodeStore(), record );
             nodeCommands.add( command );
-            if ( !record.inUse() )
+            if ( !record.inUse() || record.isSuperNodeChanged() )
             {
                 removeNodeFromCache( record.getId() );
             }
@@ -707,7 +706,6 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         nodeRecord.setInUse( false );
         long nextProp = nodeRecord.getNextProp();
         ArrayMap<Integer, PropertyData> propertyMap = getAndDeletePropertyChain( nextProp );
-        // TODO delete relgroup if any
         return propertyMap;
     }
 
@@ -915,7 +913,11 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             RelationshipGroupRecord group = groups.get( rel.getType() );
             assert group != null;
             DirectionWrapper dir = wrapDirection( rel, firstNode );
-            if ( rel.isFirstInFirstChain() ) dir.setNextRel( group, rel.getFirstNextRel() );
+            if ( rel.isFirstInFirstChain() )
+            {
+                dir.setNextRel( group, rel.getFirstNextRel() );
+                if ( groupIsEmpty( group ) ) deleteGroup( firstNode, group, groups );
+            }
             decrementRelationshipCount( firstNode.getId(), rel, dir.getNextRel( group ) );
         }
         
@@ -930,9 +932,43 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             RelationshipGroupRecord group = groups.get( rel.getType() );
             assert group != null;
             DirectionWrapper dir = wrapDirection( rel, secondNode );
-            if ( rel.isFirstInSecondChain() ) dir.setNextRel( group, rel.getSecondNextRel() );
+            if ( rel.isFirstInSecondChain() )
+            {
+                dir.setNextRel( group, rel.getSecondNextRel() );
+                if ( groupIsEmpty( group ) ) deleteGroup( secondNode, group, groups );
+            }
             decrementRelationshipCount( secondNode.getId(), rel, dir.getNextRel( group ) );
         }
+    }
+
+    private void deleteGroup( NodeRecord node, RelationshipGroupRecord group, Map<Integer, RelationshipGroupRecord> groups )
+    {
+        long previous = group.getPrev();
+        long next = group.getNext();
+        if ( previous == Record.NO_NEXT_RELATIONSHIP.intValue() )
+        {   // This is the first one, just point the node to the next group
+            node.setNextRel( next );
+        }
+        else
+        {   // There are others before it, point the previous to the next group
+            RelationshipGroupRecord previousRecord = getRelationshipGroupRecord( previous, false );
+            previousRecord.setNext( next );
+        }
+        
+        if ( next != Record.NO_NEXT_RELATIONSHIP.intValue() )
+        {
+            RelationshipGroupRecord nextRecord = getRelationshipGroupRecord( next, false );
+            nextRecord.setPrev( Record.NO_NEXT_RELATIONSHIP.intValue() );
+        }
+        group.setInUse( false );
+        groups.remove( group.getType() );
+    }
+
+    private boolean groupIsEmpty( RelationshipGroupRecord group )
+    {
+        return group.getNextOut() == Record.NO_NEXT_RELATIONSHIP.intValue() &&
+               group.getNextIn() == Record.NO_NEXT_RELATIONSHIP.intValue() &&
+               group.getNextLoop() == Record.NO_NEXT_RELATIONSHIP.intValue();
     }
 
     private DirectionWrapper wrapDirection( RelationshipRecord rel, NodeRecord firstNode )
@@ -949,22 +985,19 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
      */
     private boolean decrementRelationshipCount( long nodeId, RelationshipRecord rel, long firstRelId )
     {
-        if ( firstRelId != Record.NO_PREV_RELATIONSHIP.intValue() )
+        if ( firstRelId == Record.NO_PREV_RELATIONSHIP.intValue() ) return true;
+        RelationshipRecord firstRel = getRelationshipRecord( firstRelId, false );
+        if ( nodeId == firstRel.getFirstNode() )
         {
-            RelationshipRecord firstRel = getRelationshipRecord( firstRelId, false );
-            if ( nodeId == firstRel.getFirstNode() )
-            {
-                firstRel.setFirstPrevRel( rel.isFirstInFirstChain() ? rel.getFirstPrevRel()-1 : firstRel.getFirstPrevRel()-1 );
-                firstRel.setFirstInFirstChain( true );
-            }
-            if ( nodeId == firstRel.getSecondNode() )
-            {
-                firstRel.setSecondPrevRel( rel.isFirstInSecondChain() ? rel.getSecondPrevRel()-1 : firstRel.getSecondPrevRel()-1 );
-                firstRel.setFirstInSecondChain( true );
-            }
-            return false;
+            firstRel.setFirstPrevRel( rel.isFirstInFirstChain() ? rel.getFirstPrevRel()-1 : firstRel.getFirstPrevRel()-1 );
+            firstRel.setFirstInFirstChain( true );
         }
-        return true;
+        if ( nodeId == firstRel.getSecondNode() )
+        {
+            firstRel.setSecondPrevRel( rel.isFirstInSecondChain() ? rel.getSecondPrevRel()-1 : firstRel.getSecondPrevRel()-1 );
+            firstRel.setFirstInSecondChain( true );
+        }
+        return false;
     }
 
     @Override
@@ -1537,11 +1570,14 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     {
         assert node.isSuperNode();
         long groupId = node.getNextRel();
+        long previousGroupId = Record.NO_NEXT_RELATIONSHIP.intValue();
         Map<Integer, RelationshipGroupRecord> result = new HashMap<Integer, RelationshipGroupRecord>();
         while ( groupId != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
             RelationshipGroupRecord record = getRelationshipGroupRecord( groupId, true );
+            record.setPrev( previousGroupId );
             result.put( record.getType(), record );
+            previousGroupId = groupId;
             groupId = record.getNext();
         }
         return result;
@@ -1629,7 +1665,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     @Override
     public void nodeCreate( long nodeId )
     {
-        NodeRecord nodeRecord = new NodeRecord( nodeId );
+        NodeRecord nodeRecord = new NodeRecord( nodeId, false );
         nodeRecord.setInUse( true );
         nodeRecord.setCreated();
         cacheNodeRecord( nodeRecord );
@@ -2064,7 +2100,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     }
     
     @Override
-    public int getRelationshipCount( long id, int type, Direction direction )
+    public int getRelationshipCount( long id, int type, DirectionWrapper direction )
     {
         NodeRecord node = getNodeRecord( id, true );
         long nextRel = node.getNextRel();
@@ -2117,16 +2153,19 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         }
     }
     
-    private int getRelationshipCount( NodeRecord node, RelationshipGroupRecord group, Direction direction )
+    private int getRelationshipCount( NodeRecord node, RelationshipGroupRecord group, DirectionWrapper direction )
     {
-        long relId = -1;
-        switch ( direction )
+        if ( direction == DirectionWrapper.BOTH )
         {
-        case OUTGOING: relId = group.getNextOut(); break;
-        case INCOMING: relId = group.getNextIn(); break;
-        default: relId = group.getNextLoop(); break;
+            return getRelationshipCount( node, DirectionWrapper.OUTGOING.getNextRel( group ) ) +
+                    getRelationshipCount( node, DirectionWrapper.INCOMING.getNextRel( group ) ) +
+                    getRelationshipCount( node, DirectionWrapper.BOTH.getNextRel( group ) );
         }
-        return getRelationshipCount( node, relId );
+        else
+        {
+            return getRelationshipCount( node, direction.getNextRel( group ) ) +
+                    getRelationshipCount( node, DirectionWrapper.BOTH.getNextRel( group ) );
+        }
     }
 
     private int getRelationshipCount( NodeRecord node, long relId )

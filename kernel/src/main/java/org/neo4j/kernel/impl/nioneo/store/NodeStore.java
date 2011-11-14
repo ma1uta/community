@@ -83,7 +83,7 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
                 IdGeneratorFactory.class );
         createEmptyStore( fileName, buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR ), idGeneratorFactory );
         NodeStore store = new NodeStore( fileName, config );
-        NodeRecord nodeRecord = new NodeRecord( store.nextId() );
+        NodeRecord nodeRecord = new NodeRecord( store.nextId(), false );
         nodeRecord.setInUse( true );
         store.updateRecord( nodeRecord );
         store.close();
@@ -112,7 +112,7 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         }
         catch ( InvalidRecordException e )
         {
-            return new NodeRecord( id ); // inUse=false by default
+            return new NodeRecord( id, false ); // inUse=false by default
         }
         
         try
@@ -228,11 +228,10 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         // [    ,   x] is super node
         byte extra = buffer.get();
 
-        NodeRecord nodeRecord = new NodeRecord( id );
+        NodeRecord nodeRecord = new NodeRecord( id, (extra & 0x1) > 0 );
         nodeRecord.setInUse( inUse );
         nodeRecord.setNextRel( longFromIntAndMod( nextRel, relModifier ) );
         nodeRecord.setNextProp( longFromIntAndMod( nextProp, propModifier ) );
-        nodeRecord.setSuperNode( (extra & 0x1) > 0 );
         return nodeRecord;
     }
 

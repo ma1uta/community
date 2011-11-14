@@ -20,6 +20,11 @@
 package org.neo4j.kernel.impl.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.neo4j.helpers.collection.IteratorUtil.asSet;
+
+import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
@@ -31,7 +36,36 @@ import org.neo4j.kernel.impl.MyRelTypes;
 public class TestRelationshipCount extends AbstractNeo4jTestCase
 {
     @Test
-    public void simple() throws Exception
+    public void convertToSuperNode() throws Exception
+    {
+        Node node = getGraphDb().createNode();
+        EnumMap<MyRelTypes, Set<Relationship>> rels = new EnumMap<MyRelTypes, Set<Relationship>>( MyRelTypes.class );
+        for ( MyRelTypes type : MyRelTypes.values() ) rels.put( type, new HashSet<Relationship>() );
+        int expectedRelCount = 0;
+        for ( int i = 0; i < 6; i++, expectedRelCount++ )
+        {
+            MyRelTypes type = MyRelTypes.values()[i%MyRelTypes.values().length];
+            Relationship rel = node.createRelationshipTo( getGraphDb().createNode(), type );
+            rels.get( type ).add( rel );
+        }
+        newTransaction();
+        for ( int i = 0; i < 10000; i++, expectedRelCount++ )
+        {
+            node.createRelationshipTo( getGraphDb().createNode(), MyRelTypes.TEST );
+        }
+        clearCache();
+        assertEquals( expectedRelCount, node.getDegree() );
+        assertEquals( expectedRelCount, node.getDegree( Direction.BOTH ) );
+        assertEquals( expectedRelCount, node.getDegree( Direction.OUTGOING ) );
+        assertEquals( 0, node.getDegree( Direction.INCOMING ) );
+        assertEquals( rels.get( MyRelTypes.TEST2 ),
+                asSet( node.getRelationships( MyRelTypes.TEST2 ) ) );
+        assertEquals( join( rels.get( MyRelTypes.TEST_TRAVERSAL ), rels.get( MyRelTypes.TEST2 ) ),
+                asSet( node.getRelationships( MyRelTypes.TEST_TRAVERSAL, MyRelTypes.TEST2 ) ) );
+    }
+
+    @Test
+    public void withoutLoops() throws Exception
     {
         Node node1 = getGraphDb().createNode();
         Node node2 = getGraphDb().createNode();
@@ -63,16 +97,25 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
         for ( int i = 0; i < 2; i++ )
         {
             assertEquals( 1002, node1.getDegree() );
+            assertEquals( 1002, node1.getDegree( Direction.BOTH ) );
             assertEquals( 502, node1.getDegree( Direction.OUTGOING ) );
             assertEquals( 500, node1.getDegree( Direction.INCOMING ) );
             assertEquals( 1, node1.getDegree( MyRelTypes.TEST2 ) );
             assertEquals( 1001, node1.getDegree( MyRelTypes.TEST ) );
+
+            assertEquals( 1001, node1.getDegree( MyRelTypes.TEST, Direction.BOTH ) );
             assertEquals( 501, node1.getDegree( MyRelTypes.TEST, Direction.OUTGOING ) );
             assertEquals( 500, node1.getDegree( MyRelTypes.TEST, Direction.INCOMING ) );
             assertEquals( 1, node1.getDegree( MyRelTypes.TEST2, Direction.OUTGOING ) );
             assertEquals( 0, node1.getDegree( MyRelTypes.TEST2, Direction.INCOMING ) );
             newTransaction();
         }
+        
+        for ( Relationship rel : node1.getRelationships() ) rel.delete();
+        node1.delete();
+        for ( Relationship rel : node2.getRelationships() ) rel.delete();
+        node2.delete();
+        newTransaction();
     }
     
     @Test
