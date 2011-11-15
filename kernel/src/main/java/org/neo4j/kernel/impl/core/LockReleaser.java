@@ -21,10 +21,13 @@ package org.neo4j.kernel.impl.core;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,6 +37,7 @@ import javax.transaction.SystemException;
 import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
 
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.NotInTransactionException;
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.graphdb.event.TransactionData;
@@ -86,10 +90,10 @@ public class LockReleaser
 
         boolean deleted = false;
 
-        ArrayMap<String,RelIdArray> relationshipAddMap = null;
-        ArrayMap<String,Collection<Long>> relationshipRemoveMap = null;
-        ArrayMap<Integer,PropertyData> propertyAddMap = null;
-        ArrayMap<Integer,PropertyData> propertyRemoveMap = null;
+        ArrayMap<String,RelIdArray> relationshipAddMap;
+        ArrayMap<String,SetAndDirectionCounter> relationshipRemoveMap;
+        ArrayMap<Integer,PropertyData> propertyAddMap;
+        ArrayMap<Integer,PropertyData> propertyRemoveMap;
     }
 
     private static class CowRelElement
@@ -101,8 +105,33 @@ public class LockReleaser
 
         boolean deleted = false;
 
-        ArrayMap<Integer,PropertyData> propertyAddMap = null;
-        ArrayMap<Integer,PropertyData> propertyRemoveMap = null;
+        ArrayMap<Integer,PropertyData> propertyAddMap;
+        ArrayMap<Integer,PropertyData> propertyRemoveMap;
+    }
+    
+    static class SetAndDirectionCounter
+    {
+        Collection<Long> relationshipRemoveMap = new HashSet<Long>();
+        AtomicInteger totalCount = new AtomicInteger();
+        Map<Direction, AtomicInteger /*Just because it's mutable and Integer isn't*/> counters =
+                new EnumMap<Direction, AtomicInteger>( Direction.class );
+        {
+            counters.put( Direction.OUTGOING, new AtomicInteger() );
+            counters.put( Direction.INCOMING, new AtomicInteger() );
+            counters.put( Direction.BOTH, new AtomicInteger() );
+        }
+        
+        int getCount( Direction direction )
+        {
+            return direction == Direction.BOTH ? totalCount.get() :
+                    counters.get( direction ).get() + counters.get( Direction.BOTH ).get();
+        }
+        
+        void incrementCount( Direction direction )
+        {
+            counters.get( direction ).incrementAndGet();
+            totalCount.incrementAndGet();
+        }
     }
 
     public LockReleaser( LockManager lockManager,
@@ -201,7 +230,7 @@ public class LockReleaser
         }
     }
 
-    public ArrayMap<String, Collection<Long>> getCowRelationshipRemoveMap( NodeImpl node )
+    public ArrayMap<String, SetAndDirectionCounter> getCowRelationshipRemoveMap( NodeImpl node )
     {
         PrimitiveElement primitiveElement = cowMap.get( getTransaction() );
         if ( primitiveElement != null )
@@ -216,7 +245,7 @@ public class LockReleaser
         return null;
     }
     
-    public Collection<Long> getCowRelationshipRemoveMap( NodeImpl node, String type )
+    public SetAndDirectionCounter getCowRelationshipRemoveMap( NodeImpl node, String type )
     {
         PrimitiveElement primitiveElement = cowMap.get( getTransaction() );
         if ( primitiveElement != null )
@@ -232,7 +261,7 @@ public class LockReleaser
         return null;
     }
 
-    public Collection<Long> getCowRelationshipRemoveMap( NodeImpl node, String type,
+    public SetAndDirectionCounter getCowRelationshipRemoveMap( NodeImpl node, String type,
         boolean create )
     {
         if ( !create )
@@ -250,12 +279,12 @@ public class LockReleaser
         }
         if ( element.relationshipRemoveMap == null )
         {
-            element.relationshipRemoveMap = new ArrayMap<String,Collection<Long>>();
+            element.relationshipRemoveMap = new ArrayMap<String,SetAndDirectionCounter>();
         }
-        Collection<Long> set = element.relationshipRemoveMap.get( type );
+        SetAndDirectionCounter set = element.relationshipRemoveMap.get( type );
         if ( set == null )
         {
-            set = new HashSet<Long>();
+            set = new SetAndDirectionCounter();
             element.relationshipRemoveMap.put( type, set );
         }
         return set;
@@ -844,8 +873,8 @@ public class LockReleaser
             {
                 for ( String type : nodeElement.relationshipRemoveMap.keySet() )
                 {
-                    Collection<Long> deletedRels = nodeElement.relationshipRemoveMap.get( type );
-                    for ( long relId : deletedRels )
+                    SetAndDirectionCounter deletedRels = nodeElement.relationshipRemoveMap.get( type );
+                    for ( long relId : deletedRels.relationshipRemoveMap )
                     {
                         if ( nodeManager.relCreated( relId ) )
                         {

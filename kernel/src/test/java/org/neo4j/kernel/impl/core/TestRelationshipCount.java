@@ -20,6 +20,7 @@
 package org.neo4j.kernel.impl.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.neo4j.helpers.collection.IteratorUtil.asSet;
 
 import java.util.EnumMap;
@@ -145,13 +146,30 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
     }
     
     @Test
-    public void degreeOnDiscreteNodes()
+    public void ensureRightDegreeOnDiscreteNodes() throws Exception
     {
-        Node me = getGraphDb().createNode();
-        assertEquals( 0, me.getDegree() );
+        ensureRightDegree( getGraphDb().createNode(), 0 );
+    }
+    
+    @Test
+    public void ensureRightDegreeOnSuperNodes() throws Exception
+    {
+        Node node = getGraphDb().createNode();
+        int initialSize = 1000;
+        for ( int i = 0; i < initialSize; i++ )
+        {
+            node.createRelationshipTo( getGraphDb().createNode(), MyRelTypes.TEST_TRAVERSAL );
+        }
+        newTransaction();
+        ensureRightDegree( node, initialSize );
+    }
+    
+    private void ensureRightDegree( Node me, int initialSize )
+    {
+        assertEquals( initialSize, me.getDegree() );
         assertEquals( 0, me.getDegree( MyRelTypes.TEST ) );
-        assertEquals( 0, me.getDegree( Direction.OUTGOING ) );
-        assertEquals( 0, me.getDegree( Direction.BOTH ) );
+        assertEquals( initialSize, me.getDegree( Direction.OUTGOING ) );
+        assertEquals( initialSize, me.getDegree( Direction.BOTH ) );
         assertEquals( 0, me.getDegree( MyRelTypes.TEST, Direction.OUTGOING ) );
         assertEquals( 0, me.getDegree( MyRelTypes.TEST, Direction.BOTH ) );
         
@@ -160,33 +178,76 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
          *  <-[:TEST]-    x2
          * me-[:TEST2]->  x6
          *  <-[:TEST2]-   x7
-         * me-[:TEST2]-me x1
-         *              = 21
+         * me-[:TEST2]-me x3
+         *              = 23 + initialSize
          */
-        for ( int i = 0; i < 5; i++ ) me.createRelationshipTo( getGraphDb().createNode(), MyRelTypes.TEST );
-        for ( int i = 0; i < 2; i++ ) getGraphDb().createNode().createRelationshipTo( me, MyRelTypes.TEST );
-        for ( int i = 0; i < 6; i++ ) me.createRelationshipTo( getGraphDb().createNode(), MyRelTypes.TEST2 );
-        for ( int i = 0; i < 7; i++ ) getGraphDb().createNode().createRelationshipTo( me, MyRelTypes.TEST2 );
-        for ( int i = 0; i < 1; i++ ) me.createRelationshipTo( me, MyRelTypes.TEST2 );
+        for ( int i = 0; i < 5; i++ )
+        {
+            Node otherNode = getGraphDb().createNode();
+            me.createRelationshipTo( otherNode, MyRelTypes.TEST );
+            assertEquals( 1, otherNode.getDegree() );
+        }
+        for ( int i = 0; i < 2; i++ )
+        {
+            Node otherNode = getGraphDb().createNode();
+            otherNode.createRelationshipTo( me, MyRelTypes.TEST );
+            assertEquals( 1, otherNode.getDegree() );
+        }
+        for ( int i = 0; i < 6; i++ )
+        {
+            Node otherNode = getGraphDb().createNode();
+            me.createRelationshipTo( otherNode, MyRelTypes.TEST2 );
+            assertEquals( 1, otherNode.getDegree() );
+        }
+        for ( int i = 0; i < 3; i++ ) me.createRelationshipTo( me, MyRelTypes.TEST2 );
+        for ( int i = 0; i < 7; i++ )
+        {
+            Node otherNode = getGraphDb().createNode();
+            otherNode.createRelationshipTo( me, MyRelTypes.TEST2 );
+            assertEquals( 1, otherNode.getDegree() );
+        }
         
         for ( int i = 0; i < 2; i++ )
         {
-            assertEquals( 21, me.getDegree() );
-            assertEquals( 12, me.getDegree( Direction.OUTGOING ) );
-            assertEquals( 10, me.getDegree( Direction.INCOMING ) );
+            assertEquals( 23+initialSize, me.getDegree() );
+            assertEquals( 14+initialSize, me.getDegree( Direction.OUTGOING ) );
+            assertEquals( 12, me.getDegree( Direction.INCOMING ) );
             assertEquals( 7, me.getDegree( MyRelTypes.TEST ) );
-            assertEquals( 14, me.getDegree( MyRelTypes.TEST2 ) );
+            assertEquals( 16, me.getDegree( MyRelTypes.TEST2 ) );
             assertEquals( 7, me.getDegree( MyRelTypes.TEST, Direction.BOTH ) );
             assertEquals( 5, me.getDegree( MyRelTypes.TEST, Direction.OUTGOING ) );
             assertEquals( 2, me.getDegree( MyRelTypes.TEST, Direction.INCOMING ) );
-            assertEquals( 14, me.getDegree( MyRelTypes.TEST2, Direction.BOTH ) );
-            assertEquals( 7, me.getDegree( MyRelTypes.TEST2, Direction.OUTGOING ) );
-            assertEquals( 8, me.getDegree( MyRelTypes.TEST2, Direction.INCOMING ) );
+            assertEquals( 16, me.getDegree( MyRelTypes.TEST2, Direction.BOTH ) );
+            assertEquals( 9, me.getDegree( MyRelTypes.TEST2, Direction.OUTGOING ) );
+            assertEquals( 10, me.getDegree( MyRelTypes.TEST2, Direction.INCOMING ) );
             newTransaction();
         }
         
-        // TODO Delete one of each type/direction combination and count again
+        // Delete one of each type/direction combination
+        deleteOneRelationship( me, MyRelTypes.TEST, Direction.OUTGOING, false );
+        deleteOneRelationship( me, MyRelTypes.TEST, Direction.INCOMING, false );
+        deleteOneRelationship( me, MyRelTypes.TEST2, Direction.OUTGOING, false );
+        deleteOneRelationship( me, MyRelTypes.TEST2, Direction.INCOMING, false );
+        deleteOneRelationship( me, MyRelTypes.TEST2, Direction.OUTGOING, true );
         
+        // Count with the deleted rels
+        for ( int i = 0; i < 2; i++ )
+        {
+            assertEquals( 23+initialSize-5, me.getDegree() );
+            assertEquals( 14+initialSize-3, me.getDegree( Direction.OUTGOING ) );
+            assertEquals( 12-3, me.getDegree( Direction.INCOMING ) );
+            assertEquals( 7-2, me.getDegree( MyRelTypes.TEST ) );
+            assertEquals( 16-3, me.getDegree( MyRelTypes.TEST2 ) );
+            assertEquals( 7-2, me.getDegree( MyRelTypes.TEST, Direction.BOTH ) );
+            assertEquals( 5-1, me.getDegree( MyRelTypes.TEST, Direction.OUTGOING ) );
+            assertEquals( 2-1, me.getDegree( MyRelTypes.TEST, Direction.INCOMING ) );
+            assertEquals( 16-3, me.getDegree( MyRelTypes.TEST2, Direction.BOTH ) );
+            assertEquals( 9-2, me.getDegree( MyRelTypes.TEST2, Direction.OUTGOING ) );
+            assertEquals( 10-2, me.getDegree( MyRelTypes.TEST2, Direction.INCOMING ) );
+            newTransaction();
+        }
+        
+        // Clean up
         for ( Relationship rel : me.getRelationships() )
         {
             Node otherNode = rel.getOtherNode( me );
@@ -194,5 +255,24 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
             rel.delete();
         }
         me.delete();
+    }
+
+    private void deleteOneRelationship( Node node, MyRelTypes type, Direction direction, boolean deleteALoopRelationship )
+    {
+        for ( Relationship rel : node.getRelationships( type, direction ) )
+        {
+            if ( isLoop( rel ) == deleteALoopRelationship )
+            {
+                rel.delete();
+                return;
+            }
+        }
+        fail( "Couldn't find " + (deleteALoopRelationship ? "loop" : "non-loop") + " relationship " +
+                type.name() + " " + direction + " to delete" );
+    }
+
+    private boolean isLoop( Relationship r )
+    {
+        return r.getStartNode().equals( r.getEndNode() );
     }
 }

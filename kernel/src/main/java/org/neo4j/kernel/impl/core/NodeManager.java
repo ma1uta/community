@@ -20,7 +20,6 @@
 package org.neo4j.kernel.impl.core;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -48,6 +47,7 @@ import org.neo4j.kernel.impl.cache.NoCache;
 import org.neo4j.kernel.impl.cache.SoftLruCache;
 import org.neo4j.kernel.impl.cache.StrongReferenceCache;
 import org.neo4j.kernel.impl.cache.WeakLruCache;
+import org.neo4j.kernel.impl.core.LockReleaser.SetAndDirectionCounter;
 import org.neo4j.kernel.impl.nioneo.store.NodeState;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
 import org.neo4j.kernel.impl.nioneo.store.PropertyIndexData;
@@ -923,17 +923,17 @@ public class NodeManager
         persistenceManager.relRemoveProperty( rel.getId(), property );
     }
     
-    public ArrayMap<String, Collection<Long>> getCowRelationshipRemoveMap( NodeImpl node )
+    public ArrayMap<String, SetAndDirectionCounter> getCowRelationshipRemoveMap( NodeImpl node )
     {
         return lockReleaser.getCowRelationshipRemoveMap( node );
     }
 
-    public Collection<Long> getCowRelationshipRemoveMap( NodeImpl node, String type )
+    public SetAndDirectionCounter getCowRelationshipRemoveMap( NodeImpl node, String type )
     {
         return lockReleaser.getCowRelationshipRemoveMap( node, type );
     }
 
-    public Collection<Long> getCowRelationshipRemoveMap( NodeImpl node, String type,
+    public SetAndDirectionCounter getCowRelationshipRemoveMap( NodeImpl node, String type,
         boolean create )
     {
         return lockReleaser.getCowRelationshipRemoveMap( node, type, create );
@@ -1162,7 +1162,14 @@ public class NodeManager
 
     public int getRelationshipCount( NodeImpl nodeImpl, RelationshipType type, DirectionWrapper direction )
     {
+        Integer typeId = null;
+        if ( type != null )
+        {
+            typeId = relTypeHolder.getIdFor( type.name() );
+            if ( typeId == null ) return 0;
+        }
+        
         return persistenceManager.getRelationshipCount( nodeImpl.getId(),
-                type == null ? -1 : getRelationshipTypeIdFor( type ), direction );
+                type == null ? -1 : typeId.intValue(), direction );
     }
 }

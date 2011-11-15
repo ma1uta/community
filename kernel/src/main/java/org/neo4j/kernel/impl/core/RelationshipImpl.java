@@ -19,6 +19,7 @@
  */
 package org.neo4j.kernel.impl.core;
 
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.RelationshipType;
@@ -129,13 +130,15 @@ abstract class RelationshipImpl extends Primitive
         boolean success = false;
         try
         {
-            startNode = nodeManager.getLightNode( getStartNodeId() );
+            long startNodeId = getStartNodeId();
+            startNode = nodeManager.getLightNode( startNodeId );
             if ( startNode != null )
             {
                 nodeManager.acquireLock( startNode, LockType.WRITE );
                 startNodeLocked = true;
             }
-            endNode = nodeManager.getLightNode( getEndNodeId() );
+            long endNodeId = getEndNodeId();
+            endNode = nodeManager.getLightNode( endNodeId );
             if ( endNode != null )
             {
                 nodeManager.acquireLock( endNode, LockType.WRITE );
@@ -160,13 +163,14 @@ abstract class RelationshipImpl extends Primitive
             success = true;
             RelationshipType type = getType( nodeManager );
             long id = getId();
+            boolean loop = startNodeId == endNodeId;
             if ( startNode != null )
             {
-                startNode.removeRelationship( nodeManager, type, id );
+                startNode.removeRelationship( nodeManager, type, id, loop ? Direction.BOTH : Direction.OUTGOING );
             }
-            if ( endNode != null )
+            if ( endNode != null && !loop )
             {
-                endNode.removeRelationship( nodeManager, type, id );
+                endNode.removeRelationship( nodeManager, type, id, Direction.INCOMING );
             }
             success = true;
         }

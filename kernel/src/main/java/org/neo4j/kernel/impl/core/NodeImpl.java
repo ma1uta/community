@@ -22,7 +22,6 @@ package org.neo4j.kernel.impl.core;
 import static org.neo4j.kernel.impl.util.DirectionWrapper.wrapDirection;
 import static org.neo4j.kernel.impl.util.RelIdArray.empty;
 
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,6 +37,7 @@ import org.neo4j.graphdb.StopEvaluator;
 import org.neo4j.graphdb.Traverser;
 import org.neo4j.graphdb.Traverser.Order;
 import org.neo4j.helpers.Pair;
+import org.neo4j.kernel.impl.core.LockReleaser.SetAndDirectionCounter;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
 import org.neo4j.kernel.impl.nioneo.store.Record;
 import org.neo4j.kernel.impl.transaction.LockType;
@@ -134,7 +134,7 @@ class NodeImpl extends Primitive
         for ( RelIdArray src : relationships )
         {
             String type = src.getType();
-            Collection<Long> remove = null;
+            SetAndDirectionCounter remove = null;
             RelIdArray add = null;
             RelIdIterator iterator = null;
             if ( hasModifications )
@@ -144,7 +144,8 @@ class NodeImpl extends Primitive
                 {
                     add = addMap.get( type );
                 }
-                iterator = new CombinedRelIdIterator( type, direction, src, add, remove );
+                iterator = new CombinedRelIdIterator( type, direction, src, add,
+                        remove != null ? remove.relationshipRemoveMap : null );
             }
             else
             {
@@ -158,9 +159,10 @@ class NodeImpl extends Primitive
             {
                 if ( getRelIdArray( type ) == null )
                 {
-                    Collection<Long> remove = nodeManager.getCowRelationshipRemoveMap( this, type );
+                    SetAndDirectionCounter remove = nodeManager.getCowRelationshipRemoveMap( this, type );
                     RelIdArray add = addMap.get( type );
-                    relTypeList.add( new CombinedRelIdIterator( type, direction, null, add, remove ) );
+                    relTypeList.add( new CombinedRelIdIterator( type, direction, null, add,
+                            remove != null ? remove.relationshipRemoveMap : null ) );
                 }
             }
         }
@@ -177,14 +179,15 @@ class NodeImpl extends Primitive
         {
             String typeName = type.name();
             RelIdArray src = getRelIdArray( typeName );
-            Collection<Long> remove = null;
+            SetAndDirectionCounter remove = null;
             RelIdArray add = null;
             RelIdIterator iterator = null;
             if ( hasModifications )
             {
                 remove = nodeManager.getCowRelationshipRemoveMap( this, typeName );
                 add = nodeManager.getCowRelationshipAddMap( this, typeName );
-                iterator = new CombinedRelIdIterator( typeName, direction, src, add, remove );
+                iterator = new CombinedRelIdIterator( typeName, direction, src, add,
+                        remove != null ? remove.relationshipRemoveMap : null );
             }
             else
             {
@@ -316,11 +319,12 @@ class NodeImpl extends Primitive
     // caller is responsible for acquiring lock
     // this method is only called when a undo create relationship or
     // a relationship delete is invoked.
-    void removeRelationship( NodeManager nodeManager, RelationshipType type, long relId )
+    void removeRelationship( NodeManager nodeManager, RelationshipType type, long relId, Direction direction )
     {
-        Collection<Long> relationshipSet = nodeManager.getCowRelationshipRemoveMap(
+        SetAndDirectionCounter relationshipSet = nodeManager.getCowRelationshipRemoveMap(
             this, type.name(), true );
-        relationshipSet.add( relId );
+        relationshipSet.relationshipRemoveMap.add( relId );
+        relationshipSet.incrementCount( direction );
     }
 
     private void ensureRelationshipMapNotNull( NodeManager nodeManager )
@@ -578,7 +582,7 @@ class NodeImpl extends Primitive
 
     protected void commitRelationshipMaps(
         ArrayMap<String,RelIdArray> cowRelationshipAddMap,
-        ArrayMap<String,Collection<Long>> cowRelationshipRemoveMap )
+        ArrayMap<String,LockReleaser.SetAndDirectionCounter> cowRelationshipRemoveMap )
     {
         if ( relationships == null )
         {
@@ -593,13 +597,13 @@ class NodeImpl extends Primitive
                 for ( String type : cowRelationshipAddMap.keySet() )
                 {
                     RelIdArray add = cowRelationshipAddMap.get( type );
-                    Collection<Long> remove = null;
+                    SetAndDirectionCounter remove = null;
                     if ( cowRelationshipRemoveMap != null )
                     {
                         remove = cowRelationshipRemoveMap.get( type );
                     }
                     RelIdArray src = getRelIdArray( type );
-                    putRelIdArray( RelIdArray.from( src, add, remove ) );
+                    putRelIdArray( RelIdArray.from( src, add, remove != null ? remove.relationshipRemoveMap : null ) );
                 }
             }
             if ( cowRelationshipRemoveMap != null )
@@ -614,8 +618,8 @@ class NodeImpl extends Primitive
                     RelIdArray src = getRelIdArray( type );
                     if ( src != null )
                     {
-                        Collection<Long> remove = cowRelationshipRemoveMap.get( type );
-                        putRelIdArray( RelIdArray.from( src, null, remove ) );
+                        SetAndDirectionCounter remove = cowRelationshipRemoveMap.get( type );
+                        putRelIdArray( RelIdArray.from( src, null, remove != null ? remove.relationshipRemoveMap : null ) );
                     }
                 }
             }
@@ -682,11 +686,10 @@ class NodeImpl extends Primitive
                 for ( RelIdArray addedIds : add.values() ) count += addedIds.size( dir );
             }
             
-            ArrayMap<String, Collection<Long>> remove = nm.getCowRelationshipRemoveMap( this );
+            ArrayMap<String, SetAndDirectionCounter> remove = nm.getCowRelationshipRemoveMap( this );
             if ( remove != null )
             {
-                // TODO this isn't right, removeIds must be per direction also
-                for ( Collection<Long> removedIds : remove.values() ) count -= removedIds.size();
+                for ( SetAndDirectionCounter removedIds : remove.values() ) count -= removedIds.getCount( direction );
             }
         }
         return count;
@@ -699,10 +702,9 @@ class NodeImpl extends Primitive
         DirectionWrapper dir = wrapDirection( direction );
         int count = ids != null ? ids.size( dir ) : 0;
         RelIdArray add = nm.getCowRelationshipAddMap( this, type.name() );
-        Collection<Long> remove = nm.getCowRelationshipRemoveMap( this, type.name() );
+        SetAndDirectionCounter remove = nm.getCowRelationshipRemoveMap( this, type.name() );
         if ( add != null ) count += add.size( dir );
-        // TODO this isn't right, removeIds must be per direction also
-        if ( remove != null ) count -= remove.size();
+        if ( remove != null ) count -= remove.getCount( direction );
         return count;
     }
 }

@@ -19,7 +19,6 @@
  */
 package org.neo4j.kernel.impl.core;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -29,6 +28,7 @@ import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.helpers.collection.PrefetchingIterator;
+import org.neo4j.kernel.impl.core.LockReleaser.SetAndDirectionCounter;
 import org.neo4j.kernel.impl.util.CombinedRelIdIterator;
 import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
@@ -121,9 +121,9 @@ class IntArrayIterator extends PrefetchingIterator<Relationship> implements Iter
                             RelIdIterator itr = newRels.get( type );
                             if ( itr == null )
                             {
-                                Collection<Long> remove = nodeManager.getCowRelationshipRemoveMap( fromNode, type );
-                                itr = remove == null ? ids.iterator( direction ) :
-                                        new CombinedRelIdIterator( type, direction, ids, null, remove );
+                                SetAndDirectionCounter remove = nodeManager.getCowRelationshipRemoveMap( fromNode, type );
+                                itr = remove == null ? ids.iterator( direction ) : new CombinedRelIdIterator( type,
+                                        direction, ids, null, remove != null ? remove.relationshipRemoveMap : null );
                                 newRels.put( type, itr );
                             }
                             else
