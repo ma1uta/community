@@ -143,4 +143,56 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
         rel3.delete();
         assertEquals( 1, node.getDegree() );
     }
+    
+    @Test
+    public void degreeOnDiscreteNodes()
+    {
+        Node me = getGraphDb().createNode();
+        assertEquals( 0, me.getDegree() );
+        assertEquals( 0, me.getDegree( MyRelTypes.TEST ) );
+        assertEquals( 0, me.getDegree( Direction.OUTGOING ) );
+        assertEquals( 0, me.getDegree( Direction.BOTH ) );
+        assertEquals( 0, me.getDegree( MyRelTypes.TEST, Direction.OUTGOING ) );
+        assertEquals( 0, me.getDegree( MyRelTypes.TEST, Direction.BOTH ) );
+        
+        /*
+         * me-[:TEST]->   x5
+         *  <-[:TEST]-    x2
+         * me-[:TEST2]->  x6
+         *  <-[:TEST2]-   x7
+         * me-[:TEST2]-me x1
+         *              = 21
+         */
+        for ( int i = 0; i < 5; i++ ) me.createRelationshipTo( getGraphDb().createNode(), MyRelTypes.TEST );
+        for ( int i = 0; i < 2; i++ ) getGraphDb().createNode().createRelationshipTo( me, MyRelTypes.TEST );
+        for ( int i = 0; i < 6; i++ ) me.createRelationshipTo( getGraphDb().createNode(), MyRelTypes.TEST2 );
+        for ( int i = 0; i < 7; i++ ) getGraphDb().createNode().createRelationshipTo( me, MyRelTypes.TEST2 );
+        for ( int i = 0; i < 1; i++ ) me.createRelationshipTo( me, MyRelTypes.TEST2 );
+        
+        for ( int i = 0; i < 2; i++ )
+        {
+            assertEquals( 21, me.getDegree() );
+            assertEquals( 12, me.getDegree( Direction.OUTGOING ) );
+            assertEquals( 10, me.getDegree( Direction.INCOMING ) );
+            assertEquals( 7, me.getDegree( MyRelTypes.TEST ) );
+            assertEquals( 14, me.getDegree( MyRelTypes.TEST2 ) );
+            assertEquals( 7, me.getDegree( MyRelTypes.TEST, Direction.BOTH ) );
+            assertEquals( 5, me.getDegree( MyRelTypes.TEST, Direction.OUTGOING ) );
+            assertEquals( 2, me.getDegree( MyRelTypes.TEST, Direction.INCOMING ) );
+            assertEquals( 14, me.getDegree( MyRelTypes.TEST2, Direction.BOTH ) );
+            assertEquals( 7, me.getDegree( MyRelTypes.TEST2, Direction.OUTGOING ) );
+            assertEquals( 8, me.getDegree( MyRelTypes.TEST2, Direction.INCOMING ) );
+            newTransaction();
+        }
+        
+        // TODO Delete one of each type/direction combination and count again
+        
+        for ( Relationship rel : me.getRelationships() )
+        {
+            Node otherNode = rel.getOtherNode( me );
+            if ( !otherNode.equals( me ) ) otherNode.delete();
+            rel.delete();
+        }
+        me.delete();
+    }
 }

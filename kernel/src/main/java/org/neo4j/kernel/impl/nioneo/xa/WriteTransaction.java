@@ -109,6 +109,8 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         new ArrayList<Command.RelationshipTypeCommand>();
     private final ArrayList<Command.RelationshipGroupCommand> relGroupCommands =
         new ArrayList<Command.RelationshipGroupCommand>();
+    
+    private ArrayList<NodeRecord> upgradedSuperNodes;
 
     private final NeoStore neoStore;
     private boolean committed = false;
@@ -194,12 +196,16 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             Command.NodeCommand command = new Command.NodeCommand(
                 neoStore.getNodeStore(), record );
             nodeCommands.add( command );
-            if ( !record.inUse() || record.isSuperNodeChanged() )
+            if ( !record.inUse() )
             {
                 removeNodeFromCache( record.getId() );
             }
             commands.add( command );
             // addCommand( command );
+        }
+        if ( upgradedSuperNodes != null ) for ( NodeRecord node : upgradedSuperNodes )
+        {
+            removeNodeFromCache( node.getId() );
         }
         for ( RelationshipRecord record : relRecords.values() )
         {
@@ -619,6 +625,8 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         relCommands.clear();
         relTypeCommands.clear();
         relGroupCommands.clear();
+        
+        upgradedSuperNodes = null;
     }
 
 
@@ -1454,8 +1462,8 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             relRecord = getRelationshipRecord( relId, true );
         }
         node.setSuperNode( true );
-        // TODO don't do it here
-        lockReleaser.removeNodeFromCache( node.getId() );
+        if ( upgradedSuperNodes == null ) upgradedSuperNodes = new ArrayList<NodeRecord>();
+        upgradedSuperNodes.add( node );
     }
 
     private void connectRelationship( NodeRecord firstNode,

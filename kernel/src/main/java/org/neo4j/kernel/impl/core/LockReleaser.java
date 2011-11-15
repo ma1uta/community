@@ -201,6 +201,21 @@ public class LockReleaser
         }
     }
 
+    public ArrayMap<String, Collection<Long>> getCowRelationshipRemoveMap( NodeImpl node )
+    {
+        PrimitiveElement primitiveElement = cowMap.get( getTransaction() );
+        if ( primitiveElement != null )
+        {
+            ArrayMap<Long,CowNodeElement> cowElements = primitiveElement.nodes;
+            CowNodeElement element = cowElements.get( node.getId() );
+            if ( element != null )
+            {
+                return element.relationshipRemoveMap;
+            }
+        }
+        return null;
+    }
+    
     public Collection<Long> getCowRelationshipRemoveMap( NodeImpl node, String type )
     {
         PrimitiveElement primitiveElement = cowMap.get( getTransaction() );

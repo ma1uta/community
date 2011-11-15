@@ -31,7 +31,7 @@ public enum DirectionWrapper
         @Override
         public RelIdIterator iterator( RelIdArray ids )
         {
-            return new RelIdIteratorImpl( ids, RelIdArray.DIRECTIONS_FOR_OUTGOING );
+            return new RelIdIteratorImpl( ids, DIRECTIONS_FOR_OUTGOING );
         }
 
         @Override
@@ -57,15 +57,15 @@ public enum DirectionWrapper
         {
             group.setNextOut( id );
         }
+        
+        @Override
+        public DirectionWrapper[] directions()
+        {
+            return DIRECTIONS_FOR_OUTGOING;
+        }
     },
     INCOMING( Direction.INCOMING )
     {
-        @Override
-        public RelIdIterator iterator( RelIdArray ids )
-        {
-            return new RelIdIteratorImpl( ids, RelIdArray.DIRECTIONS_FOR_INCOMING );
-        }
-
         @Override
         public IdBlock getLastBlock( RelIdArray ids )
         {
@@ -89,15 +89,15 @@ public enum DirectionWrapper
         {
             group.setNextIn( id );
         }
+        
+        @Override
+        public DirectionWrapper[] directions()
+        {
+            return DIRECTIONS_FOR_INCOMING;
+        }
     },
     BOTH( Direction.BOTH )
     {
-        @Override
-        public RelIdIterator iterator( RelIdArray ids )
-        {
-            return new RelIdIteratorImpl( ids, RelIdArray.DIRECTIONS_FOR_BOTH );
-        }
-
         @Override
         public IdBlock getLastBlock( RelIdArray ids )
         {
@@ -121,7 +121,20 @@ public enum DirectionWrapper
         {
             group.setNextLoop( id );
         }
+        
+        @Override
+        public DirectionWrapper[] directions()
+        {
+            return DIRECTIONS_FOR_BOTH;
+        }
     };
+    
+    static final DirectionWrapper[] DIRECTIONS_FOR_OUTGOING =
+            new DirectionWrapper[] { DirectionWrapper.OUTGOING, DirectionWrapper.BOTH };
+    static final DirectionWrapper[] DIRECTIONS_FOR_INCOMING =
+            new DirectionWrapper[] { DirectionWrapper.INCOMING, DirectionWrapper.BOTH };
+    static final DirectionWrapper[] DIRECTIONS_FOR_BOTH =
+            new DirectionWrapper[] { DirectionWrapper.OUTGOING, DirectionWrapper.INCOMING, DirectionWrapper.BOTH };
     
     private final Direction direction;
 
@@ -130,7 +143,10 @@ public enum DirectionWrapper
         this.direction = direction;
     }
     
-    public abstract RelIdIterator iterator( RelIdArray ids );
+    public RelIdIterator iterator( RelIdArray ids )
+    {
+        return new RelIdIteratorImpl( ids, directions() );
+    }
     
     /*
      * Only used during add
@@ -145,6 +161,8 @@ public enum DirectionWrapper
     public abstract long getNextRel( RelationshipGroupRecord group );
     
     public abstract void setNextRel( RelationshipGroupRecord group, long id );
+    
+    public abstract DirectionWrapper[] directions();
     
     public Direction direction()
     {

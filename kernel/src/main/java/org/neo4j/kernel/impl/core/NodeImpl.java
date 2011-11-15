@@ -649,6 +649,14 @@ class NodeImpl extends Primitive
         return relationships;
     }
 
+    private void ensureAllRelationshipsAreLoaded( NodeManager nm )
+    {
+        while ( hasMoreRelationshipsToLoad( DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES ) )
+        {
+            getMoreRelationships( nm, DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES );
+        }
+    }
+    
     public int getDegree( NodeManager nm )
     {
         return nm.getRelationshipCount( this, null, DirectionWrapper.BOTH );
@@ -656,19 +664,45 @@ class NodeImpl extends Primitive
 
     public int getDegree( NodeManager nm, RelationshipType type )
     {
-        // TODO count manually
-        throw new UnsupportedOperationException();
+        return getDegree( nm, type, Direction.BOTH );
     }
 
     public int getDegree( NodeManager nm, Direction direction )
     {
-        // TODO count manually
-        throw new UnsupportedOperationException();
+        ensureAllRelationshipsAreLoaded( nm );
+        int count = 0;
+        DirectionWrapper dir = wrapDirection( direction );
+        for ( RelIdArray ids : relationships ) count += ids.size( dir );
+        
+        if ( nm.getLockReleaser().hasRelationshipModifications( this ) )
+        {
+            ArrayMap<String, RelIdArray> add = nm.getCowRelationshipAddMap( this );
+            if ( add != null )
+            {
+                for ( RelIdArray addedIds : add.values() ) count += addedIds.size( dir );
+            }
+            
+            ArrayMap<String, Collection<Long>> remove = nm.getCowRelationshipRemoveMap( this );
+            if ( remove != null )
+            {
+                // TODO this isn't right, removeIds must be per direction also
+                for ( Collection<Long> removedIds : remove.values() ) count -= removedIds.size();
+            }
+        }
+        return count;
     }
     
     public int getDegree( NodeManager nm, RelationshipType type, Direction direction )
     {
-        // TODO count manually
-        throw new UnsupportedOperationException();
+        ensureAllRelationshipsAreLoaded( nm );
+        RelIdArray ids = getRelationshipIds( type.name() );
+        DirectionWrapper dir = wrapDirection( direction );
+        int count = ids != null ? ids.size( dir ) : 0;
+        RelIdArray add = nm.getCowRelationshipAddMap( this, type.name() );
+        Collection<Long> remove = nm.getCowRelationshipRemoveMap( this, type.name() );
+        if ( add != null ) count += add.size( dir );
+        // TODO this isn't right, removeIds must be per direction also
+        if ( remove != null ) count -= remove.size();
+        return count;
     }
 }

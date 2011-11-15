@@ -922,6 +922,11 @@ public class NodeManager
         }
         persistenceManager.relRemoveProperty( rel.getId(), property );
     }
+    
+    public ArrayMap<String, Collection<Long>> getCowRelationshipRemoveMap( NodeImpl node )
+    {
+        return lockReleaser.getCowRelationshipRemoveMap( node );
+    }
 
     public Collection<Long> getCowRelationshipRemoveMap( NodeImpl node, String type )
     {

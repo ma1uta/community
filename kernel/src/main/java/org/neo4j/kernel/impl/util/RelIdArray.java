@@ -24,13 +24,6 @@ import java.util.NoSuchElementException;
 
 public class RelIdArray
 {
-    static final DirectionWrapper[] DIRECTIONS_FOR_OUTGOING =
-            new DirectionWrapper[] { DirectionWrapper.OUTGOING, DirectionWrapper.BOTH };
-    static final DirectionWrapper[] DIRECTIONS_FOR_INCOMING =
-            new DirectionWrapper[] { DirectionWrapper.INCOMING, DirectionWrapper.BOTH };
-    static final DirectionWrapper[] DIRECTIONS_FOR_BOTH =
-            new DirectionWrapper[] { DirectionWrapper.OUTGOING, DirectionWrapper.INCOMING, DirectionWrapper.BOTH };
-    
     public static class EmptyRelIdArray extends RelIdArray
     {
         private static final DirectionWrapper[] EMPTY_DIRECTION_ARRAY = new DirectionWrapper[0];
@@ -254,6 +247,17 @@ public class RelIdArray
     public RelIdArray newSimilarInstance()
     {
         return new RelIdArray( type );
+    }
+    
+    public int size( DirectionWrapper direction )
+    {
+        int result = 0;
+        for ( DirectionWrapper dir : direction.directions() )
+        {
+            IdBlock block = dir.getLastBlock( this );
+            if ( block != null ) result += block.length();
+        }
+        return result;
     }
     
     public static final IdBlock EMPTY_BLOCK = new LowIdBlock();
