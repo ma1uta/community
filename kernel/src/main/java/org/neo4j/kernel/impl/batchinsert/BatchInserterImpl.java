@@ -94,7 +94,7 @@ public class BatchInserterImpl implements BatchInserter
         Map<String,String> stringParams )
     {
         rejectAutoUpgrade( stringParams );
-        msgLog = StringLogger.getLogger( storeDir );
+        msgLog = StringLogger.logger( storeDir );
         Map<Object,Object> params = getDefaultParams();
         params.put( Config.USE_MEMORY_MAPPED_BUFFERS, "false" );
         boolean dump = Boolean.parseBoolean( stringParams.get( Config.DUMP_CONFIGURATION ) );
@@ -106,7 +106,8 @@ public class BatchInserterImpl implements BatchInserter
         this.storeDir = storeDir;
         this.idGeneratorFactory = CommonFactories.defaultIdGeneratorFactory();
         params.put( IdGeneratorFactory.class, idGeneratorFactory );
-        params.put( FileSystemAbstraction.class, CommonFactories.defaultFileSystemAbstraction() );
+        FileSystemAbstraction fileSystem = CommonFactories.defaultFileSystemAbstraction();
+        params.put( FileSystemAbstraction.class, fileSystem );
         String store = fixPath( storeDir, params );
         params.put( "neo_store", store );
         if ( dump )
@@ -127,7 +128,7 @@ public class BatchInserterImpl implements BatchInserter
             getRelationshipTypeStore().getRelationshipTypes();
         typeHolder = new RelationshipTypeHolder( types );
         graphDbService = new BatchGraphDatabaseImpl( this );
-        indexStore = new IndexStore( storeDir );
+        indexStore = new IndexStore( storeDir, fileSystem );
     }
 
     @Override
@@ -630,7 +631,7 @@ public class BatchInserterImpl implements BatchInserter
         graphDbService.clearCaches();
         neoStore.close();
         msgLog.logMessage( Thread.currentThread() + " Clean shutdown on BatchInserter(" + this + ")", true );
-        StringLogger.close( storeDir );
+        msgLog.close();
     }
 
     private Map<Object,Object> getDefaultParams()

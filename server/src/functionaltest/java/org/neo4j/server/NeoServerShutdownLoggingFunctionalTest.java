@@ -32,12 +32,12 @@ import org.neo4j.server.logging.InMemoryAppender;
 
 public class NeoServerShutdownLoggingFunctionalTest
 {
-    private NeoServerWithEmbeddedWebServer server;
+    private NeoServer server;
 
     @Before
     public void setupServer() throws IOException
     {
-        server = ServerHelper.createServer();
+        server = ServerHelper.createServer( true );
         ServerHelper.cleanTheDatabase( server );
     }
 

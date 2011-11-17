@@ -21,6 +21,7 @@ package org.neo4j.examples;
 import java.util.Map;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -39,8 +40,7 @@ public class AbstractJavaDocTestbase implements GraphHolder
     public @Rule
     TestData<JavaTestDocsGenerator> gen = TestData.producedThrough( JavaTestDocsGenerator.PRODUCER );
     public @Rule
-    TestData<Map<String, Node>> data = TestData.producedThrough( GraphDescription.createGraphFor(
-            this, true ) );
+    TestData<Map<String, Node>> data = TestData.producedThrough( GraphDescription.createGraphFor( this, true ) );
     protected static ImpermanentGraphDatabase db;
     protected CypherParser parser;
     protected ExecutionEngine engine;
@@ -48,16 +48,27 @@ public class AbstractJavaDocTestbase implements GraphHolder
     @BeforeClass
     public static void init()
     {
-        db = new ImpermanentGraphDatabase( "target/"
-                                           + System.currentTimeMillis() );
+        db = new ImpermanentGraphDatabase();
+    }
+    
+    @AfterClass
+    public static void shutdownDb()
+    {
+        try
+        {
+            if ( db != null ) db.shutdown();
+        }
+        finally
+        {
+            db = null;
+        }
     }
 
     @Before
     public void setUp()
     {
         db.cleanContent();
-        gen.get()
-                .setGraph( db );
+        gen.get().setGraph( db );
         parser = new CypherParser();
         engine = new ExecutionEngine( db );
     }
@@ -65,8 +76,7 @@ public class AbstractJavaDocTestbase implements GraphHolder
     @After
     public void doc()
     {
-        gen.get()
-                .document( "target/docs/dev", "examples" );
+        gen.get().document( "target/docs/dev", "examples" );
     }
 
     @Override

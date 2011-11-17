@@ -42,9 +42,9 @@ public class RelationshipGroupStore extends AbstractStore implements Store, Reco
         super( fileName, config, idType );
     }
 
-    public static void createStore( String fileName, IdGeneratorFactory idGeneratorFactory )
+    public static void createStore( String fileName, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystem )
     {
-        createEmptyStore( fileName, buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR ), idGeneratorFactory );
+        createEmptyStore( fileName, buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR ), idGeneratorFactory, fileSystem );
     }
     
     @Override

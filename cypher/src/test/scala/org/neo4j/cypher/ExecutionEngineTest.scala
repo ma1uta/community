@@ -52,19 +52,15 @@ class ExecutionEngineTest extends ExecutionEngineHelper {
   }
 
   @Test def shouldFilterOnGreaterThan() {
-    val query = Query.
-      start(NodeById("node", 0)).
-      where(LessThan(Literal(0), Literal(1))).
-      returns(ValueReturnItem(EntityValue("node")))
+    val result = parseAndExecute("start node=node(0) where 0<1 return node")
 
-
-    val result = execute(query)
     assertEquals(List(refNode), result.columnAs[Node]("node").toList)
   }
 
   @Test def shouldFilterOnRegexp() {
     val n1 = createNode(Map("name" -> "Andres"))
     val n2 = createNode(Map("name" -> "Jim"))
+
     val query = Query.
       start(NodeById("node", n1.getId, n2.getId)).
       where(RegularExpression(PropertyValue("node", "name"), Literal("And.*"))).
@@ -454,6 +450,12 @@ class ExecutionEngineTest extends ExecutionEngineHelper {
     val result = parseAndExecute("start r=rel(0) match a-[r]-b return a,b")
 
     assertEquals(List(Map("a" -> a, "b" -> b), Map("a" -> b, "b" -> a)), result.toList)
+  }
+
+  @Test def shouldAcceptSkipZero() {
+    val result = parseAndExecute("start n=node(0) where 1 = 0 return n skip 0")
+
+    assertEquals(List(), result.columnAs[Node]("n").toList)
   }
 
   @Test def shouldReturnTwoSubgraphsWithBoundUndirectedRelationshipAndOptionalRelationship() {
@@ -1211,6 +1213,20 @@ return x, p
       Map("x"->b, "p"->PathImpl(a,r,b)),
       Map("x"->c, "p"->null)
     ) === result.toList)
+  }
+
+  @Ignore("This test exposes a bug")
+  @Test def shouldSupportMultipleRegexes() {
+    val a = createNode(Map("name"->"Andreas"))
+
+
+    val result = parseAndExecute("""
+start a  = node(1)
+where a.name =~ /And.*/ AND a.name =~ /And.*/
+return a
+""")
+
+    assert(List(a) === result.columnAs[Node]("a") .toList)
   }
 
 

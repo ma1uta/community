@@ -33,7 +33,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
+import org.neo4j.server.NeoServer;
 import org.neo4j.server.database.DatabaseBlockedException;
 import org.neo4j.server.helpers.FunctionalTestHelper;
 import org.neo4j.server.helpers.ServerHelper;
@@ -45,7 +45,7 @@ public class GetRelationshipPropertiesFunctionalTest
 {
     private static String baseRelationshipUri;
 
-    private static NeoServerWithEmbeddedWebServer server;
+    private static NeoServer server;
     private static FunctionalTestHelper functionalTestHelper;
     private static GraphDbHelper helper;
 
@@ -122,14 +122,6 @@ public class GetRelationshipPropertiesFunctionalTest
     public void shouldGet404ForNoProperty() {
         JaxRsResponse response = RestRequest.req().get(getPropertyUri("baz"));
         assertEquals(404, response.getStatus());
-        response.close();
-    }
-
-    @Test
-    public void shouldGet200ForProperty() {
-        String propertyUri = getPropertyUri("foo");
-        JaxRsResponse response = RestRequest.req().get(propertyUri);
-        assertEquals(200, response.getStatus());
         response.close();
     }
 

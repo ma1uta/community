@@ -21,18 +21,17 @@ package org.neo4j.server.webadmin.console;
 
 import static org.junit.Assert.assertEquals;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.neo4j.server.database.Database;
 import org.neo4j.test.ImpermanentGraphDatabase;
 
 public class GremlinSessionTest
 {
-    private static final String TARGET_TEMPDB = "target/tempdb";
     private static final String NEWLINE = System.getProperty( "line.separator" );
-    private ScriptSession session;
-    private Database database;
+    private static ScriptSession session;
+    private static Database database;
 
     @Test
     public void retrievesTheReferenceNode()
@@ -68,16 +67,16 @@ public class GremlinSessionTest
         assertEquals( "v[2]" + NEWLINE, result );
     }
 
-    @Before
-    public void setUp() throws Exception
+    @BeforeClass
+    public static void setUp() throws Exception
     {
-        this.database = new Database( new ImpermanentGraphDatabase( TARGET_TEMPDB ) );
+        database = new Database( new ImpermanentGraphDatabase() );
         session = new GremlinSession( database );
     }
 
-    @After
-    public void shutdownDatabase()
+    @AfterClass
+    public static void shutdownDatabase()
     {
-        this.database.shutdown();
+        database.shutdown();
     }
 }

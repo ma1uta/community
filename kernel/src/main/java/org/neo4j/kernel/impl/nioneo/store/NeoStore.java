@@ -262,15 +262,16 @@ public class NeoStore extends AbstractStore
     {
         IdGeneratorFactory idGeneratorFactory = (IdGeneratorFactory) config.get(
                 IdGeneratorFactory.class );
+        FileSystemAbstraction fileSystem = (FileSystemAbstraction) config.get( FileSystemAbstraction.class );
         StoreId storeId = (StoreId) config.get( StoreId.class );
         if ( storeId == null ) storeId = new StoreId();
 
-        createEmptyStore( fileName, buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR ), idGeneratorFactory );
+        createEmptyStore( fileName, buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR ), idGeneratorFactory, fileSystem );
         NodeStore.createStore( fileName + NodeStore.FILE_NAME, config );
-        RelationshipStore.createStore( fileName + RelationshipStore.FILE_NAME, idGeneratorFactory );
+        RelationshipStore.createStore( fileName + RelationshipStore.FILE_NAME, idGeneratorFactory, fileSystem );
         PropertyStore.createStore( fileName + PropertyStore.FILE_NAME, config );
         RelationshipTypeStore.createStore( fileName + RelationshipTypeStore.FILE_NAME, config );
-        RelationshipGroupStore.createStore( fileName + RelationshipGroupStore.FILE_NAME, idGeneratorFactory );
+        RelationshipGroupStore.createStore( fileName + RelationshipGroupStore.FILE_NAME, idGeneratorFactory, fileSystem );
         if ( !config.containsKey( "neo_store" ) )
         {
             // TODO Ugly

@@ -20,6 +20,7 @@
 package org.neo4j.index.impl.lucene;
 
 import static org.junit.Assert.*;
+import static org.neo4j.kernel.CommonFactories.defaultFileSystemAbstraction;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,12 +37,13 @@ import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.CommonFactories;
 import org.neo4j.kernel.Config;
 import org.neo4j.kernel.impl.index.IndexStore;
+import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBufferFactory;
 import org.neo4j.kernel.impl.util.FileUtils;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 public class TestLuceneDataSource
 {
-
     private IndexStore indexStore;
     private File datasourceDirectory;
     private LuceneDataSource dataSource;
@@ -57,7 +59,7 @@ public class TestLuceneDataSource
     {
         datasourceDirectory = new File( dbPath );
         datasourceDirectory.mkdirs();
-        indexStore = new IndexStore( dbPath );
+        indexStore = new IndexStore( dbPath, defaultFileSystemAbstraction() );
         addIndex( "foo" );
     }
 
@@ -190,6 +192,8 @@ public class TestLuceneDataSource
         return MapUtil.genericMap(
                 "store_dir", getDbPath(),
                 IndexStore.class, indexStore,
-                LogBufferFactory.class, CommonFactories.defaultLogBufferFactory());
+                LogBufferFactory.class, CommonFactories.defaultLogBufferFactory(),
+                FileSystemAbstraction.class, CommonFactories.defaultFileSystemAbstraction(),
+                StringLogger.class, StringLogger.DEV_NULL );
     }
 }
