@@ -19,23 +19,41 @@
  */
 package org.neo4j.kernel.impl.core;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.neo4j.helpers.collection.IteratorUtil.asSet;
 
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
 import org.neo4j.kernel.impl.MyRelTypes;
 
 public class TestRelationshipCount extends AbstractNeo4jTestCase
 {
+    private static enum RelType implements RelationshipType
+    {
+        INITIAL( false ),
+        TYPE1( true ),
+        TYPE2( true );
+        
+        boolean measure;
+        
+        private RelType( boolean measure )
+        {
+            this.measure = measure;
+        }
+    }
+    
     @Test
     public void convertToSuperNode() throws Exception
     {
@@ -148,104 +166,110 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
     @Test
     public void ensureRightDegreeOnDiscreteNodes() throws Exception
     {
-        ensureRightDegree( getGraphDb().createNode(), 0 );
+        ensureRightDegree( 0,
+                asList(
+                create( RelType.TYPE1, Direction.OUTGOING, 5 ),
+                create( RelType.TYPE1, Direction.INCOMING, 2 ),
+                create( RelType.TYPE2, Direction.OUTGOING, 6 ),
+                create( RelType.TYPE2, Direction.INCOMING, 7 ),
+                create( RelType.TYPE2, Direction.BOTH, 3 ) ),
+                
+                /*asList(
+                delete( RelType.TYPE1, Direction.OUTGOING, 0 ),
+                delete( RelType.TYPE1, Direction.INCOMING, 1 ),
+                delete( RelType.TYPE2, Direction.OUTGOING, Integer.MAX_VALUE ),
+                delete( RelType.TYPE2, Direction.INCOMING, 1 ),
+                delete( RelType.TYPE2, Direction.BOTH, Integer.MAX_VALUE ) )*/null );
+
     }
     
     @Test
     public void ensureRightDegreeOnSuperNodes() throws Exception
     {
-        Node node = getGraphDb().createNode();
-        int initialSize = 1000;
-        for ( int i = 0; i < initialSize; i++ )
-        {
-            node.createRelationshipTo( getGraphDb().createNode(), MyRelTypes.TEST_TRAVERSAL );
-        }
-        newTransaction();
-        ensureRightDegree( node, initialSize );
+        ensureRightDegree( 1000,
+                asList(
+                create( RelType.TYPE1, Direction.OUTGOING, 5 ),
+                create( RelType.TYPE1, Direction.INCOMING, 2 ),
+                create( RelType.TYPE2, Direction.OUTGOING, 6 ),
+                create( RelType.TYPE2, Direction.INCOMING, 7 ),
+                create( RelType.TYPE2, Direction.BOTH, 3 ) ),
+                
+                /*asList(
+                delete( RelType.TYPE1, Direction.OUTGOING, 0 ),
+                delete( RelType.TYPE1, Direction.INCOMING, 1 ),
+                delete( RelType.TYPE2, Direction.OUTGOING, Integer.MAX_VALUE ),
+                delete( RelType.TYPE2, Direction.INCOMING, 1 ),
+                delete( RelType.TYPE2, Direction.BOTH, Integer.MAX_VALUE ) )*/null );
     }
     
-    private void ensureRightDegree( Node me, int initialSize )
+    private void ensureRightDegree( int initialSize, Collection<RelationshipCreationSpec> cspecs,
+            Collection<RelationshipDeletionSpec> dspecs )
     {
-        assertEquals( initialSize, me.getDegree() );
-        assertEquals( 0, me.getDegree( MyRelTypes.TEST ) );
-        assertEquals( initialSize, me.getDegree( Direction.OUTGOING ) );
-        assertEquals( initialSize, me.getDegree( Direction.BOTH ) );
-        assertEquals( 0, me.getDegree( MyRelTypes.TEST, Direction.OUTGOING ) );
-        assertEquals( 0, me.getDegree( MyRelTypes.TEST, Direction.BOTH ) );
+        Map<RelType, int[]> expectedCounts = new EnumMap<RelType, int[]>( RelType.class );
+        for ( RelType type : RelType.values() )
+        {
+            expectedCounts.put( type, new int[3] );
+        }
+        Node me = getGraphDb().createNode();
+        for ( int i = 0; i < initialSize; i++ )
+        {
+            me.createRelationshipTo( getGraphDb().createNode(), RelType.INITIAL );
+        }
+        newTransaction();
+        expectedCounts.get( RelType.INITIAL )[0] = initialSize;
         
-        /*
-         * me-[:TEST]->   x5
-         *  <-[:TEST]-    x2
-         * me-[:TEST2]->  x6
-         *  <-[:TEST2]-   x7
-         * me-[:TEST2]-me x3
-         *              = 23 + initialSize
-         */
-        for ( int i = 0; i < 5; i++ )
+        assertCounts( me, expectedCounts );
+        
+        for ( RelationshipCreationSpec spec : cspecs )
         {
-            Node otherNode = getGraphDb().createNode();
-            me.createRelationshipTo( otherNode, MyRelTypes.TEST );
-            assertEquals( 1, otherNode.getDegree() );
-        }
-        for ( int i = 0; i < 2; i++ )
-        {
-            Node otherNode = getGraphDb().createNode();
-            otherNode.createRelationshipTo( me, MyRelTypes.TEST );
-            assertEquals( 1, otherNode.getDegree() );
-        }
-        for ( int i = 0; i < 6; i++ )
-        {
-            Node otherNode = getGraphDb().createNode();
-            me.createRelationshipTo( otherNode, MyRelTypes.TEST2 );
-            assertEquals( 1, otherNode.getDegree() );
-        }
-        for ( int i = 0; i < 3; i++ ) me.createRelationshipTo( me, MyRelTypes.TEST2 );
-        for ( int i = 0; i < 7; i++ )
-        {
-            Node otherNode = getGraphDb().createNode();
-            otherNode.createRelationshipTo( me, MyRelTypes.TEST2 );
-            assertEquals( 1, otherNode.getDegree() );
+            for ( int i = 0; i < spec.count; i++ )
+            {
+                Node otherNode = null;
+                if ( spec.dir == Direction.OUTGOING ) me.createRelationshipTo( (otherNode = getGraphDb().createNode()), spec.type );
+                else if ( spec.dir == Direction.INCOMING ) (otherNode = getGraphDb().createNode()).createRelationshipTo( me, spec.type );
+                else me.createRelationshipTo( me, spec.type );
+                expectedCounts.get( spec.type )[spec.dir.ordinal()]++;
+                
+                if ( otherNode != null ) assertEquals( 1, otherNode.getDegree() );
+                assertCounts( me, expectedCounts );
+            }
         }
         
-        for ( int i = 0; i < 2; i++ )
-        {
-            assertEquals( 23+initialSize, me.getDegree() );
-            assertEquals( 14+initialSize, me.getDegree( Direction.OUTGOING ) );
-            assertEquals( 12, me.getDegree( Direction.INCOMING ) );
-            assertEquals( 7, me.getDegree( MyRelTypes.TEST ) );
-            assertEquals( 16, me.getDegree( MyRelTypes.TEST2 ) );
-            assertEquals( 7, me.getDegree( MyRelTypes.TEST, Direction.BOTH ) );
-            assertEquals( 5, me.getDegree( MyRelTypes.TEST, Direction.OUTGOING ) );
-            assertEquals( 2, me.getDegree( MyRelTypes.TEST, Direction.INCOMING ) );
-            assertEquals( 16, me.getDegree( MyRelTypes.TEST2, Direction.BOTH ) );
-            assertEquals( 9, me.getDegree( MyRelTypes.TEST2, Direction.OUTGOING ) );
-            assertEquals( 10, me.getDegree( MyRelTypes.TEST2, Direction.INCOMING ) );
-            newTransaction();
-        }
+        assertCounts( me, expectedCounts );
+        newTransaction();
+        assertCounts( me, expectedCounts );
         
         // Delete one of each type/direction combination
-        deleteOneRelationship( me, MyRelTypes.TEST, Direction.OUTGOING, false );
-        deleteOneRelationship( me, MyRelTypes.TEST, Direction.INCOMING, false );
-        deleteOneRelationship( me, MyRelTypes.TEST2, Direction.OUTGOING, false );
-        deleteOneRelationship( me, MyRelTypes.TEST2, Direction.INCOMING, false );
-        deleteOneRelationship( me, MyRelTypes.TEST2, Direction.OUTGOING, true );
-        
-        // Count with the deleted rels
-        for ( int i = 0; i < 2; i++ )
+        if ( dspecs == null )
         {
-            assertEquals( 23+initialSize-5, me.getDegree() );
-            assertEquals( 14+initialSize-3, me.getDegree( Direction.OUTGOING ) );
-            assertEquals( 12-3, me.getDegree( Direction.INCOMING ) );
-            assertEquals( 7-2, me.getDegree( MyRelTypes.TEST ) );
-            assertEquals( 16-3, me.getDegree( MyRelTypes.TEST2 ) );
-            assertEquals( 7-2, me.getDegree( MyRelTypes.TEST, Direction.BOTH ) );
-            assertEquals( 5-1, me.getDegree( MyRelTypes.TEST, Direction.OUTGOING ) );
-            assertEquals( 2-1, me.getDegree( MyRelTypes.TEST, Direction.INCOMING ) );
-            assertEquals( 16-3, me.getDegree( MyRelTypes.TEST2, Direction.BOTH ) );
-            assertEquals( 9-2, me.getDegree( MyRelTypes.TEST2, Direction.OUTGOING ) );
-            assertEquals( 10-2, me.getDegree( MyRelTypes.TEST2, Direction.INCOMING ) );
-            newTransaction();
+            for ( RelType type : RelType.values() )
+            {
+                if ( !type.measure ) continue;
+                for ( Direction direction : Direction.values() )
+                {
+                    int[] counts = expectedCounts.get( type );
+                    if ( counts[direction.ordinal()] > 0 )
+                    {
+                        deleteOneRelationship( me, type, direction, 0 );
+                        counts[direction.ordinal()]--;
+                        assertCounts( me, expectedCounts );
+                    }
+                }
+            }
         }
+        else
+        {
+            for ( RelationshipDeletionSpec spec : dspecs )
+            {
+                deleteOneRelationship( me, spec.type, spec.dir, spec.which );
+                expectedCounts.get( spec.type )[spec.dir.ordinal()]--;
+                assertCounts( me, expectedCounts );
+            }
+        }
+        
+        assertCounts( me, expectedCounts );
+        newTransaction();
+        assertCounts( me, expectedCounts );
         
         // Clean up
         for ( Relationship rel : me.getRelationships() )
@@ -257,22 +281,105 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
         me.delete();
     }
 
-    private void deleteOneRelationship( Node node, MyRelTypes type, Direction direction, boolean deleteALoopRelationship )
+    private void assertCounts( Node me, Map<RelType, int[]> expectedCounts )
     {
+        assertEquals( totalCount( expectedCounts, Direction.BOTH ), me.getDegree() );
+        assertEquals( totalCount( expectedCounts, Direction.BOTH ), me.getDegree( Direction.BOTH ) );
+        assertEquals( totalCount( expectedCounts, Direction.OUTGOING ), me.getDegree( Direction.OUTGOING ) );
+        assertEquals( totalCount( expectedCounts, Direction.INCOMING ), me.getDegree( Direction.INCOMING ) );
+        for ( Map.Entry<RelType, int[]> entry : expectedCounts.entrySet() )
+        {
+            RelType type = entry.getKey();
+            assertEquals( totalCount( entry.getValue(), Direction.BOTH ), me.getDegree( type ) );
+            assertEquals( totalCount( entry.getValue(), Direction.OUTGOING ), me.getDegree( type, Direction.OUTGOING ) );
+            assertEquals( totalCount( entry.getValue(), Direction.INCOMING ), me.getDegree( type, Direction.INCOMING ) );
+            assertEquals( totalCount( entry.getValue(), Direction.BOTH ), me.getDegree( type, Direction.BOTH ) );
+        }
+    }
+
+    private int totalCount( Map<RelType, int[]> expectedCounts, Direction direction )
+    {
+        int result = 0;
+        for ( Map.Entry<RelType, int[]> entry : expectedCounts.entrySet() )
+        {
+            result += totalCount( entry.getValue(), direction );
+        }
+        return result;
+    }
+    
+    private int totalCount( int[] expectedCounts, Direction direction )
+    {
+        int result = 0;
+        if ( direction == Direction.OUTGOING || direction == Direction.BOTH ) result += expectedCounts[0];
+        if ( direction == Direction.INCOMING || direction == Direction.BOTH ) result += expectedCounts[1];
+        result += expectedCounts[2];
+        return result;
+    }
+
+    private void deleteOneRelationship( Node node, RelType type, Direction direction, int which )
+    {
+        Relationship last = null;
+        int counter = 0;
         for ( Relationship rel : node.getRelationships( type, direction ) )
         {
-            if ( isLoop( rel ) == deleteALoopRelationship )
+            if ( isLoop( rel ) == (direction == Direction.BOTH) )
             {
-                rel.delete();
+                last = rel;
+                if ( counter++ == which ) rel.delete();
                 return;
             }
         }
-        fail( "Couldn't find " + (deleteALoopRelationship ? "loop" : "non-loop") + " relationship " +
+        
+        if ( which == Integer.MAX_VALUE && last != null )
+        {
+            last.delete();
+            return;
+        }
+        
+        fail( "Couldn't find " + (direction == Direction.BOTH ? "loop" : "non-loop") + " relationship " +
                 type.name() + " " + direction + " to delete" );
     }
 
     private boolean isLoop( Relationship r )
     {
         return r.getStartNode().equals( r.getEndNode() );
+    }
+    
+    private static class RelationshipCreationSpec
+    {
+        private final RelType type;
+        private final Direction dir;
+        private final int count;
+
+        RelationshipCreationSpec( RelType type, Direction dir, int count )
+        {
+            this.type = type;
+            this.dir = dir;
+            this.count = count;
+        }
+    }
+    
+    private static class RelationshipDeletionSpec
+    {
+        private final RelType type;
+        private final Direction dir;
+        private final int which;
+
+        RelationshipDeletionSpec( RelType type, Direction dir, int which /*Integer.MAX_VALUE==last*/ )
+        {
+            this.type = type;
+            this.dir = dir;
+            this.which = which;
+        }
+    }
+    
+    static RelationshipCreationSpec create( RelType type, Direction dir, int count )
+    {
+        return new RelationshipCreationSpec( type, dir, count );
+    }
+
+    static RelationshipDeletionSpec delete( RelType type, Direction dir, int which )
+    {
+        return new RelationshipDeletionSpec( type, dir, which );
     }
 }
