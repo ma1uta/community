@@ -145,7 +145,7 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
         
         Node node = getGraphDb().createNode();
         assertEquals( 0, node.getDegree() );
-        Relationship rel1 = node.createRelationshipTo( node, MyRelTypes.TEST );
+        node.createRelationshipTo( node, MyRelTypes.TEST );
         assertEquals( 1, node.getDegree() );
         Node otherNode = getGraphDb().createNode();
         Relationship rel2 = node.createRelationshipTo( otherNode, MyRelTypes.TEST2 );
@@ -164,52 +164,52 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
     }
     
     @Test
-    public void ensureRightDegreeOnDiscreteNodes() throws Exception
+    public void ensureRightDegree() throws Exception
     {
-        ensureRightDegree( 0,
-                asList(
-                create( RelType.TYPE1, Direction.OUTGOING, 5 ),
-                create( RelType.TYPE1, Direction.INCOMING, 2 ),
-                create( RelType.TYPE2, Direction.OUTGOING, 6 ),
-                create( RelType.TYPE2, Direction.INCOMING, 7 ),
-                create( RelType.TYPE2, Direction.BOTH, 3 ) ),
-                
-                /*asList(
-                delete( RelType.TYPE1, Direction.OUTGOING, 0 ),
-                delete( RelType.TYPE1, Direction.INCOMING, 1 ),
-                delete( RelType.TYPE2, Direction.OUTGOING, Integer.MAX_VALUE ),
-                delete( RelType.TYPE2, Direction.INCOMING, 1 ),
-                delete( RelType.TYPE2, Direction.BOTH, Integer.MAX_VALUE ) )*/null );
-
-    }
+        for ( int initialSize : new int[] { 0, 95, 200 } )
+        {
+            ensureRightDegree( initialSize,
+                    asList(
+                    create( RelType.TYPE1, Direction.OUTGOING, 5 ),
+                    create( RelType.TYPE1, Direction.INCOMING, 2 ),
+                    create( RelType.TYPE2, Direction.OUTGOING, 6 ),
+                    create( RelType.TYPE2, Direction.INCOMING, 7 ),
+                    create( RelType.TYPE2, Direction.BOTH, 3 ) ),
+                    
+                    asList(
+                    delete( RelType.TYPE1, Direction.OUTGOING, 0 ),
+                    delete( RelType.TYPE1, Direction.INCOMING, 1 ),
+                    delete( RelType.TYPE2, Direction.OUTGOING, Integer.MAX_VALUE ),
+                    delete( RelType.TYPE2, Direction.INCOMING, 1 ),
+                    delete( RelType.TYPE2, Direction.BOTH, Integer.MAX_VALUE ) )/*null*/ );
     
-    @Test
-    public void ensureRightDegreeOnSuperNodes() throws Exception
-    {
-        ensureRightDegree( 1000,
-                asList(
-                create( RelType.TYPE1, Direction.OUTGOING, 5 ),
-                create( RelType.TYPE1, Direction.INCOMING, 2 ),
-                create( RelType.TYPE2, Direction.OUTGOING, 6 ),
-                create( RelType.TYPE2, Direction.INCOMING, 7 ),
-                create( RelType.TYPE2, Direction.BOTH, 3 ) ),
-                
-                /*asList(
-                delete( RelType.TYPE1, Direction.OUTGOING, 0 ),
-                delete( RelType.TYPE1, Direction.INCOMING, 1 ),
-                delete( RelType.TYPE2, Direction.OUTGOING, Integer.MAX_VALUE ),
-                delete( RelType.TYPE2, Direction.INCOMING, 1 ),
-                delete( RelType.TYPE2, Direction.BOTH, Integer.MAX_VALUE ) )*/null );
+            ensureRightDegree( initialSize,
+                    asList(
+                    create( RelType.TYPE1, Direction.BOTH, 1 ),
+                    create( RelType.TYPE1, Direction.OUTGOING, 5 ),
+                    create( RelType.TYPE2, Direction.OUTGOING, 6 ),
+                    create( RelType.TYPE1, Direction.INCOMING, 2 ),
+                    create( RelType.TYPE2, Direction.BOTH, 3 ),
+                    create( RelType.TYPE2, Direction.INCOMING, 7 ),
+                    create( RelType.TYPE2, Direction.BOTH, 3 ) ), null );
+
+            ensureRightDegree( initialSize,
+                    asList(
+                    create( RelType.TYPE1, Direction.BOTH, 2 ),
+                    create( RelType.TYPE2, Direction.BOTH, 1 ),
+                    create( RelType.TYPE1, Direction.OUTGOING, 1 ),
+                    create( RelType.TYPE2, Direction.OUTGOING, 10 ),
+                    create( RelType.TYPE1, Direction.INCOMING, 2 ),
+                    create( RelType.TYPE2, Direction.BOTH, 2 ),
+                    create( RelType.TYPE2, Direction.INCOMING, 7 ) ), null );
+        }
     }
     
     private void ensureRightDegree( int initialSize, Collection<RelationshipCreationSpec> cspecs,
             Collection<RelationshipDeletionSpec> dspecs )
     {
         Map<RelType, int[]> expectedCounts = new EnumMap<RelType, int[]>( RelType.class );
-        for ( RelType type : RelType.values() )
-        {
-            expectedCounts.put( type, new int[3] );
-        }
+        for ( RelType type : RelType.values() ) expectedCounts.put( type, new int[3] );
         Node me = getGraphDb().createNode();
         for ( int i = 0; i < initialSize; i++ )
         {
@@ -219,7 +219,7 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
         expectedCounts.get( RelType.INITIAL )[0] = initialSize;
         
         assertCounts( me, expectedCounts );
-        
+        int counter = 0;
         for ( RelationshipCreationSpec spec : cspecs )
         {
             for ( int i = 0; i < spec.count; i++ )
@@ -232,6 +232,11 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
                 
                 if ( otherNode != null ) assertEquals( 1, otherNode.getDegree() );
                 assertCounts( me, expectedCounts );
+                if ( counter%3 == 0 && counter > 0 )
+                {
+                    newTransaction();
+                    assertCounts( me, expectedCounts );
+                }
             }
         }
         
@@ -240,6 +245,7 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
         assertCounts( me, expectedCounts );
         
         // Delete one of each type/direction combination
+        counter = 0;
         if ( dspecs == null )
         {
             for ( RelType type : RelType.values() )
@@ -253,6 +259,11 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
                         deleteOneRelationship( me, type, direction, 0 );
                         counts[direction.ordinal()]--;
                         assertCounts( me, expectedCounts );
+                        if ( counter%3 == 0 && counter > 0 )
+                        {
+                            newTransaction();
+                            assertCounts( me, expectedCounts );
+                        }
                     }
                 }
             }
@@ -264,6 +275,11 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
                 deleteOneRelationship( me, spec.type, spec.dir, spec.which );
                 expectedCounts.get( spec.type )[spec.dir.ordinal()]--;
                 assertCounts( me, expectedCounts );
+                if ( counter%3 == 0 && counter > 0 )
+                {
+                    newTransaction();
+                    assertCounts( me, expectedCounts );
+                }
             }
         }
         
@@ -325,8 +341,11 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
             if ( isLoop( rel ) == (direction == Direction.BOTH) )
             {
                 last = rel;
-                if ( counter++ == which ) rel.delete();
-                return;
+                if ( counter++ == which )
+                {
+                    rel.delete();
+                    return;
+                }
             }
         }
         
