@@ -36,11 +36,20 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
     public static final String TYPE_DESCRIPTOR = "RelationshipStore";
     public static final String FILE_NAME = ".relationshipstore.db";
 
-    // record header size
-    // in_use(byte)+first_node(int)+second_node(int)+rel_type(int)+
-    // first_prev_rel_id(int)+first_next_rel_id+second_prev_rel_id(int)+
-    // second_next_rel_id+next_prop_id(int)
-    public static final int RECORD_SIZE = 34;
+    /*
+     * 1: inUse/high order bits from first node and next prop
+     * 4: first node low order bits
+     * 4: second node low order bits
+     * 4: 1:st in first chain, rest of high order bits, 1:st in second chain, type
+     * 4: first prev rel low order bits
+     * 4: first next rel low order bits
+     * 4: second prev rel low order bits
+     * 4: second next rel low order bits
+     * 4: next prop low order bits
+     * --
+     * 33
+     */
+    public static final int RECORD_SIZE = 33;
 
     /**
      * See {@link AbstractStore#AbstractStore(String, Map)}
@@ -226,27 +235,28 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
 
             long nextProp = record.getNextProp();
             long nextPropMod = nextProp == Record.NO_NEXT_PROPERTY.intValue() ? 0 : (nextProp & 0xF00000000L) >> 28;
+            
+            long firstInFirstChain = record.isFirstInFirstChain() ? 0x80000000 : 0;
+            long firstInSecondChain = record.isFirstInSecondChain() ? 0x8000 : 0;
 
             // [    ,   x] in use flag
             // [    ,xxx ] first node high order bits
             // [xxxx,    ] next prop high order bits
             short inUseUnsignedByte = (short)((record.inUse() ? Record.IN_USE : Record.NOT_IN_USE).byteValue() | firstNodeMod | nextPropMod);
 
+            // [x   ,    ][    ,    ][    ,    ][    ,    ] 1: first in first chain, 0: not first in first chain
             // [ xxx,    ][    ,    ][    ,    ][    ,    ] second node high order bits,     0x70000000
             // [    ,xxx ][    ,    ][    ,    ][    ,    ] first prev rel high order bits,  0xE000000
             // [    ,   x][xx  ,    ][    ,    ][    ,    ] first next rel high order bits,  0x1C00000
             // [    ,    ][  xx,x   ][    ,    ][    ,    ] second prev rel high order bits, 0x380000
             // [    ,    ][    , xxx][    ,    ][    ,    ] second next rel high order bits, 0x70000
-            // [    ,    ][    ,    ][xxxx,xxxx][xxxx,xxxx] type
-            int typeInt = (int)(secondNodeMod | firstPrevRelMod | firstNextRelMod | secondPrevRelMod | secondNextRelMod | record.getType());
+            // [    ,    ][    ,    ][x   ,    ][    ,    ] 1: first in second chain, 0: not first in second chain
+            // [    ,    ][    ,    ][ xxx,xxxx][xxxx,xxxx] type
+            int typeInt = (int)(firstInFirstChain | secondNodeMod | firstPrevRelMod | firstNextRelMod | secondPrevRelMod | secondNextRelMod | firstInSecondChain | record.getType());
             
-            // [    ,   x] 1: first in first chain, 0: not first in first chain
-            // [    ,  x ] 1: first in second chain, 0: not first in second chain
-            byte extraByte = (byte) ((record.isFirstInFirstChain() ? (byte)1 : (byte)0) | (record.isFirstInSecondChain() ? (byte)2 : (byte)0));
-
             buffer.put( (byte)inUseUnsignedByte ).putInt( (int) firstNode ).putInt( (int) secondNode )
                 .putInt( typeInt ).putInt( (int) firstPrevRel ).putInt( (int) firstNextRel )
-                .putInt( (int) secondPrevRel ).putInt( (int) secondNextRel ).putInt( (int) nextProp ).put( extraByte );
+                .putInt( (int) secondPrevRel ).putInt( (int) secondNextRel ).putInt( (int) nextProp );
         }
         else
         {
@@ -285,15 +295,17 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
 
         long secondNode = buffer.getUnsignedInt();
 
+        // [x   ,    ][    ,    ][    ,    ][    ,    ] 1: first in first chain, 0: not first in first chain
         // [ xxx,    ][    ,    ][    ,    ][    ,    ] second node high order bits,     0x70000000
         // [    ,xxx ][    ,    ][    ,    ][    ,    ] first prev rel high order bits,  0xE000000
         // [    ,   x][xx  ,    ][    ,    ][    ,    ] first next rel high order bits,  0x1C00000
         // [    ,    ][  xx,x   ][    ,    ][    ,    ] second prev rel high order bits, 0x380000
         // [    ,    ][    , xxx][    ,    ][    ,    ] second next rel high order bits, 0x70000
-        // [    ,    ][    ,    ][xxxx,xxxx][xxxx,xxxx] type
+        // [    ,    ][    ,    ][x   ,    ][    ,    ] 1: first in second chain, 0: not first in second chain
+        // [    ,    ][    ,    ][ xxx,xxxx][xxxx,xxxx] type
         long typeInt = buffer.getInt();
         long secondNodeMod = (typeInt & 0x70000000L) << 4;
-        int type = (int)(typeInt & 0xFFFF);
+        int type = (int)(typeInt & 0x7FFF);
 
         RelationshipRecord record = new RelationshipRecord( id,
             longFromIntAndMod( firstNode, firstNodeMod ),
@@ -301,18 +313,13 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
         record.setInUse( inUse );
         
         record.setFirstInFirstChain( (typeInt & 0x80000000) != 0 );
+        record.setFirstInSecondChain( (typeInt & 0x8000) != 0 );
 
         long firstPrevRel = buffer.getUnsignedInt();
         long firstNextRel = buffer.getUnsignedInt();
         long secondPrevRel = buffer.getUnsignedInt();
         long secondNextRel = buffer.getUnsignedInt();
         long nextProp = buffer.getUnsignedInt();
-
-        // [    ,   x] 1: first in first chain, 0: not first in first chain
-        // [    ,  x ] 1: first in second chain, 0: not first in second chain
-        byte extraByte = buffer.get();
-        record.setFirstInFirstChain( (extraByte & 0x1) > 0 );
-        record.setFirstInSecondChain( (extraByte & 0x2) > 0 );
         
         long firstPrevRelMod = (typeInt & 0xE000000L) << 7;
         record.setFirstPrevRel( longFromIntAndMod( firstPrevRel, firstPrevRelMod ) );
