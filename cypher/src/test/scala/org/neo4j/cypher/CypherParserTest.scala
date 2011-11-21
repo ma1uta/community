@@ -192,6 +192,26 @@ class CypherParserTest extends JUnitSuite with Assertions {
     )
   }
 
+  @Test def shouldHandleMultipleRegularComparison() {
+    testQuery(
+      """start a = node(1) where a.name =~ /And.*/ AND a.name =~ /And.*/ return a""",
+      Query.
+        start(NodeById("a", 1)).
+        where(And(RegularExpression(PropertyValue("a", "name"), Literal("And.*")), RegularExpression(PropertyValue("a", "name"), Literal("And.*")))).
+        returns(ValueReturnItem(EntityValue("a")))
+    )
+  }
+
+  @Test def shouldHandleEscapedRegexs() {
+    testQuery(
+      """start a = node(1) where a.name =~ /And\/.*/ return a""",
+      Query.
+        start(NodeById("a", 1)).
+        where(RegularExpression(PropertyValue("a", "name"), Literal("And\\/.*"))).
+        returns(ValueReturnItem(EntityValue("a")))
+    )
+  }
+
   @Test def shouldHandleGreaterThanOrEqual() {
     testQuery(
       "start a = node(1) where a.name >= \"andres\" return a",
@@ -744,6 +764,19 @@ class CypherParserTest extends JUnitSuite with Assertions {
         where(AllInSeq(PathNodesValue(EntityValue("p")), "n", Equals(PropertyValue("n", "name"), Literal("Andres"))))
         returns (ValueReturnItem(EntityValue("b"))))
   }
+
+  @Test def extractNameFromAllNodes() {
+    testQuery(
+      """start a = node(1) match p = a --> b --> c return extract(n in nodes(p) : n.name)""",
+      Query.
+        start(NodeById("a", 1)).
+        namedPaths(
+        NamedPath("p",
+          RelatedTo("a", "b", "  UNNAMED1", None, Direction.OUTGOING, false),
+          RelatedTo("b", "c", "  UNNAMED2", None, Direction.OUTGOING, false))).
+        returns(ValueReturnItem(Extract(PathNodesValue(EntityValue("p")), "n", PropertyValue("n", "name")))))
+  }
+
 
   @Test def testAny() {
     testQuery(

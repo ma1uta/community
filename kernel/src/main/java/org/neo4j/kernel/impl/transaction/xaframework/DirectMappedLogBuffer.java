@@ -23,6 +23,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
+/**
+ * Implementation of a LogBuffer that buffers content in a direct byte buffer
+ * and flushes in a file channel. Flushing is based on size cap and force()
+ * operations.
+ * <p>
+ * Currently this is the default LogBuffer implementation.
+ */
 public class DirectMappedLogBuffer implements LogBuffer
 {
     // 500k
@@ -30,14 +37,14 @@ public class DirectMappedLogBuffer implements LogBuffer
 
     private final FileChannel fileChannel;
 
-    private final CloseableByteBuffer byteBuffer;
+    private final ByteBuffer byteBuffer;
     private long bufferStartPosition;
 
     public DirectMappedLogBuffer( FileChannel fileChannel ) throws IOException
     {
         this.fileChannel = fileChannel;
         bufferStartPosition = fileChannel.position();
-        byteBuffer = CloseableByteBuffer.wrap( ByteBuffer.allocateDirect( BUFFER_SIZE ) );
+        byteBuffer = ByteBuffer.allocateDirect( BUFFER_SIZE );
     }
 
     private void ensureCapacity( int plusSize ) throws IOException
@@ -144,7 +151,7 @@ public class DirectMappedLogBuffer implements LogBuffer
     public void writeOut() throws IOException
     {
         byteBuffer.flip();
-        bufferStartPosition += fileChannel.write( byteBuffer.getDelegate(),
+        bufferStartPosition += fileChannel.write( byteBuffer,
                 bufferStartPosition );
         byteBuffer.clear();
     }
@@ -167,10 +174,5 @@ public class DirectMappedLogBuffer implements LogBuffer
     public FileChannel getFileChannel()
     {
         return fileChannel;
-    }
-
-    public CloseableByteBuffer getBuffer()
-    {
-        return byteBuffer.duplicate();
     }
 }

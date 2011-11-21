@@ -29,8 +29,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.neo4j.server.helpers.ServerHelper;
 import org.neo4j.server.logging.InMemoryAppender;
+import org.neo4j.test.server.ExclusiveServerTestBase;
 
-public class NeoServerShutdownLoggingFunctionalTest
+public class NeoServerShutdownLoggingFunctionalTest extends ExclusiveServerTestBase
 {
     private NeoServer server;
 
