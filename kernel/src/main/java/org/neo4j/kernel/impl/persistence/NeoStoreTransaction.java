@@ -306,5 +306,27 @@ public interface NeoStoreTransaction
      */
     public int getKeyIdForProperty( PropertyData property );
 
+    /**
+     * Returns the relationship count for a super node. {@code type} and {@code direction}
+     * are optional in that type can be -1 for all types and direction can be
+     * {@link DirectionWrapper#BOTH} for all directions. Super nodes store relationship
+     * chains per type and direction and the first "prev" pointer holds the size of each
+     * chain.
+     * 
+     * @param id node id to get relationship count for.
+     * @param type id for the relationship type, or {@code -1} for all types.
+     * @param direction direction to get relationship count for, or {@link DirectionWrapper#BOTH}
+     * for all directions.
+     * @return relationship count for a super node.
+     */
     public int getRelationshipCount( long id, int type, DirectionWrapper direction );
+    
+    /**
+     * Returns relationship types for which there are one or more relationships connected
+     * to the node {@code id}.
+     * @param id the node id to get the relationship types for.
+     * @return relationship types for which there are one or more relationships connected
+     * to the node {@code id}.
+     */
+    public RelationshipTypeData[] getRelationshipTypes( long id );
 }

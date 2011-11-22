@@ -258,7 +258,13 @@ public interface Node extends PropertyContainer
     public Relationship getSingleRelationship( RelationshipType type,
             Direction dir );
     
-//    public Iterable<RelationshipType> getRelationshipTypes();
+    /**
+     * Returns relationship types which this node has one more relationships
+     * for. If this node doesn't have any relationships an empty {@link Iterable}
+     * will be returned.
+     * @return relationship types which this node has one more relationships for.
+     */
+    public Iterable<RelationshipType> getRelationshipTypes();
     
     /**
      * Returns the number of relationships for this node.

@@ -550,4 +550,10 @@ class ReadTransaction implements NeoStoreTransaction
         RelationshipRecord rel = getRelationshipStore().getRecord( relId );
         return (int) (node.getId() == rel.getFirstNode() ? rel.getFirstPrevRel() : rel.getSecondPrevRel());
     }
+    
+    @Override
+    public RelationshipTypeData[] getRelationshipTypes( long id )
+    {
+        throw new UnsupportedOperationException();
+    }
 }

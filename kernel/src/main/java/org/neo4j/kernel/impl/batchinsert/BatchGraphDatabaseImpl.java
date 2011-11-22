@@ -309,6 +309,12 @@ class BatchGraphDatabaseImpl implements GraphDatabaseService
         {
             throw new UnsupportedOperationException();
         }
+        
+        @Override
+        public Iterable<RelationshipType> getRelationshipTypes()
+        {
+            throw new UnsupportedOperationException();
+        }
 
         public boolean hasRelationship()
         {

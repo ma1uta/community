@@ -406,4 +406,9 @@ public class PersistenceManager
     {
         return getReadOnlyResourceIfPossible().getRelationshipCount( id, type, direction );
     }
+
+    public RelationshipTypeData[] getRelationshipTypes( long id )
+    {
+        return getReadOnlyResourceIfPossible().getRelationshipTypes( id );
+    }
 }

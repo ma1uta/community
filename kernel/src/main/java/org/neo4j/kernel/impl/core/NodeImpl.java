@@ -22,10 +22,12 @@ package org.neo4j.kernel.impl.core;
 import static org.neo4j.kernel.impl.util.DirectionWrapper.wrapDirection;
 import static org.neo4j.kernel.impl.util.RelIdArray.empty;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
@@ -37,6 +39,7 @@ import org.neo4j.graphdb.StopEvaluator;
 import org.neo4j.graphdb.Traverser;
 import org.neo4j.graphdb.Traverser.Order;
 import org.neo4j.helpers.Pair;
+import org.neo4j.helpers.collection.IterableWrapper;
 import org.neo4j.kernel.impl.core.LockReleaser.SetAndDirectionCounter;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
 import org.neo4j.kernel.impl.nioneo.store.Record;
@@ -706,5 +709,35 @@ class NodeImpl extends Primitive
         if ( add != null ) count += add.size( dir );
         if ( remove != null ) count -= remove.getCount( direction );
         return count;
+    }
+    
+    public Iterable<RelationshipType> getRelationshipTypes( final NodeManager nm )
+    {
+        ensureAllRelationshipsAreLoaded( nm );
+        Set<String> types = new HashSet<String>();
+        ArrayMap<String, SetAndDirectionCounter> allRemoved = nm.getCowRelationshipRemoveMap( this );
+        for ( RelIdArray ids : relationships )
+        {
+            SetAndDirectionCounter removed = allRemoved.get( ids.getType() );
+            if ( removed == null || removed.totalCount.get() < ids.size( DirectionWrapper.BOTH ) )
+            {   // If not all of these removed add it to the list
+                types.add( ids.getType() );
+            }
+        }
+        
+        ArrayMap<String, RelIdArray> add = nm.getCowRelationshipAddMap( this );
+        if ( add != null )
+        {
+            for ( String addedType : add.keySet() ) types.add( addedType );
+        }
+        
+        return new IterableWrapper<RelationshipType, String>( types )
+        {
+            @Override
+            protected RelationshipType underlyingObjectToObject( String type )
+            {
+                return nm.getRelationshipTypeHolder().getTypeFor( type );
+            }
+        };
     }
 }

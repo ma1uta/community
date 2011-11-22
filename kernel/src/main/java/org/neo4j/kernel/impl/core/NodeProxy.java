@@ -221,6 +221,12 @@ class NodeProxy implements Node
     {
         return nm.getNodeForProxy( nodeId ).getDegree( nm, type, direction );
     }
+    
+    @Override
+    public Iterable<RelationshipType> getRelationshipTypes()
+    {
+        return nm.getNodeForProxy( nodeId ).getRelationshipTypes( nm );
+    }
 
     /* Tentative expansion API
     public Expansion<Relationship> expandAll()

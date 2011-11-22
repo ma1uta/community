@@ -19,6 +19,8 @@
  */
 package org.neo4j.kernel.impl.core;
 
+import static java.util.Arrays.asList;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -40,6 +42,7 @@ import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.event.TransactionData;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Triplet;
+import org.neo4j.helpers.collection.IterableWrapper;
 import org.neo4j.helpers.collection.PrefetchingIterator;
 import org.neo4j.kernel.PropertyTracker;
 import org.neo4j.kernel.impl.cache.AdaptiveCacheManager;
@@ -1252,5 +1255,18 @@ public class NodeManager
         
         return persistenceManager.getRelationshipCount( nodeImpl.getId(),
                 type == null ? -1 : typeId.intValue(), direction );
+    }
+
+    public Iterable<RelationshipType> getRelationshipTypes( SuperNodeImpl superNodeImpl )
+    {
+        RelationshipTypeData[] types = persistenceManager.getRelationshipTypes( superNodeImpl.getId() );
+        return new IterableWrapper<RelationshipType, RelationshipTypeData>( asList( types ) )
+        {
+            @Override
+            protected RelationshipType underlyingObjectToObject( RelationshipTypeData object )
+            {
+                return relTypeHolder.getRelationshipType( object.getId() );
+            }
+        };
     }
 }

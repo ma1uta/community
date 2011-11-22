@@ -2242,4 +2242,10 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         if ( rel.getSecondNode() == nodeId ) return Chain.SECOND;
         throw new RuntimeException( nodeId + " neither first not second in " + rel );
     }
+
+    @Override
+    public RelationshipTypeData[] getRelationshipTypes( long id )
+    {
+        throw new UnsupportedOperationException();
+    }
 }

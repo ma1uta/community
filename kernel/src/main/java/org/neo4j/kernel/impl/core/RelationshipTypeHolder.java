@@ -169,6 +169,13 @@ public class RelationshipTypeHolder
         return getIdFor( type.name() );
     }
     
+    RelationshipType getTypeFor( String name )
+    {
+        Integer id = relTypes.get( name );
+        if ( id == null ) throw new IllegalArgumentException( "Type '" + name + "' not found" );
+        return relTranslation.get( id );
+    }
+    
     public Integer getIdFor( String name )
     {
         return relTypes.get( name );

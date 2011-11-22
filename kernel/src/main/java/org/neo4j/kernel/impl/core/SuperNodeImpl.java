@@ -66,4 +66,10 @@ public class SuperNodeImpl extends NodeImpl
     {
         return nm.getRelationshipCount( this, type, wrapDirection( direction ) );
     }
+    
+    @Override
+    public Iterable<RelationshipType> getRelationshipTypes( NodeManager nm )
+    {
+        return nm.getRelationshipTypes( this );
+    }
 }
