@@ -1044,7 +1044,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     {
         RelationshipRecord relRecord = getRelationshipRecord( relId, true );
         assert assertPropertyChain( relRecord );
-        removeProperty( relRecord, propertyData, RecordAdded.RELATIONSHIP );
+        removeProperty( relRecord, propertyData, RecordAdder.RELATIONSHIP );
     }
 
     @Override
@@ -1134,11 +1134,11 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     {
         NodeRecord nodeRecord = getNodeRecord( nodeId, true );
         assert assertPropertyChain( nodeRecord );
-        removeProperty( nodeRecord, propertyData, RecordAdded.NODE );
+        removeProperty( nodeRecord, propertyData, RecordAdder.NODE );
         // propRecord.removeBlock( propertyData.getIndex() );
     }
     
-    private void removeProperty( PrimitiveRecord hostRecord, PropertyData propertyData, RecordAdded adder )
+    private void removeProperty( PrimitiveRecord hostRecord, PropertyData propertyData, RecordAdder adder )
     {
         long propertyId = propertyData.getId();
         PropertyRecord propRecord = getPropertyRecord( propertyId, false, true );
@@ -1229,7 +1229,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             PropertyData propertyData, Object value )
     {
         RelationshipRecord relRecord = getRelationshipRecord( relId, true );
-        return primitiveChangeProperty( relRecord, propertyData, value, RecordAdded.RELATIONSHIP );
+        return primitiveChangeProperty( relRecord, propertyData, value, RecordAdder.RELATIONSHIP );
     }
 
     @Override
@@ -1237,11 +1237,11 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             PropertyData propertyData, Object value )
     {
         NodeRecord nodeRecord = getNodeRecord( nodeId, true );
-        return primitiveChangeProperty( nodeRecord, propertyData, value, RecordAdded.NODE );
+        return primitiveChangeProperty( nodeRecord, propertyData, value, RecordAdder.NODE );
     }
 
     private PropertyData primitiveChangeProperty( PrimitiveRecord primitive,
-            PropertyData propertyData, Object value, RecordAdded adder )
+            PropertyData propertyData, Object value, RecordAdder adder )
     {
         assert assertPropertyChain( primitive );
         long propertyId = propertyData.getId();
@@ -1302,7 +1302,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         PropertyBlock block = new PropertyBlock();
         block.setCreated();
         getPropertyStore().encodeValue( block, index.getKeyId(), value );
-        PropertyRecord host = addPropertyBlockToPrimitive( block, relRecord, RecordAdded.RELATIONSHIP );
+        PropertyRecord host = addPropertyBlockToPrimitive( block, relRecord, RecordAdder.RELATIONSHIP );
         assert assertPropertyChain( relRecord );
         return block.newPropertyData( host, value );
     }
@@ -1321,13 +1321,13 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
          * rollback only.
          */
         getPropertyStore().encodeValue( block, index.getKeyId(), value );
-        PropertyRecord host = addPropertyBlockToPrimitive( block, nodeRecord, RecordAdded.NODE );
+        PropertyRecord host = addPropertyBlockToPrimitive( block, nodeRecord, RecordAdder.NODE );
         assert assertPropertyChain( nodeRecord );
         return block.newPropertyData( host, value );
     }
 
     private PropertyRecord addPropertyBlockToPrimitive( PropertyBlock block,
-            PrimitiveRecord primitive, RecordAdded adder )
+            PrimitiveRecord primitive, RecordAdder adder )
     {
         assert assertPropertyChain( primitive );
         int newBlockSizeInBytes = block.getSize();
@@ -2227,7 +2227,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
          */
         getPropertyStore().encodeValue( block, index.getKeyId(), value );
         NeoStoreRecord record = getOrLoadNeoStoreRecord();
-        PropertyRecord host = addPropertyBlockToPrimitive( block, record, RecordAdded.GRAPH );
+        PropertyRecord host = addPropertyBlockToPrimitive( block, record, RecordAdder.GRAPH );
         assert assertPropertyChain( record );
         return block.newPropertyData( host, value );
     }
@@ -2235,13 +2235,13 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     @Override
     public PropertyData graphChangeProperty( PropertyData propertyData, Object value )
     {
-        return primitiveChangeProperty( getOrLoadNeoStoreRecord(), propertyData, value, RecordAdded.GRAPH );
+        return primitiveChangeProperty( getOrLoadNeoStoreRecord(), propertyData, value, RecordAdder.GRAPH );
     }
 
     @Override
     public void graphRemoveProperty( PropertyData propertyData )
     {
-        removeProperty( getOrLoadNeoStoreRecord(), propertyData, RecordAdded.GRAPH );
+        removeProperty( getOrLoadNeoStoreRecord(), propertyData, RecordAdder.GRAPH );
     }
     
     @Override
@@ -2251,7 +2251,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         return ReadTransaction.loadProperties( getPropertyStore(), record.getNextProp() );
     }
 
-    private static enum RecordAdded
+    private static enum RecordAdder
     {
         NODE
         {
