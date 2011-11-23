@@ -552,8 +552,12 @@ class ReadTransaction implements NeoStoreTransaction
     }
     
     @Override
-    public RelationshipTypeData[] getRelationshipTypes( long id )
+    public Integer[] getRelationshipTypes( long id )
     {
-        throw new UnsupportedOperationException();
+        Map<Integer, RelationshipGroupRecord> groups = loadRelationshipGroups( getNodeStore().getRecord( id ), getRelationshipGroupStore() );
+        Integer[] types = new Integer[groups.size()];
+        int i = 0;
+        for ( Integer type : groups.keySet() ) types[i++] = type;
+        return types;
     }
 }

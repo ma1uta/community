@@ -328,5 +328,5 @@ public interface NeoStoreTransaction
      * @return relationship types for which there are one or more relationships connected
      * to the node {@code id}.
      */
-    public RelationshipTypeData[] getRelationshipTypes( long id );
+    public Integer[] getRelationshipTypes( long id );
 }

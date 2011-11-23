@@ -1259,13 +1259,13 @@ public class NodeManager
 
     public Iterable<RelationshipType> getRelationshipTypes( SuperNodeImpl superNodeImpl )
     {
-        RelationshipTypeData[] types = persistenceManager.getRelationshipTypes( superNodeImpl.getId() );
-        return new IterableWrapper<RelationshipType, RelationshipTypeData>( asList( types ) )
+        Integer[] types = persistenceManager.getRelationshipTypes( superNodeImpl.getId() );
+        return new IterableWrapper<RelationshipType, Integer>( asList( types ) )
         {
             @Override
-            protected RelationshipType underlyingObjectToObject( RelationshipTypeData object )
+            protected RelationshipType underlyingObjectToObject( Integer type )
             {
-                return relTypeHolder.getRelationshipType( object.getId() );
+                return relTypeHolder.getRelationshipType( type.intValue() );
             }
         };
     }

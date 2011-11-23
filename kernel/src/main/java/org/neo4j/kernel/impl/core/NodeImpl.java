@@ -643,6 +643,7 @@ class NodeImpl extends Primitive
             {
                 relationships[i] = relationships[i].shrink();
             }
+            relChainPosition = EMPTY_LOADING_POSITION;
         }
     }
 
@@ -658,6 +659,7 @@ class NodeImpl extends Primitive
 
     private void ensureAllRelationshipsAreLoaded( NodeManager nm )
     {
+        ensureRelationshipMapNotNull( nm );
         while ( hasMoreRelationshipsToLoad( DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES ) )
         {
             getMoreRelationships( nm, DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES );

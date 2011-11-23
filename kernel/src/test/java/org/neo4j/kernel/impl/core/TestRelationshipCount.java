@@ -35,6 +35,7 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.helpers.collection.IterableWrapper;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
 import org.neo4j.kernel.impl.MyRelTypes;
 
@@ -68,7 +69,7 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
             rels.get( type ).add( rel );
         }
         newTransaction();
-        for ( int i = 0; i < 10000; i++, expectedRelCount++ )
+        for ( int i = 0; i < 1000; i++, expectedRelCount++ )
         {
             node.createRelationshipTo( getGraphDb().createNode(), MyRelTypes.TEST );
         }
@@ -81,6 +82,73 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
                 asSet( node.getRelationships( MyRelTypes.TEST2 ) ) );
         assertEquals( join( rels.get( MyRelTypes.TEST_TRAVERSAL ), rels.get( MyRelTypes.TEST2 ) ),
                 asSet( node.getRelationships( MyRelTypes.TEST_TRAVERSAL, MyRelTypes.TEST2 ) ) );
+    }
+    
+    @Test
+    public void testGetRelationshipTypesOnDiscreteNode() throws Exception
+    {
+        testGetRelationshipTypes( getGraphDb().createNode(), new HashSet<String>() );
+    }
+    
+    @Test
+    public void testGetRelationshipTypesOnSuperNode() throws Exception
+    {
+        Node node = getGraphDb().createNode();
+        Node otherNode = getGraphDb().createNode();
+        for ( int i = 0; i < 300; i++ ) node.createRelationshipTo( otherNode, RelType.INITIAL );
+        testGetRelationshipTypes( node, new HashSet<String>( asList( RelType.INITIAL.name() ) ) );
+    }
+    
+    private void testGetRelationshipTypes( Node node, Set<String> expectedTypes ) throws Exception
+    {
+        assertExpectedRelationshipTypes( expectedTypes, node, false );
+        node.createRelationshipTo( getGraphDb().createNode(), RelType.TYPE1 );
+        expectedTypes.add( RelType.TYPE1.name() );
+        assertExpectedRelationshipTypes( expectedTypes, node, false );
+        node.createRelationshipTo( getGraphDb().createNode(), RelType.TYPE1 );
+        assertExpectedRelationshipTypes( expectedTypes, node, true );
+        
+        Relationship rel = node.createRelationshipTo( getGraphDb().createNode(), RelType.TYPE2 );
+        expectedTypes.add( RelType.TYPE2.name() );
+        assertExpectedRelationshipTypes( expectedTypes, node, false );
+        rel.delete();
+        expectedTypes.remove( RelType.TYPE2.name() );
+        assertExpectedRelationshipTypes( expectedTypes, node, true );
+        
+        node.createRelationshipTo( getGraphDb().createNode(), RelType.TYPE2 );
+        node.createRelationshipTo( getGraphDb().createNode(), RelType.TYPE2 );
+        expectedTypes.add( RelType.TYPE2.name() );
+        node.createRelationshipTo( getGraphDb().createNode(), MyRelTypes.TEST );
+        expectedTypes.add( MyRelTypes.TEST.name() );
+        assertExpectedRelationshipTypes( expectedTypes, node, true );
+        
+        for ( Relationship r : node.getRelationships( RelType.TYPE1 ) )
+        {
+            assertExpectedRelationshipTypes( expectedTypes, node, false );
+            r.delete();
+        }
+        expectedTypes.remove( RelType.TYPE1.name() );
+        assertExpectedRelationshipTypes( expectedTypes, node, true );
+    }
+
+    private void assertExpectedRelationshipTypes( Set<String> expectedTypes, Node node, boolean commit )
+    {
+        assertEquals( expectedTypes, asSet( asStrings( node.getRelationshipTypes() ) ) );
+        if ( commit ) newTransaction();
+        clearCache();
+        assertEquals( expectedTypes, asSet( asStrings( node.getRelationshipTypes() ) ) );
+    }
+
+    private Iterable<String> asStrings( Iterable<RelationshipType> relationshipTypes )
+    {
+        return new IterableWrapper<String, RelationshipType>( relationshipTypes )
+        {
+            @Override
+            protected String underlyingObjectToObject( RelationshipType object )
+            {
+                return object.name();
+            }
+        };
     }
 
     @Test
