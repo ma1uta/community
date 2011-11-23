@@ -100,6 +100,7 @@ public class NodeManager
     private static final int LOCK_STRIPE_COUNT = 32;
     private final ReentrantLock loadLocks[] =
         new ReentrantLock[LOCK_STRIPE_COUNT];
+    private GraphProperties graphProperties;
 
     NodeManager( GraphDatabaseService graphDb,
             AdaptiveCacheManager cacheManager, LockManager lockManager,
@@ -130,6 +131,7 @@ public class NodeManager
         }
         nodePropertyTrackers = new LinkedList<PropertyTracker<Node>>();
         relationshipPropertyTrackers = new LinkedList<PropertyTracker<Relationship>>();
+        this.graphProperties = instantiateGraphProperties();
     }
 
     public GraphDatabaseService getGraphDbService()
@@ -727,6 +729,11 @@ public class NodeManager
     {
          relCache.putAll( map );
     }
+    
+    ArrayMap<Integer, PropertyData> loadGraphProperties( boolean light )
+    {
+        return persistenceManager.graphLoadProperties( light );
+    }
 
     ArrayMap<Integer, PropertyData> loadProperties( NodeImpl node, boolean light )
     {
@@ -744,6 +751,7 @@ public class NodeManager
     {
         nodeCache.clear();
         relCache.clear();
+        graphProperties = instantiateGraphProperties();
     }
 
     @SuppressWarnings( "unchecked" )
@@ -784,6 +792,10 @@ public class NodeManager
         {
             container = new RelationshipProxy( resource.getId(), this );
         }
+        else if ( resource instanceof GraphProperties )
+        {
+            container = (GraphProperties) resource;
+        }
         else
         {
             throw new LockException( "Unkown primitivite type: " + resource );
@@ -812,6 +824,10 @@ public class NodeManager
         else if ( resource instanceof RelationshipImpl )
         {
             container = new RelationshipProxy( resource.getId(), this );
+        }
+        else if ( resource instanceof GraphProperties )
+        {
+            container = (GraphProperties) resource;
         }
         else
         {
@@ -953,6 +969,21 @@ public class NodeManager
         persistenceManager.nodeRemoveProperty( node.getId(), property );
     }
 
+    PropertyData graphAddProperty( PropertyIndex index, Object value )
+    {
+        return persistenceManager.graphAddProperty( index, value );
+    }
+
+    PropertyData graphChangeProperty( PropertyData property, Object value )
+    {
+        return persistenceManager.graphChangeProperty( property, value );
+    }
+
+    void graphRemoveProperty( PropertyData property )
+    {
+        persistenceManager.graphRemoveProperty( property );
+    }
+    
     ArrayMap<Integer,PropertyData> deleteRelationship( RelationshipImpl rel )
     {
         deletePrimitive( rel );
@@ -1081,6 +1112,11 @@ public class NodeManager
     LockReleaser getLockReleaser()
     {
         return this.lockReleaser;
+    }
+    
+    LockManager getLockManager()
+    {
+        return this.lockManager;
     }
 
     void addRelationshipType( RelationshipTypeData type )
@@ -1242,6 +1278,26 @@ public class NodeManager
             PropertyTracker<Relationship> relationshipPropertyTracker )
     {
         relationshipPropertyTrackers.remove( relationshipPropertyTracker );
+    }
+
+    PersistenceManager getPersistenceManager()
+    {
+        return persistenceManager;
+    }
+    
+    private GraphProperties instantiateGraphProperties()
+    {
+        return new GraphProperties( this );
+    }
+    
+    public GraphProperties getGraphProperties()
+    {
+        return graphProperties;
+    }
+
+    public void removeGraphPropertiesFromCache()
+    {
+        graphProperties = instantiateGraphProperties();
     }
 
     public int getRelationshipCount( NodeImpl nodeImpl, RelationshipType type, DirectionWrapper direction )
