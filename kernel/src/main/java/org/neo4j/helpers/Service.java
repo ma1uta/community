@@ -343,8 +343,6 @@ public abstract class Service
             return null;
         }
     }
-    
-    
 
     private static <T> Iterable<T> sunJava5Loader( final Class<T> type )
     {
