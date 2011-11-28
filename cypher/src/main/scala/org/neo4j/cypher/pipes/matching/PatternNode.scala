@@ -21,19 +21,12 @@ package org.neo4j.cypher.pipes.matching
 
 import org.neo4j.graphdb.{Direction, Node}
 
-class PatternNode(key: String) extends PatternElement(key) with PinnablePatternElement[Node] {
+class PatternNode(key: String) extends PatternElement(key)  {
   val relationships = scala.collection.mutable.Set[PatternRelationship]()
 
   def getPRels(history: Seq[MatchingPair]): Seq[PatternRelationship] = relationships.filterNot( r => history.exists(_.matches(r)) ).toSeq
 
-  def getGraphRelationships(node: Node, pRel: PatternRelationship, history:Seq[MatchingPair]): Seq[GraphRelationship] = {
-    val relationships = pRel.getGraphRelationships(this, node)
-//    println(String.format("found real relationships: %s\n", relationships.toList))
-    relationships.filterNot( gr => gr match {
-      case SingleGraphRelationship(r) => history.exists(h => h.matches(r))
-      case VariableLengthGraphRelationship(p) => history.exists(h => h.matches(p))
-    }).toSeq
-  }
+  def getGraphRelationships(node: Node, pRel: PatternRelationship): Seq[GraphRelationship] = pRel.getGraphRelationships(this, node)
 
   def relateTo(key: String, other: PatternNode, relType: Option[String], dir: Direction, optional:Boolean): PatternRelationship = {
     val rel = new PatternRelationship(key, this, other, relType, dir, optional)

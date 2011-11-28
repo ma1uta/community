@@ -19,8 +19,7 @@
  */
 package org.neo4j.server.helpers;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.neo4j.server.ServerTestUtils.asOneLine;
 import static org.neo4j.server.ServerTestUtils.createTempDir;
 import static org.neo4j.server.ServerTestUtils.createTempPropertyFile;
 import static org.neo4j.server.ServerTestUtils.writePropertiesToFile;
@@ -35,11 +34,15 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
-import org.neo4j.server.AddressResolver;
+import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.server.Bootstrapper;
+import org.neo4j.server.EphemeralNeoServerBootstrapper;
 import org.neo4j.server.NeoServerBootstrapper;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
+import org.neo4j.server.ServerTestUtils;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.configuration.PropertyFileConfigurator;
 import org.neo4j.server.configuration.validation.DatabaseLocationMustBeSpecifiedRule;
@@ -59,14 +62,12 @@ import org.neo4j.server.web.Jetty6WebServer;
 
 public class ServerBuilder
 {
-
     private String portNo = "7474";
     private String maxThreads = null;
     private String dbDir = null;
     private String webAdminUri = "/db/manage/";
     private String webAdminDataUri = "/db/data/";
     private StartupHealthCheck startupHealthCheck;
-    private AddressResolver addressResolver = new LocalhostAddressResolver();
     private final HashMap<String, String> thirdPartyPackages = new HashMap<String, String>();
 
     private static enum WhatToDo
@@ -82,12 +83,14 @@ public class ServerBuilder
     private String[] autoIndexedNodeKeys = null;
     private String[] autoIndexedRelationshipKeys = null;
     private String host = null;
+    private String[] securityRuleClassNames;
+    private boolean persistent;
 
     public static ServerBuilder server()
     {
         return new ServerBuilder();
     }
-
+    
     @SuppressWarnings( "unchecked" )
     public NeoServerWithEmbeddedWebServer build() throws IOException
     {
@@ -105,8 +108,13 @@ public class ServerBuilder
 
         if ( startupHealthCheck == null )
         {
-            startupHealthCheck = mock( StartupHealthCheck.class );
-            when( startupHealthCheck.run() ).thenReturn( true );
+            startupHealthCheck = new StartupHealthCheck()
+            {
+                public boolean run()
+                {
+                    return true;
+                }
+            };
         }
 
         if ( clock != null )
@@ -114,9 +122,14 @@ public class ServerBuilder
             LeaseManagerProvider.setClock( clock );
         }
 
-        return new NeoServerWithEmbeddedWebServer( new NeoServerBootstrapper(), addressResolver, startupHealthCheck,
+        return new NeoServerWithEmbeddedWebServer( createBootstrapper(), startupHealthCheck,
                 new PropertyFileConfigurator( new Validator( new DatabaseLocationMustBeSpecifiedRule() ), configFile ),
                 new Jetty6WebServer(), serverModules );
+    }
+
+    private Bootstrapper createBootstrapper()
+    {
+        return persistent ? new NeoServerBootstrapper() : new EphemeralNeoServerBootstrapper();
     }
 
     public File createPropertiesFiles() throws IOException
@@ -131,43 +144,48 @@ public class ServerBuilder
 
     private void createPropertiesFile( File temporaryConfigFile )
     {
-        writePropertyToFile( Configurator.DATABASE_LOCATION_PROPERTY_KEY, dbDir, temporaryConfigFile );
+        Map<String, String> properties = MapUtil.stringMap(
+                Configurator.DATABASE_LOCATION_PROPERTY_KEY, dbDir,
+                Configurator.MANAGEMENT_PATH_PROPERTY_KEY, webAdminUri,
+                Configurator.REST_API_PATH_PROPERTY_KEY, webAdminDataUri );
         if ( portNo != null )
         {
-            writePropertyToFile( Configurator.WEBSERVER_PORT_PROPERTY_KEY, portNo, temporaryConfigFile );
+            properties.put( Configurator.WEBSERVER_PORT_PROPERTY_KEY, portNo );
         }
         if ( host != null )
         {
-            writePropertyToFile( Configurator.WEBSERVER_ADDRESS_PROPERTY_KEY, host, temporaryConfigFile );
+            properties.put( Configurator.WEBSERVER_ADDRESS_PROPERTY_KEY, host );
         }
         if ( maxThreads != null )
         {
-            writePropertyToFile( Configurator.WEBSERVER_MAX_THREADS_PROPERTY_KEY, maxThreads, temporaryConfigFile );
+            properties.put( Configurator.WEBSERVER_MAX_THREADS_PROPERTY_KEY, maxThreads );
         }
-        writePropertyToFile( Configurator.MANAGEMENT_PATH_PROPERTY_KEY, webAdminUri, temporaryConfigFile );
-        writePropertyToFile( Configurator.REST_API_PATH_PROPERTY_KEY, webAdminDataUri, temporaryConfigFile );
 
-        if ( thirdPartyPackages.keySet()
-                .size() > 0 )
+        if ( thirdPartyPackages.keySet().size() > 0 )
         {
-            writePropertiesToFile( Configurator.THIRD_PARTY_PACKAGES_KEY, thirdPartyPackages, temporaryConfigFile );
+            properties.put( Configurator.THIRD_PARTY_PACKAGES_KEY, asOneLine( thirdPartyPackages ) );
         }
 
         if ( autoIndexedNodeKeys != null && autoIndexedNodeKeys.length > 0 )
         {
-            writePropertyToFile( "node_auto_indexing", "true", temporaryConfigFile );
+            properties.put( "node_auto_indexing", "true" );
             String propertyKeys = org.apache.commons.lang.StringUtils.join( autoIndexedNodeKeys, "," );
-            writePropertyToFile( "node_keys_indexable", propertyKeys, temporaryConfigFile );
+            properties.put( "node_keys_indexable", propertyKeys );
         }
-        
+
         if ( autoIndexedRelationshipKeys != null && autoIndexedRelationshipKeys.length > 0 )
         {
-            
-            System.out.println("RELS HERE");
-            writePropertyToFile( "relationship_auto_indexing", "true", temporaryConfigFile );
+            properties.put( "relationship_auto_indexing", "true" );
             String propertyKeys = org.apache.commons.lang.StringUtils.join( autoIndexedRelationshipKeys, "," );
-            writePropertyToFile( "relationship_keys_indexable", propertyKeys, temporaryConfigFile );
+            properties.put( "relationship_keys_indexable", propertyKeys );
         }
+
+        if ( securityRuleClassNames != null && securityRuleClassNames.length > 0 )
+        {
+            String propertyKeys = org.apache.commons.lang.StringUtils.join( securityRuleClassNames, "," );
+            properties.put( Configurator.SECURITY_RULES_KEY, propertyKeys );
+        }
+        ServerTestUtils.writePropertiesToFile( properties, temporaryConfigFile );
     }
 
     private void createTuningFile( File temporaryConfigFile ) throws IOException
@@ -175,11 +193,13 @@ public class ServerBuilder
         if ( action == WhatToDo.CREATE_GOOD_TUNING_FILE )
         {
             File databaseTuningPropertyFile = createTempPropertyFile();
-            writePropertyToFile( "neostore.nodestore.db.mapped_memory", "25M", databaseTuningPropertyFile );
-            writePropertyToFile( "neostore.relationshipstore.db.mapped_memory", "50M", databaseTuningPropertyFile );
-            writePropertyToFile( "neostore.propertystore.db.mapped_memory", "90M", databaseTuningPropertyFile );
-            writePropertyToFile( "neostore.propertystore.db.strings.mapped_memory", "130M", databaseTuningPropertyFile );
-            writePropertyToFile( "neostore.propertystore.db.arrays.mapped_memory", "130M", databaseTuningPropertyFile );
+            Map<String, String> properties = MapUtil.stringMap( 
+                    "neostore.nodestore.db.mapped_memory", "25M",
+                    "neostore.relationshipstore.db.mapped_memory", "50M",
+                    "neostore.propertystore.db.mapped_memory", "90M",
+                    "neostore.propertystore.db.strings.mapped_memory", "130M",
+                    "neostore.propertystore.db.arrays.mapped_memory", "130M" );
+            writePropertiesToFile( properties, databaseTuningPropertyFile );
             writePropertyToFile( Configurator.DB_TUNING_PROPERTY_FILE_KEY,
                     databaseTuningPropertyFile.getAbsolutePath(), temporaryConfigFile );
         }
@@ -216,6 +236,12 @@ public class ServerBuilder
     {
     }
 
+    public ServerBuilder persistent()
+    {
+        this.persistent = true;
+        return this;
+    }
+    
     public ServerBuilder onPort( int portNo )
     {
         this.portNo = String.valueOf( portNo );
@@ -282,29 +308,30 @@ public class ServerBuilder
         return this;
     }
 
-    public ServerBuilder withNetworkBoundHostnameResolver()
-    {
-        addressResolver = new AddressResolver();
-        return this;
-    }
-
     public ServerBuilder withFailingStartupHealthcheck()
     {
-        startupHealthCheck = mock( StartupHealthCheck.class );
-        when( startupHealthCheck.run() ).thenReturn( false );
-        when( startupHealthCheck.failedRule() ).thenReturn( new StartupHealthCheckRule()
+        startupHealthCheck = new StartupHealthCheck()
         {
-
-            public String getFailureMessage()
-            {
-                return "mockFailure";
-            }
-
-            public boolean execute( Properties properties )
+            public boolean run()
             {
                 return false;
             }
-        } );
+            public StartupHealthCheckRule failedRule() {
+                return new StartupHealthCheckRule()
+                {
+
+                    public String getFailureMessage()
+                    {
+                        return "mockFailure";
+                    }
+
+                    public boolean execute( Properties properties )
+                    {
+                        return false;
+                    }
+                };           
+            }
+        };
         return this;
     }
 
@@ -349,15 +376,22 @@ public class ServerBuilder
         autoIndexedNodeKeys = keys;
         return this;
     }
-    
+
     public ServerBuilder withAutoIndexingEnabledForRelationships( String... keys )
     {
         autoIndexedRelationshipKeys = keys;
         return this;
     }
 
-    public ServerBuilder onHost(String host) {
-        this.host  = host;
+    public ServerBuilder onHost( String host )
+    {
+        this.host = host;
+        return this;
+    }
+
+    public ServerBuilder withSecurityRules( String... securityRuleClassNames )
+    {
+        this.securityRuleClassNames = securityRuleClassNames;
         return this;
     }
 }

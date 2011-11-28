@@ -22,30 +22,22 @@ package org.neo4j.server.rest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Before;
-import org.junit.Ignore;
+import org.json.JSONException;
 import org.junit.Test;
 import org.neo4j.graphdb.Node;
 import org.neo4j.kernel.impl.annotations.Documented;
 import org.neo4j.server.rest.domain.JsonHelper;
 import org.neo4j.server.rest.domain.JsonParseException;
+import org.neo4j.test.GraphDescription.Graph;
 
 import com.sun.jersey.api.client.ClientHandlerException;
 import com.sun.jersey.api.client.UniformInterfaceException;
 
 public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
 {
-    @Before
-    public void cleanContent()
-    {
-        graphdb.cleanContent(true);
-        gen.get().setGraph( graphdb );
-    }
-    
     /**
      * Execute multiple operations in batch.
      * 
@@ -77,15 +69,16 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
     @Documented
     @SuppressWarnings( "unchecked" )
     @Test
+    @Graph("Joe knows John")
     public void shouldPerformMultipleOperations() throws Exception {
-
+        long idJoe = data.get().get( "Joe" ).getId();
         String jsonString = new PrettyJSON().array()
 
                 .object()
                 .key("method")
                 .value("PUT")
                 .key("to")
-                .value("/node/0/properties")
+                .value("/node/"+idJoe+"/properties")
                 .key("body")
                 .object()
                 .key("age")
@@ -99,7 +92,7 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
                 .key("method")
                 .value("GET")
                 .key("to")
-                .value("/node/0")
+                .value("/node/"+idJoe)
                 .key("id")
                 .value(1)
                 .endObject()
@@ -135,12 +128,13 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
                 .endArray()
                 .toString();
 
-        
-        JaxRsResponse response = RestRequest.req().post(batchUri(), jsonString);
+            
+        String entity = gen.get()
+        .payload(jsonString)
+        .expectedStatus(200)
+        .post(batchUri()).entity();
 
-        assertEquals(200, response.getStatus());
-
-        List<Map<String, Object>> results = JsonHelper.jsonToList(response.getEntity());
+        List<Map<String, Object>> results = JsonHelper.jsonToList(entity);
 
         assertEquals(4, results.size());
 
@@ -155,8 +149,8 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
         assertEquals(3, secondPostResult.get("id"));
 
         // Should contain "from"
-        assertEquals("/node/0/properties", putResult.get("from"));
-        assertEquals("/node/0", getResult.get("from"));
+        assertEquals("/node/"+idJoe+"/properties", putResult.get("from"));
+        assertEquals("/node/"+idJoe, getResult.get("from"));
         assertEquals("/node", firstPostResult.get("from"));
         assertEquals("/node", secondPostResult.get("from"));
 
@@ -168,10 +162,7 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
         Map<String, Object> body = (Map<String, Object>) getResult.get("body");
         assertEquals(1, ((Map<String, Object>) body.get("data")).get("age"));
 
-        gen.get()
-                .payload(jsonString)
-                .expectedStatus(200)
-                .post(batchUri());
+        
     }
     
     /**
@@ -197,8 +188,8 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
                 .value(0)
                 .key("body")
                 .object()
-                .key("age")
-                .value(1)
+                .key("name")
+                .value("bob")
                 .endObject()
                 .endObject()
                 .object()
@@ -227,8 +218,8 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
                 .value("{1}")
                 .key("data")
                 .object()
-                .key("name")
-                .value("bob")
+                .key("since")
+                .value("2010")
                 .endObject()
                 .key("type")
                 .value("KNOWS")
@@ -238,31 +229,35 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
                 .key("method")
                 .value("POST")
                 .key("to")
-                .value("/index/relationship/my_rels/name/bob")
+                .value("/index/relationship/my_rels")
                 .key("id")
                 .value(4)
                 .key("body")
+                .object()
+                .key("key")
+                .value("since")
+                .key("value")
+                .value("2010")
+                .key("uri")
                 .value("{3}")
+                .endObject()
                 .endObject()
                 .endArray()
                 .toString();
 
-        batchUri();
+        String entity = gen.get()
+        .expectedStatus( 200 )
+        .payload( jsonString )
+        .post( batchUri() )
+        .entity();
 
-        JaxRsResponse response = RestRequest.req().post(batchUri(), jsonString);
-
-        assertEquals(200, response.getStatus());
-
-        List<Map<String, Object>> results = JsonHelper.jsonToList(response.getEntity());
+        List<Map<String, Object>> results = JsonHelper.jsonToList(entity);
 
         assertEquals(4, results.size());
         
-        String rels = RestRequest.req().get( getRelationshipIndexUri( "my_rels", "name", "bob")).getEntity( String.class);
-        assertEquals(1, JsonHelper.jsonToList(  rels ).size());
-        gen.get()
-                .payload(jsonString)
-                .expectedStatus(200)
-                .post(batchUri());
+//        String rels = gen.get()
+//                .expectedStatus( 200 ).get( getRelationshipIndexUri( "my_rels", "since", "2010")).entity();
+//        assertEquals(1, JsonHelper.jsonToList(  rels ).size());
     }
 
     private String batchUri()
@@ -319,7 +314,7 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
                 .endObject()
             .endArray()
             .toString());
-        assertEquals(400, response.getStatus());
+        assertEquals(500, response.getStatus());
         Map<String, Object> res = JsonHelper.jsonToMap(response.getEntity());
 
         assertTrue(((String)res.get("message")).startsWith("Invalid JSON array in POST body"));
@@ -337,9 +332,58 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
 
         JaxRsResponse response = RestRequest.req().post(batchUri(), jsonString);
 
-        assertEquals(400, response.getStatus());
+        assertEquals(500, response.getStatus());
         assertEquals(originalNodeCount, countNodes());
 
+    }
+    
+    @Test
+    @Graph("\u4f8b\u5b50 has öäüÖÄÜß")
+    public void shouldHandleUnicodeGetCorrectly() throws JsonParseException, ClientHandlerException,
+            UniformInterfaceException, JSONException {
+        String asian = "\u4f8b\u5b50";
+        String german = "öäüÖÄÜß";
+        Node gnode = getNode( german );
+        Node anode = getNode( asian );
+        assertTrue( gen.get()
+                .expectedStatus( 200 )
+                .get( getNodeUri( anode ) )
+                .entity().contains(asian) );
+        assertTrue( gen.get()
+                .expectedStatus( 200 )
+                .get( getNodeUri( gnode ) )
+                .entity().contains(german) );
+        testBatch(anode, asian);
+        testBatch(gnode, german);
+    }
+
+    private void testBatch( Node anode, String asian )
+    {
+        String jsonString;
+        try
+        {
+            jsonString = new PrettyJSON()
+            .array()
+                .object()
+                    .key("method") .value("GET")
+                    .key("to")     .value("/node/"+anode.getId()+"/properties")
+                .endObject()
+            .endArray()
+            .toString();
+        String entity = gen.get()
+                .expectedStatus( 200 )
+                .payload( jsonString )
+                .post( batchUri() )
+                .entity();
+        assertTrue( entity.contains( asian) );
+
+        }
+        catch ( JSONException e )
+        {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
     }
 
     @Test
@@ -354,7 +398,7 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
 
         JaxRsResponse response = RestRequest.req().post(batchUri(), jsonString);
 
-        assertEquals(400, response.getStatus());
+        assertEquals(500, response.getStatus());
         assertEquals(originalNodeCount, countNodes());
 
     }
@@ -370,7 +414,7 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
 
         JaxRsResponse response = RestRequest.req().post(batchUri(), jsonString);
 
-        assertEquals(400, response.getStatus());
+        assertEquals(500, response.getStatus());
         assertEquals(originalNodeCount, countNodes());
 
     }
@@ -378,39 +422,10 @@ public class BatchOperationFunctionalTest extends AbstractRestFunctionalTestBase
     private int countNodes()
     {
         int count = 0;
-        for(Node node : graphdb.getAllNodes())
+        for(Node node : graphdb().getAllNodes())
         {
             count++;
         }
         return count;
-    }
-
-    @Ignore
-    @Test
-    public void testlargerequest() {    
-        testlargerequest(1000);
-        testlargerequest(5000);
-        testlargerequest(10000);
-        testlargerequest(50000);
-        testlargerequest(100000);
-        testlargerequest(500000);
-        testlargerequest(1000000);
-    }
-    
-    private void testlargerequest(int number) {
-        StringBuilder largereq = new StringBuilder();
-        largereq.append("[");
-        for(int i=0;i<number; i++) {
-            largereq.append("{\"method\":\"post\",\"to\":\"/node\", \"body\":{ \"age\":1 } },");
-        }
-        largereq.append("{\"method\":\"post\",\"to\":\"/node\", \"body\":{ \"age\":1 } }]");
-        
-        Date d = new Date();
-        JaxRsResponse response = RestRequest.req().post(batchUri(), largereq.toString());
-
-        System.out.println(number + "\t:" + ((new Date()).getTime() - d.getTime()) + "ms");
-        
-        assertEquals(200, response.getStatus());
-        
     }
 }

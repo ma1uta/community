@@ -22,19 +22,22 @@ package org.neo4j.cypher.parser
 
 import scala.util.parsing.combinator._
 import org.neo4j.cypher.SyntaxException
+import org.neo4j.cypher.commands.{Literal, ParameterValue, Value}
 
 trait Tokens extends JavaTokenParsers {
   val keywords = List("start", "where", "return", "limit", "skip", "order", "by")
 
-  def ignoreCase(str: String): Parser[String] = ("""(?i)\Q""" + str + """\E""").r
+  def ignoreCase(str: String): Parser[ String ] = ( """(?i)\Q""" + str + """\E""" ).r ^^ ( x => x.toLowerCase )
 
-  def identity: Parser[String] = (nonKeywordIdentifier | escapedIdentity)
+  def identity: Parser[ String ] = ( nonKeywordIdentifier | escapedIdentity )
 
-  def nonKeywordIdentifier: Parser[String] = ident ^^ {
-    case str => if (keywords.contains(str.toLowerCase)) {
-      throw new SyntaxException(str + " is a reserved keyword and may not be used here.")
-    } else {
-      str
+  def nonKeywordIdentifier: Parser[ String ] = ident ^^ {
+    case str => {
+      if( keywords.contains(str.toLowerCase) ) {
+        throw new SyntaxException(str + " is a reserved keyword and may not be used here.")
+      } else {
+        str
+      }
     }
   }
 
@@ -42,26 +45,28 @@ trait Tokens extends JavaTokenParsers {
     case c => c.toLowerCase
   }
 
-  def optParens[U](q: => Parser[U]):Parser[U] = parens(q) | q
+  def number: Parser[String] =
+    """-?(\d+(\.\d*)?|\d*\.\d+)""".r
 
-  def parens[U](inner: => Parser[U]) = "(" ~> inner <~ ")"
-  def curly[U](inner: => Parser[U]) = "{" ~> inner <~ "}"
+  def optParens[ U ](q: => Parser[ U ]): Parser[ U ] = parens(q) | q
 
-  def escapedIdentity: Parser[String] = ("`(``|[^`])*`").r ^^ {
-    case str => stripQuotes(str).replace("``", "`")
-  }
+  def parens[ U ](inner: => Parser[ U ]) = "(" ~> inner <~ ")"
+
+  def curly[ U ](inner: => Parser[ U ]) = "{" ~> inner <~ "}"
+
+  def escapedIdentity: Parser[ String ] = ( "`(``|[^`])*`" ).r ^^ ( str => stripQuotes(str).replace("``", "`") )
 
   def stripQuotes(s: String) = s.substring(1, s.length - 1)
 
-  def positiveNumber: Parser[String] = """\d+""".r
+  def positiveNumber: Parser[ String ] = """\d+""".r
 
-  def string: Parser[String] = (stringLiteral | apostropheString) ^^ {
-    case str => stripQuotes(str)
-  }
+  def string: Parser[ String ] = ( stringLiteral | apostropheString ) ^^ ( str => stripQuotes(str) )
 
-  def apostropheString: Parser[String] = ("\'" + """([^'\p{Cntrl}\\]|\\[\\/bfnrt]|\\u[a-fA-F0-9]{4})*""" + "\'").r
+  def apostropheString: Parser[ String ] = ( "\'" + """([^'\p{Cntrl}\\]|\\[\\/bfnrt]|\\u[a-fA-F0-9]{4})*""" + "\'" ).r
 
-  def regularLiteral = ("/" + """([^"\p{Cntrl}\\]|\\[\\/bfnrt]|\\u[a-fA-F0-9]{4})*""" + "/").r
+  def regularLiteral = ( "/" + """([^"\p{Cntrl}\\]|\\[\\/bfnrt]|\\u[a-fA-F0-9]{4})*?""" + "/" ).r ^^ ( x => Literal(stripQuotes(x)) )
+
+  def parameter: Parser[ Value ] = curly(identity | wholeNumber) ^^ ( x => ParameterValue(x) )
 }
 
 

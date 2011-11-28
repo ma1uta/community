@@ -20,7 +20,6 @@
 package org.neo4j.kernel.impl.nioneo.store;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -37,7 +36,7 @@ import org.neo4j.kernel.impl.util.StringLogger;
 /**
  * An abstract representation of a store. A store is a file that contains
  * records. Each record has a fixed size (<CODE>getRecordSize()</CODE>) so
- * the position for a record can be calculated by 
+ * the position for a record can be calculated by
  * <CODE>id * getRecordSize()</CODE>.
  * <p>
  * A store has an {@link IdGenerator} managing the records that are free or in
@@ -46,12 +45,12 @@ import org.neo4j.kernel.impl.util.StringLogger;
 public abstract class AbstractStore extends CommonAbstractStore
 {
     /**
-     * Returnes the fixed size of each record in this store.
-     * 
+     * Returns the fixed size of each record in this store.
+     *
      * @return The record size
      */
     public abstract int getRecordSize();
-    
+
     @Override
     protected long figureOutHighestIdInUse()
     {
@@ -71,9 +70,9 @@ public abstract class AbstractStore extends CommonAbstractStore
      * store.
      * <p>
      * This method will create a empty store containing the descriptor returned
-     * by the <CODE>getTypeAndVersionDescriptor()</CODE>. The id generator
+     * by the <CODE>getTypeDescriptor()</CODE>. The id generator
      * used by this store will also be created
-     * 
+     *
      * @param fileName
      *            The file name of the store that will be created
      * @param typeAndVersionDescriptor
@@ -82,7 +81,7 @@ public abstract class AbstractStore extends CommonAbstractStore
      *             If fileName is null or if file exists
      */
     protected static void createEmptyStore( String fileName,
-        String typeAndVersionDescriptor, IdGeneratorFactory idGeneratorFactory )
+        String typeAndVersionDescriptor, IdGeneratorFactory idGeneratorFactory, FileSystemAbstraction fileSystem )
     {
         // sanity checks
         if ( fileName == null )
@@ -99,7 +98,7 @@ public abstract class AbstractStore extends CommonAbstractStore
         // write the header
         try
         {
-            FileChannel channel = new FileOutputStream( fileName ).getChannel();
+            FileChannel channel = fileSystem.create( fileName );
             int endHeaderSize = UTF8.encode( typeAndVersionDescriptor ).length;
             ByteBuffer buffer = ByteBuffer.allocate( endHeaderSize );
             buffer.put( UTF8.encode( typeAndVersionDescriptor ) ).flip();
@@ -120,85 +119,37 @@ public abstract class AbstractStore extends CommonAbstractStore
         super( fileName, config, idType );
     }
 
-//    public AbstractStore( String fileName )
-//    {
-//        super( fileName );
-//    }
-
-    protected void loadStorage()
+    @Override
+    protected int getEffectiveRecordSize()
     {
-        try
+        return getRecordSize();
+    }
+
+    @Override
+    protected void readAndVerifyBlockSize() throws IOException
+    {
+        // record size is fixed for non-dynamic stores, so nothing to do here
+    }
+
+    @Override
+    protected void verifyFileSizeAndTruncate() throws IOException
+    {
+        int expectedVersionLength = UTF8.encode( buildTypeDescriptorAndVersion( getTypeDescriptor() ) ).length;
+        long fileSize = getFileChannel().size();
+        if ( getRecordSize() != 0
+            && (fileSize - expectedVersionLength) % getRecordSize() != 0  && !isReadOnly() )
         {
-            long fileSize = getFileChannel().size();
-            String expectedVersion = getTypeAndVersionDescriptor();
-            byte version[] = new byte[UTF8.encode( expectedVersion ).length];
-            ByteBuffer buffer = ByteBuffer.wrap( version );
-            if ( fileSize >= version.length )
-            {
-                getFileChannel().position( fileSize - version.length );
-            }
-            else if ( !isReadOnly() )
-            {
-                setStoreNotOk();
-            }
-            getFileChannel().read( buffer );
-            if ( !expectedVersion.equals( UTF8.decode( version ) ) && !isReadOnly() )
-            {
-                if ( !versionFound( UTF8.decode( version ) ) )
-                {
-                    setStoreNotOk();
-                }
-            }
-            if ( getRecordSize() != 0
-                && (fileSize - version.length) % getRecordSize() != 0  && !isReadOnly() )
-            {
-                setStoreNotOk();
-            }
-            if ( getStoreOk() && !isReadOnly() )
-            {
-                getFileChannel().truncate( fileSize - version.length );
-            }
+            setStoreNotOk( new IllegalStateException( "Misaligned file size " + fileSize + " for " + this + ", expected version length:" + expectedVersionLength ) );
         }
-        catch ( IOException e )
+        if ( getStoreOk() && !isReadOnly() )
         {
-            throw new UnderlyingStorageException( "Unable to load store "
-                + getStorageFileName(), e );
+            getFileChannel().truncate( fileSize - expectedVersionLength );
         }
-        try
-        {
-            if ( !isReadOnly() || isBackupSlave() )
-            {
-                openIdGenerator();
-            }
-            else
-            {
-                openReadOnlyIdGenerator( getRecordSize() );
-            }
-        }
-        catch ( InvalidIdGeneratorException e )
-        {
-            setStoreNotOk();
-        }
-        finally 
-        {
-            if ( !getStoreOk() )
-            {
-                if ( getConfig() != null )
-                {
-                    String storeDir = (String) getConfig().get( "store_dir" );
-                    StringLogger msgLog = StringLogger.getLogger( storeDir );
-                    msgLog.logMessage( getStorageFileName() + " non clean shutdown detected", true );
-                }
-            }
-        }
-        setWindowPool( new PersistenceWindowPool( getStorageFileName(),
-            getRecordSize(), getFileChannel(), getMappedMem(), 
-            getIfMemoryMapped(), isReadOnly() && !isBackupSlave() ) );
     }
 
     /**
      * Sets the high id of {@link IdGenerator}.
-     * 
+     *
      * @param id
      *            The high id
      */
@@ -206,24 +157,6 @@ public abstract class AbstractStore extends CommonAbstractStore
     {
         super.setHighId( id );
     }
-    
-//    @Override
-//    protected void updateHighId()
-//    {
-//        try
-//        {
-//            long highId = getFileChannel().size() / getRecordSize();
-//            
-//            if ( highId > getHighId() )
-//            {
-//                setHighId( highId );
-//            }
-//        }
-//        catch ( IOException e )
-//        {
-//            throw new UnderlyingStorageException( e );
-//        }
-//    }
 
     private long findHighIdBackwards() throws IOException
     {
@@ -232,16 +165,16 @@ public abstract class AbstractStore extends CommonAbstractStore
         int recordSize = getRecordSize();
         long fileSize = fileChannel.size();
         long highId = fileSize / recordSize;
-        ByteBuffer byteBuffer = ByteBuffer.allocate( 1 );
+        ByteBuffer byteBuffer = ByteBuffer.allocate( getRecordSize() );
         for ( long i = highId; i > 0; i-- )
         {
             fileChannel.position( i * recordSize );
             if ( fileChannel.read( byteBuffer ) > 0 )
             {
                 byteBuffer.flip();
-                byte inUse = byteBuffer.get();
+                boolean isInUse = isRecordInUse( byteBuffer );
                 byteBuffer.clear();
-                if ( inUse != 0 )
+                if ( isInUse )
                 {
                     return i;
                 }
@@ -249,14 +182,21 @@ public abstract class AbstractStore extends CommonAbstractStore
         }
         return 0;
     }
-    
+
+    protected boolean isRecordInUse(ByteBuffer buffer)
+    {
+        byte inUse = buffer.get();
+        return ( ( inUse & 0x1 ) == Record.IN_USE.byteValue() );
+    }
+
     /**
      * Rebuilds the {@link IdGenerator} by looping through all records and
      * checking if record in use or not.
-     * 
+     *
      * @throws IOException
      *             if unable to rebuild the id generator
      */
+    @Override
     protected void rebuildIdGenerator()
     {
         if ( isReadOnly() && !isBackupSlave() )
@@ -274,7 +214,7 @@ public abstract class AbstractStore extends CommonAbstractStore
             assert success;
         }
         createIdGenerator( getStorageFileName() + ".id" );
-        openIdGenerator();
+        openIdGenerator( false );
         FileChannel fileChannel = getFileChannel();
         long highId = 1;
         long defraggedCount = 0;
@@ -285,7 +225,7 @@ public abstract class AbstractStore extends CommonAbstractStore
             boolean fullRebuild = true;
             if ( getConfig() != null )
             {
-                String mode = (String) 
+                String mode = (String)
                     getConfig().get( "rebuild_idgenerators_fast" );
                 if ( mode != null && mode.toLowerCase().equals( "true" ) )
                 {
@@ -298,7 +238,7 @@ public abstract class AbstractStore extends CommonAbstractStore
             LinkedList<Long> freeIdList = new LinkedList<Long>();
             if ( fullRebuild )
             {
-                for ( long i = 0; i * recordSize < fileSize && recordSize > 0; 
+                for ( long i = 0; i * recordSize < fileSize && recordSize > 0;
                     i++ )
                 {
                     fileChannel.position( i * recordSize );
@@ -325,22 +265,21 @@ public abstract class AbstractStore extends CommonAbstractStore
         }
         catch ( IOException e )
         {
-            throw new UnderlyingStorageException( 
+            throw new UnderlyingStorageException(
                 "Unable to rebuild id generator " + getStorageFileName(), e );
         }
         setHighId( highId + 1 );
         if ( getConfig() != null )
         {
-            String storeDir = (String) getConfig().get( "store_dir" );
-            StringLogger msgLog = StringLogger.getLogger( storeDir );
-            msgLog.logMessage( getStorageFileName() + " rebuild id generator, highId=" + getHighId() + 
+            StringLogger msgLog = (StringLogger) getConfig().get( StringLogger.class );
+            msgLog.logMessage( getStorageFileName() + " rebuild id generator, highId=" + getHighId() +
                     " defragged count=" + defraggedCount, true );
         }
         logger.fine( "[" + getStorageFileName() + "] high id=" + getHighId()
             + " (defragged=" + defraggedCount + ")" );
         closeIdGenerator();
-        openIdGenerator();
+        openIdGenerator( false );
     }
-    
+
     public abstract List<WindowPoolStats> getAllWindowPoolStats();
 }

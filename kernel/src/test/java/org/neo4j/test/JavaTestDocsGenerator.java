@@ -22,10 +22,6 @@ package org.neo4j.test;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.neo4j.test.TestData.Producer;
 
@@ -55,25 +51,16 @@ public class JavaTestDocsGenerator extends AsciiDocGenerator
             // TODO: invoke some complete method here?
         }
     };
-    private static final String SNIPPET_MARKER = "@@";
-    private Map<String, String> snippets = new HashMap<String, String>();
-
+    
     public JavaTestDocsGenerator( String title )
     {
-        super( title );
-    }
-
-    @Override
-    protected void writeEntity( FileWriter fw, String entity )
-            throws IOException
-    {
-        // TODO Auto-generated method stub
-
+        super( title, "docs" );
     }
 
     public void document( String directory, String sectionName )
     {
-        FileWriter fw = getFW( directory + File.separator + sectionName, title );
+        this.setSection( sectionName );
+        FileWriter fw = getFW( directory + File.separator + section, title );
         String name = title.replace( " ", "-" ).toLowerCase();
         description = replaceSnippets( description );
         try
@@ -101,39 +88,11 @@ public class JavaTestDocsGenerator extends AsciiDocGenerator
         }
     }
 
-    private String replaceSnippets( String description )
+    public void addImageSnippet( String tagName, String imageName, String title )
     {
-        String result = description;
-        if ( description.contains( SNIPPET_MARKER ) )
-        {
-            Pattern p = Pattern.compile( ".*" + SNIPPET_MARKER
-                                         + "([a-zA-Z_\\-0-9]*).*" );
-            Matcher m = p.matcher( description );
-            m.find();
-            String group = m.group( 1 );
-            if ( !snippets.containsKey( group ) )
-            {
-                throw new Error( "No snippet '" + group + "' found." );
-            }
-            result = description.replace( SNIPPET_MARKER + group,
-                    snippets.get( group ) );
-            result = replaceSnippets( result );
-        }
-        return result;
+        this.addSnippet( tagName, "\nimage:"+imageName+"["+title+"scaledwidth=75%]\n" );
+        
     }
 
-    /**
-     * Add snippets that will be replaced into corresponding
-     * 
-     * @@snippetname placeholders in the content of the description.
-     * 
-     * @param key the snippet key, without @@
-     * @param content the content to be inserted
-     */
-    public void addSnippet( String key, String content )
-    {
-        snippets.put( key, content );
-
-    }
-
+    
 }

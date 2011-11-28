@@ -22,7 +22,8 @@ define(
   ['./gremlin',
    './console',
    'ribcage/View',
-   'lib/backbone'], 
+   'lib/backbone',
+   'lib/jquery.putCursorAtEnd'], 
   (baseTemplate, consoleTemplate, View) ->
 
     class ConsoleView extends View
@@ -38,7 +39,14 @@ define(
         @consoleState.bind("change", @renderConsole)
 
       consoleKeyUp : (ev) =>
-        @consoleState.setStatement $("#console-input").val(), silent : true
+        statement = $("#console-input").val()
+        @consoleState.setStatement statement, silent : true
+        
+        if statement.length > 0
+          $(".console-multiline-help",@el).hide()
+        else
+          $(".console-multiline-help",@el).show()
+        
         
         if ev.keyCode is 13 # ENTER
           @consoleState.eval()
@@ -48,20 +56,25 @@ define(
           @consoleState.nextHistory()
 
       wrapperClicked : (ev) =>
+        @focusOnInputField()
+        
+      focusOnInputField :->
         $("#console-input").focus()
+        $("#console-input").putCursorAtEnd()
 
       renderConsole : ()=>
         $("#console-base",@el).html consoleTemplate(
           lines : @consoleState.get "lines"
           prompt : @consoleState.get "prompt"
           showPrompt : @consoleState.get "showPrompt"
+          showMultilineHelp : @consoleState.get "showMultilineHelp" or false
           current : @lang
-          promptPrefix : @lang)
+          promptPrefix : @consoleState.get "promptPrefix")
         
         @delegateEvents()
-        $("#console-input").focus()
         @scrollToBottomOfConsole()
-
+        @focusOnInputField()
+        
       scrollToBottomOfConsole : () =>
         wrap = $("#console",@el)
         if wrap[0]

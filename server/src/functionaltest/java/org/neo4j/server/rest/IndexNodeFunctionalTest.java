@@ -34,27 +34,27 @@ import java.util.Map;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response.Status;
 
-import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.impl.annotations.Documented;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.database.DatabaseBlockedException;
 import org.neo4j.server.helpers.FunctionalTestHelper;
-import org.neo4j.server.helpers.ServerHelper;
 import org.neo4j.server.rest.domain.GraphDbHelper;
 import org.neo4j.server.rest.domain.JsonHelper;
 import org.neo4j.server.rest.domain.JsonParseException;
 import org.neo4j.server.rest.domain.URIHelper;
 import org.neo4j.server.rest.web.PropertyValueException;
 import org.neo4j.test.TestData;
+import org.neo4j.test.server.SharedServerTestBase;
 
-public class IndexNodeFunctionalTest
+public class IndexNodeFunctionalTest extends SharedServerTestBase
 {
-    private static NeoServerWithEmbeddedWebServer server;
     private static FunctionalTestHelper functionalTestHelper;
     private static GraphDbHelper helper;
     public @Rule
@@ -63,22 +63,30 @@ public class IndexNodeFunctionalTest
     @BeforeClass
     public static void setupServer() throws IOException
     {
-        server = ServerHelper.createServer();
-        functionalTestHelper = new FunctionalTestHelper( server );
+        functionalTestHelper = new FunctionalTestHelper( server() );
         helper = functionalTestHelper.getGraphDbHelper();
     }
 
     @Before
     public void cleanTheDatabase()
     {
-        ServerHelper.cleanTheDatabase( server );
-        gen.get().setGraph(server.getDatabase().graph );
+        cleanDatabase();
+        gen.get().setGraph( server().getDatabase().graph );
     }
-
-    @AfterClass
-    public static void stopServer()
+    
+    long createNode()
     {
-        server.stop();
+        AbstractGraphDatabase graphdb = server().getDatabase().graph;
+        Transaction tx = graphdb.beginTx();
+        Node node;
+        try {
+            node = graphdb.createNode();
+            
+            tx.success();
+        } finally {
+            tx.finish();
+        }
+        return node.getId();
     }
 
     /**
@@ -117,13 +125,31 @@ public class IndexNodeFunctionalTest
      * Create node index
      * 
      * NOTE: Instead of creating the index this way, you can simply start to use
-     * it, and it will be created automatically.
+     * it, and it will be created automatically with default configuration.
      */
     @Documented
     @Test
     public void shouldCreateANamedNodeIndex() throws JsonParseException
     {
         String indexName = "favorites";
+        int expectedIndexes = helper.getNodeIndexes().length + 1;
+        Map<String, String> indexSpecification = new HashMap<String, String>();
+        indexSpecification.put( "name", indexName );
+
+        gen.get()
+                .payload( JsonHelper.createJsonFrom( indexSpecification ) )
+                .expectedStatus( 201 )
+                .expectedHeader( "Location" )
+                .post( functionalTestHelper.nodeIndexUri() );
+
+        assertEquals( expectedIndexes, helper.getNodeIndexes().length );
+        assertThat( helper.getNodeIndexes(), FunctionalTestHelper.arrayContains( indexName ) );
+    }
+    
+    @Test
+    public void shouldCreateANamedNodeIndexWithSpaces() throws JsonParseException
+    {
+        String indexName = "favorites with spaces";
         int expectedIndexes = helper.getNodeIndexes().length + 1;
         Map<String, String> indexSpecification = new HashMap<String, String>();
         indexSpecification.put( "name", indexName );
@@ -175,22 +201,32 @@ public class IndexNodeFunctionalTest
     @Test
     public void shouldAddToIndex() throws Exception
     {
-        String indexName = "favorites";
-        String key = "key";
-        String value = "the value";
-        value = URIHelper.encode( value );
-        int nodeId = 0;
+        final String indexName = "favorites";
+        final String key = "some-key";
+        final String value = "some value";
+        long nodeId = createNode();
         // implicitly create the index
         gen.get()
                 .expectedStatus( 201 )
-                .payload( JsonHelper.createJsonFrom( functionalTestHelper.nodeUri( nodeId ) ) )
-                .post( functionalTestHelper.indexNodeUri( indexName, key, value ) );
+                .payload(
+                        JsonHelper.createJsonFrom( generateNodeIndexCreationPayload( key, value,
+                                functionalTestHelper.nodeUri( nodeId ) ) ) )
+                .post( functionalTestHelper.indexNodeUri( indexName ) );
         // look if we get one entry back
         JaxRsResponse response = RestRequest.req()
-                .get( functionalTestHelper.indexNodeUri( indexName, key, value ) );
+                .get( functionalTestHelper.indexNodeUri( indexName, key, URIHelper.encode( value ) ) );
         String entity = response.getEntity( String.class );
         Collection<?> hits = (Collection<?>) JsonHelper.jsonToSingleValue( entity );
         assertEquals( 1, hits.size() );
+    }
+
+    private Object generateNodeIndexCreationPayload( String key, String value, String nodeUri )
+    {
+        Map<String, String> results = new HashMap<String, String>();
+        results.put( "key", key );
+        results.put( "value", value );
+        results.put( "uri", nodeUri );
+        return results;
     }
 
     /**
@@ -205,17 +241,17 @@ public class IndexNodeFunctionalTest
         String indexName = "favorites";
         String key = "key";
         String value = "the value";
+        long nodeId = createNode();
         value = URIHelper.encode( value );
         // implicitly create the index
         JaxRsResponse response = RestRequest.req()
-                .post( functionalTestHelper.indexNodeUri( indexName, key, value ),
-                        JsonHelper.createJsonFrom( functionalTestHelper.nodeUri( 0 ) ) );
-        assertEquals( response.getStatus(), 201 );
+                .post( functionalTestHelper.indexNodeUri( indexName ), createJsonStringFor( nodeId, key, value ) );
+        assertEquals( 201, response.getStatus() );
 
         // search it exact
         String entity = gen.get()
                 .expectedStatus( 200 )
-                .get( functionalTestHelper.indexNodeUri( indexName, key, value ) )
+                .get( functionalTestHelper.indexNodeUri( indexName, key, URIHelper.encode( value ) ) )
                 .entity();
         Collection<?> hits = (Collection<?>) JsonHelper.jsonToSingleValue( entity );
         assertEquals( 1, hits.size() );
@@ -226,8 +262,8 @@ public class IndexNodeFunctionalTest
      * 
      * The query language used here depends on what type of index you are
      * querying. The default index type is Lucene, in which case you should use
-     * the Lucene query language here. Below and Example of a fuzzy search
-     * over multiple keys.
+     * the Lucene query language here. Below and Example of a fuzzy search over
+     * multiple keys.
      * 
      * See: http://lucene.apache.org/java/3_1_0/queryparsersyntax.html
      */
@@ -238,7 +274,7 @@ public class IndexNodeFunctionalTest
         String indexName = "bobTheIndex";
         String key = "Name";
         String value = "Builder";
-        long node = helper.createNode(MapUtil.map( key, value ));
+        long node = helper.createNode( MapUtil.map( key, value ) );
         helper.addNodeToIndex( indexName, key, value, node );
         helper.addNodeToIndex( indexName, "Gender", "Male", node );
 
@@ -259,14 +295,14 @@ public class IndexNodeFunctionalTest
     public void shouldRespondWith201CreatedWhenIndexingJsonNodeUri() throws DatabaseBlockedException,
             JsonParseException
     {
-        long nodeId = helper.createNode();
-        String key = "key";
-        String value = "value";
-        String indexName = "testy";
+        final long nodeId = helper.createNode();
+        final String key = "key";
+        final String value = "value";
+        final String indexName = "testy";
         helper.createNodeIndex( indexName );
-        String entity = JsonHelper.createJsonFrom( functionalTestHelper.nodeUri( nodeId ) );
+
         JaxRsResponse response = RestRequest.req()
-                .post( functionalTestHelper.indexNodeUri( indexName, key, value ), entity );
+                .post( functionalTestHelper.indexNodeUri( indexName ), createJsonStringFor( nodeId, key, value ) );
         assertEquals( 201, response.getStatus() );
         assertNotNull( response.getHeaders()
                 .getFirst( "Location" ) );
@@ -283,8 +319,8 @@ public class IndexNodeFunctionalTest
         String indexName = "mindex";
         helper.createNodeIndex( indexName );
         JaxRsResponse response = RestRequest.req()
-                .post( functionalTestHelper.indexNodeUri( indexName, key, value ),
-                        JsonHelper.createJsonFrom( functionalTestHelper.nodeUri( nodeId ) ) );
+                .post( functionalTestHelper.indexNodeUri( indexName ),
+                        createJsonStringFor( nodeId, key, value ));
 
         assertEquals( Status.CREATED.getStatusCode(), response.getStatus() );
         String indexUri = response.getHeaders()
@@ -333,14 +369,14 @@ public class IndexNodeFunctionalTest
         String location2 = responseToPost.getHeaders()
                 .getFirst( HttpHeaders.LOCATION );
         responseToPost.close();
-        responseToPost = request.post( functionalTestHelper.indexNodeUri( indexName, key, value ),
-                JsonHelper.createJsonFrom( location1 ) );
+        responseToPost = request.post( functionalTestHelper.indexNodeUri( indexName ),
+                createJsonStringFor( functionalTestHelper.getNodeIdFromUri( location1 ), key, value ) );
         assertEquals( 201, responseToPost.getStatus() );
         String indexLocation1 = responseToPost.getHeaders()
                 .getFirst( HttpHeaders.LOCATION );
         responseToPost.close();
-        responseToPost = request.post( functionalTestHelper.indexNodeUri( indexName, key, value ),
-                JsonHelper.createJsonFrom( location2 ) );
+        responseToPost = request.post( functionalTestHelper.indexNodeUri( indexName ),
+                createJsonStringFor( functionalTestHelper.getNodeIdFromUri( location2 ), key, value ) );
         assertEquals( 201, responseToPost.getStatus() );
         String indexLocation2 = responseToPost.getHeaders()
                 .getFirst( HttpHeaders.LOCATION );
@@ -497,19 +533,20 @@ public class IndexNodeFunctionalTest
     @Test
     public void shouldBeAbleToIndexValuesContainingSpaces() throws Exception
     {
-        long nodeId = helper.createNode();
-        String key = "key";
-        String value = "value with   spaces  in it";
-        value = URIHelper.encode( value );
+        final long nodeId = helper.createNode();
+        final String key = "key";
+        final String value = "value with   spaces  in it";
+
         String indexName = "spacey-values";
         helper.createNodeIndex( indexName );
         final RestRequest request = RestRequest.req();
-        JaxRsResponse response = request.post( functionalTestHelper.indexNodeUri( indexName, key, value ),
-                JsonHelper.createJsonFrom( functionalTestHelper.nodeUri( nodeId ) ) );
+        JaxRsResponse response = request.post( functionalTestHelper.indexNodeUri( indexName ),
+                createJsonStringFor( nodeId, key, value ) );
+
         assertEquals( Status.CREATED.getStatusCode(), response.getStatus() );
         URI location = response.getLocation();
         response.close();
-        response = request.get( functionalTestHelper.indexNodeUri( indexName, key, value ) );
+        response = request.get( functionalTestHelper.indexNodeUri( indexName, key, URIHelper.encode( value ) ) );
         assertEquals( Status.OK.getStatusCode(), response.getStatus() );
         Collection<?> hits = (Collection<?>) JsonHelper.jsonToSingleValue( response.getEntity( String.class ) );
         assertEquals( 1, hits.size() );
@@ -517,22 +554,26 @@ public class IndexNodeFunctionalTest
 
         CLIENT.resource( location )
                 .delete();
-        response = request.get( functionalTestHelper.indexNodeUri( indexName, key, value ) );
+        response = request.get( functionalTestHelper.indexNodeUri( indexName, key, URIHelper.encode( value ) ) );
         hits = (Collection<?>) JsonHelper.jsonToSingleValue( response.getEntity( String.class ) );
         assertEquals( 0, hits.size() );
+    }
+
+    private String createJsonStringFor( final long nodeId, final String key, final String value )
+    {
+        return "{\"key\": \"" + key + "\", \"value\": \"" + value + "\", \"uri\": \""
+               + functionalTestHelper.nodeUri( nodeId ) + "\"}";
     }
 
     @Test
     public void shouldRespondWith400WhenSendingCorruptJson() throws Exception
     {
-        long nodeId = helper.createNode();
-        String key = "key";
-        String value = "value";
-        String indexName = "botherable-index";
+        final String indexName = "botherable-index";
         helper.createNodeIndex( indexName );
+        final String corruptJson = "{\"key\" \"myKey\"}";
         JaxRsResponse response = RestRequest.req()
-                .post( functionalTestHelper.indexNodeUri( indexName, key, value ),
-                        functionalTestHelper.nodeUri( nodeId ) );
+                .post( functionalTestHelper.indexNodeUri( indexName ),
+                        corruptJson );
         assertEquals( 400, response.getStatus() );
         response.close();
     }

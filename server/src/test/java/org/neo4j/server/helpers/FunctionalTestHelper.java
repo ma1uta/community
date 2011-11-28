@@ -26,7 +26,7 @@ import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
 import org.neo4j.kernel.AbstractGraphDatabase;
-import org.neo4j.server.NeoServerWithEmbeddedWebServer;
+import org.neo4j.server.NeoServer;
 import org.neo4j.server.rest.JaxRsResponse;
 import org.neo4j.server.rest.RestRequest;
 import org.neo4j.server.rest.domain.GraphDbHelper;
@@ -37,13 +37,13 @@ import com.sun.jersey.api.client.Client;
 
 public final class FunctionalTestHelper
 {
-    private final NeoServerWithEmbeddedWebServer server;
+    private final NeoServer server;
     private final GraphDbHelper helper;
 
     public static final Client CLIENT = Client.create();
     private RestRequest request;
 
-    public FunctionalTestHelper( NeoServerWithEmbeddedWebServer server )
+    public FunctionalTestHelper( NeoServer server )
     {
         if ( server.getDatabase() == null )
         {
@@ -191,15 +191,16 @@ public final class FunctionalTestHelper
     {
         return nodeIndexUri() + indexName;
     }
+    
+    public String indexNodeUri( String indexName, String key, Object value )
+    {
+        return indexNodeUri( indexName ) + "/" + key + "/" + value;
+    }
+    
 
     public String indexRelationshipUri( String indexName )
     {
         return relationshipIndexUri() + indexName;
-    }
-
-    public String indexNodeUri( String indexName, String key, Object value )
-    {
-        return indexNodeUri( indexName ) + "/" + key + "/" + value;
     }
 
     public String indexRelationshipUri( String indexName, String key, Object value )
@@ -261,5 +262,15 @@ public final class FunctionalTestHelper
 
     public void put(String path, String data) {
         request.put(path, data);
+    }
+
+    public long getNodeIdFromUri( String nodeUri )
+    {
+        return Long.valueOf( nodeUri.substring( nodeUri.lastIndexOf( "/" ) +1 , nodeUri.length() ) );
+    }
+
+    public long getRelationshipIdFromUri( String relationshipUri )
+    {
+        return getNodeIdFromUri( relationshipUri );
     }
 }

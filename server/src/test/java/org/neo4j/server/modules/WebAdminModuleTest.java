@@ -19,6 +19,14 @@
  */
 package org.neo4j.server.modules;
 
+import java.net.URI;
+import java.util.Collections;
+import java.util.HashMap;
+
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import javax.management.openmbean.CompositeDataSupport;
+
 import org.apache.commons.configuration.MapConfiguration;
 import org.junit.Test;
 import org.neo4j.jmx.JmxUtils;
@@ -32,15 +40,8 @@ import org.neo4j.server.database.Database;
 import org.neo4j.server.web.WebServer;
 import org.rrd4j.core.RrdDb;
 
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import javax.management.openmbean.CompositeDataSupport;
-import java.net.URI;
-import java.util.Collections;
-import java.util.HashMap;
-
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.eq;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -85,7 +86,7 @@ public class WebAdminModuleTest
         setStaticFinalField( JmxUtils.class.getDeclaredField( "mbeanServer" ), mbeanServer );
 
         WebAdminModule module = new WebAdminModule();
-        module.start( neoServer );
+        module.start( neoServer, null );
 
         verify( db ).setRrdDb( any( RrdDb.class ) );
     }

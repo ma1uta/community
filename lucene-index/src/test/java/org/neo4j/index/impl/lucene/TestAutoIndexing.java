@@ -24,8 +24,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,19 +41,13 @@ import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.ReadableIndex;
 import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.kernel.Config;
-import org.neo4j.kernel.EmbeddedGraphDatabase;
-import org.neo4j.kernel.impl.util.FileUtils;
+import org.neo4j.test.ImpermanentGraphDatabase;
 
 public class TestAutoIndexing
 {
-    protected static final File WorkDir = new File( "target" + File.separator
-                                                    + "var", "autoIndexer" );
-
     private GraphDatabaseService graphDb;
     private Transaction tx;
     private Map<String, String> config;
-
-    private static int currentId = 0;
 
     private void newTransaction()
     {
@@ -79,11 +71,7 @@ public class TestAutoIndexing
     @Before
     public void startDb()
     {
-        currentId++;
-        File workDir = getWorkDir();
-        workDir.mkdirs();
-        graphDb = new EmbeddedGraphDatabase( workDir.getAbsolutePath(),
-                getConfig() );
+        graphDb = new ImpermanentGraphDatabase( getConfig() );
     }
 
     @After
@@ -97,29 +85,9 @@ public class TestAutoIndexing
         {
             graphDb.shutdown();
         }
-        // For access from the delete thread
-        final File currentWorkDir = getWorkDir();
-        new Thread(new Runnable() {
-            public void run() {
-                try
-                {
-                    FileUtils.deleteRecursively( currentWorkDir );
-                }
-                catch ( IOException e )
-                {
-                    System.err.println( "The following exception can be ignored, it is a locking issue on windows. If on linux, investigate" );
-                    e.printStackTrace();
-                }
-            };
-        } ).start();
         tx = null;
         config = null;
         graphDb = null;
-    }
-
-    private File getWorkDir()
-    {
-        return new File( WorkDir, Integer.toString( currentId ) );
     }
 
     @Test
@@ -662,5 +630,30 @@ public class TestAutoIndexing
         catch ( UnsupportedOperationException e )
         { // good
         }
+    }
+
+    @Test
+    public void testRemoveUnloadedHeavyProperty()
+    {
+        /*
+         * Checks a bug where removing non-cached heavy properties
+         * would cause NPE in auto indexer.
+         */
+        graphDb.index().getNodeAutoIndexer().setEnabled( true );
+        graphDb.index().getNodeAutoIndexer().startAutoIndexingProperty(
+                "nodeProp" );
+
+        newTransaction();
+
+        Node node1 = graphDb.createNode();
+        // Large array, needed for making sure this is a heavy property
+        node1.setProperty( "nodeProp", new int[] { -1, 2, 3, 4, 5, 6, 1, 1, 1,
+                1 } );
+
+        newTransaction();
+        ( (ImpermanentGraphDatabase) graphDb ).getConfig().getGraphDbModule().getNodeManager().clearCache();
+        node1.removeProperty( "nodeProp" );
+        newTransaction();
+        assertFalse( node1.hasProperty( "nodeProp" ) );
     }
 }

@@ -44,15 +44,16 @@ import org.neo4j.server.database.Database;
 import org.neo4j.server.helpers.FunctionalTestHelper;
 import org.neo4j.server.helpers.ServerBuilder;
 import org.neo4j.server.helpers.ServerHelper;
-import org.neo4j.server.rest.RESTDocsGenerator;
-import org.neo4j.server.rest.RESTDocsGenerator.ResponseEntity;
 import org.neo4j.server.rest.JSONPrettifier;
 import org.neo4j.server.rest.JaxRsResponse;
+import org.neo4j.server.rest.RESTDocsGenerator;
+import org.neo4j.server.rest.RESTDocsGenerator.ResponseEntity;
 import org.neo4j.server.rest.RestRequest;
 import org.neo4j.server.rest.domain.JsonHelper;
 import org.neo4j.test.TestData;
+import org.neo4j.test.server.ExclusiveServerTestBase;
 
-public class PagedTraverserFunctionalTest
+public class PagedTraverserFunctionalTest extends ExclusiveServerTestBase
 {
     public @Rule
     TestData<RESTDocsGenerator> docGenerator = TestData.producedThrough( RESTDocsGenerator.PRODUCER );

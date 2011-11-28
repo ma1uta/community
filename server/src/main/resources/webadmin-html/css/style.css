@@ -36,20 +36,19 @@ body {
   text-shadow: 1px 1px 2px #555555
 }
 
-
 #splash {
   margin: 15% auto;
   width: 152px;
 }
 
 #splash h1 {
-  background: url("../img/icons/glyphish/stol.png") no-repeat scroll center top transparent;
+  background: url("../img/icons/glyphish/bord.png") no-repeat scroll center top transparent;
   color: #DDDDDD;
   font-family: Georgia,serif;
   font-size: 13px;
   font-weight: bold;
   margin-top: 5px;
-  padding: 35px 0 0;
+  padding: 30px 0 0;
   text-align: center;
   text-shadow: 1px 1px 5px #555555
 }
@@ -206,8 +205,10 @@ body {
   border-top: 1px solid #DDD;
 }
 
-.data-console-wrap .helpbox {
-  padding: 3px 5px;
+.data-console-wrap .form-tooltip {
+  float: left;
+  padding-left: 25px;
+  padding-top: 0;
 }
 
 .data-toolbar {
@@ -228,6 +229,9 @@ body {
 }
 #visualization-reflow .icon {
   background:url("../img/icons/glyphish/05-shuffle.png") no-repeat scroll center center;
+}
+#visualization-clear .icon {
+  background:url("../img/icons/glyphish/clear.png") no-repeat scroll center center;
 }
 
 #data-create-node .icon, #data-create-relationship .icon {
@@ -386,7 +390,7 @@ body {
 }
 
 .ruleFilters {
-  width: 470px;
+  width: 500px;
   font-size:12px;
   border-left: 1px solid #ccc;
   border-right: 1px solid #ccc;
@@ -396,8 +400,8 @@ body {
 .ruleTitle {
   padding:5px 5px 2px 10px;
 }
-
-.ruleTitle .sortHandle {
+ 
+.ruleTitle .form-sort-handle {
   margin: 15px 14px;
   clear: both;
 }
@@ -414,11 +418,21 @@ body {
 }
 
 .styleRule .filters .filter {
-  width:390px;
+  width:460px;
 }
 
 .styleRule .filters .filter > * {
   margin: 0 1px;
+}
+
+.styleRule .filters .filter .filterBooleanOp {
+  float: left;
+  line-height: 25px;
+  width: 22px;
+}
+
+.styleRule .filters li:first-child .filter .filterBooleanOp {
+  color: transparent;
 }
 
 .styleRule .filters .filter .filterType {
@@ -476,6 +490,10 @@ body {
   top:10px;
   right:10px;
   z-index:100;
+}
+
+.console-multiline-help {
+  color: #888888;
 }
 
 /**
@@ -794,11 +812,6 @@ pre {
 
 .helpbox a:hover .helptext {
   display:block;
-}
-
-.error {
-  font-size: 10px;
-  padding: 0 5px;
 }
 
 /**

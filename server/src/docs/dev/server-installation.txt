@@ -7,7 +7,7 @@ Neo4j can be installed as a server, running either as a headless application or 
 1. Download the latest release from http://neo4j.org/download
    * select the appropriate version for your platform
 2. Extract the contents of the archive
-   * refer to the top-level extracted directory as +NEO4J-HOME+
+   * refer to the top-level extracted directory as +NEO4J_HOME+
 3. Use the scripts in the +bin+ directory
    * for Linux/MacOS, run `$NEO4J_HOME/bin/neo4j start`
    * for Windows, double-click on `%NEO4J_HOME%\bin\Neo4j.bat`
@@ -58,30 +58,48 @@ Finally, note that if you chose to create a new user account, on uninstall you w
 Neo4j can be installed as a Mac launchd job:
 
 1. `cd $NEO4J_HOME`
-2. `sudo ./bin/neo4j install`
+2. `./bin/neo4j install`
+3. `launchctl list | grep neo`
 +
-if asked, enter your password to gain super-user privileges
+should reveal the launchd "org.neo4j.server.7474" job for running the Neo4j Server
 
-3. `launchctl load ~/Library/LaunchAgents/wrapper.neo4j-server.plist`
-+
-needed to tell launchd about the "job"
-
-4. `launchctl list | grep neo`
-+
-should reveal the launchd "wrapper.neo4j-server" job for running the Neo4j Server
-
-5. `launchctl start wrapper.neo4j-server`
-+
-to start the Neo4j Server under launchd control
-
-6. `./bin/neo4j status`
+4. `./bin/neo4j status`
 +
 should indicate that the server is running
+
+5. `launchctl stop org.neo4j.server.7474`
++
+should stop the server.
    
+6. `launchctl start org.neo4j.server.7474`
++
+should start the server again.
    
 == Multiple Server instances on one machine ==
 
-Neo4j can be set up to run as several instances on one machine, providing for instance several databases for development. To configure, install two instances of the Neo4j Server in two different directories. Before running the Windows install or startup, change in conf/neo4j-wrapper.conf
+Neo4j can be set up to run as several instances on one machine, providing for instance several databases for development. To configure, install two instances of the Neo4j Server in two different directories following the steps outlined below.
+
+=== First instance ===
+
+First, create a directory to hold both database instances, and unpack the development instance:
+ 
+1. `cd $INSTANCE_ROOT`
+2. `mkdir -p neo4j`
+3. `cd neo4j`
+4. `tar -xvzf /path/to/neo4j-community.tar.gz`
+5. `mv neo4j-community dev`
+
+Next, configure the instance by changing the following values in +dev/conf/neo4j-server.properties+, see even <<security-server>>:
+
+[source,shell]
+----
+org.neo4j.server.webserver.port=7474
+
+# Uncomment the following if the instance will be accessed from a host other than localhost.
+org.neo4j.server.webserver.address=0.0.0.0
+----
+
+Before running the Windows install or startup, change in +dev/conf/neo4j-wrapper.properties+
 
 [source, shell]
 ----
@@ -89,36 +107,71 @@ Neo4j can be set up to run as several instances on one machine, providing for in
 wrapper.name=neo4j_1
 ----
 
-and for the second instance
+Start the instance:
 
-[source, shell]
+`dev/bin/neo4j start`
+
+Check that instance is available by browsing to http://localhost:7474/webadmin/#
+
+
+
+=== Second instance (testing, development) ===
+
+In many cases during application development, it is desirable to have one development database set up, and another against which to run unit tests. For the following example, we are assuming that both databases will run on the same host.
+
+
+Now create the unit testing second instance:
+
+1. `cd $INSTANCE_ROOT/neo4j`
+2. `tar -xvzf /path/to/neo4j-community.tar.gz`
+3. `mv neo4j-community test`
+
+It's good practice to reset the unit testing database before each test run. This capability is not built into Neo4j server, so install a server plugin that does this:
+
+1. `wget http://github.com/downloads/jexp/neo4j-clean-remote-db-addon/test-delete-db-extension-1.4.jar`
+2. `mv test-delete-db-extension-1.4.jar test/plugins`
+
+
+Next, configure the instance by changing the following values in +test/conf/neo4j-server.properties to+
+
+- change the server port to `7475`
+- activate the clean-database server extension for remote cleaning of the database via REST
+
+[source,shell]
 ----
-# Name of the service for the second instance
-wrapper.name=neo4j_2
-----
-
-in order not to get name clashes installing and starting the instances as services.
-
-Also, the port numbers for the web administration and the servers should be changed to non-clashing values in conf/neo4j-server.properties:
-
-Server 1 (port 7474):
-
-[source, shell]
-----
-org.neo4j.server.webserver.port=7474
-
-org.neo4j.server.webadmin.data.uri=http://localhost:7474/db/data/
-
-org.neo4j.server.webadmin.management.uri=http://localhost:7474/db/manage/
-----
-
-Server 2 (port 7475):
-
-[source, shell]
-----
+# Note the different port number from the development instance
 org.neo4j.server.webserver.port=7475
 
-org.neo4j.server.webadmin.data.uri=http://localhost:7475/db/data/
+# Uncomment the following if the instance will be accessed from a host other than localhost
+org.neo4j.server.webserver.address=0.0.0.0
 
-org.neo4j.server.webadmin.management.uri=http://localhost:7475/db/manage/
+# Add the following lines to the JAXRS section at the bottom of the file
+org.neo4j.server.thirdparty_jaxrs_classes=org.neo4j.server.extension.test.delete=/db/data/cleandb
+org.neo4j.server.thirdparty.delete.key=secret-key
 ----
+
+Differentiate the instance from the development instance by modifying +test/conf/neo4j-wrapper.properties+.
+
+[source,shell]
+----
+wrapper.name=neo4j-test
+----
+
+Start the instance:
+
+`test/bin/neo4j start`
+
+Check that instance is available by browsing to http://localhost:7475/webadmin/#
+
+Test the remote clean plugin by switching to the webadmin "Console" tab, selecting "HTTP" and entering the following:
+
+[source,shell]
+----
+DELETE /db/data/cleandb/secret-key
+----
+
+If this returns a "200 OK" response, the plugin is configured correctly.
+
+== High Availability Mode ==
+
+For information on High Availability, please refer to <<ha>>.

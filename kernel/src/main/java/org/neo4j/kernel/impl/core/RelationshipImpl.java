@@ -27,7 +27,7 @@ import org.neo4j.kernel.impl.transaction.LockException;
 import org.neo4j.kernel.impl.transaction.LockType;
 import org.neo4j.kernel.impl.util.ArrayMap;
 
-abstract class RelationshipImpl extends Primitive
+abstract class RelationshipImpl extends ArrayBasedPrimitive
 {
     RelationshipImpl( long startNodeId, long endNodeId, boolean newRel )
     {
@@ -71,7 +71,8 @@ abstract class RelationshipImpl extends Primitive
     }
 
     @Override
-    protected ArrayMap<Integer, PropertyData> loadProperties( NodeManager nodeManager, boolean light )
+    protected ArrayMap<Integer, PropertyData> loadProperties(
+            NodeManager nodeManager, boolean light )
     {
         return nodeManager.loadProperties( this, light );
     }

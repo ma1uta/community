@@ -19,7 +19,6 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -29,14 +28,15 @@ import java.util.Map;
 
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * Implementation of the property store.
  */
-public class PropertyIndexStore extends AbstractStore implements Store
+public class PropertyIndexStore extends AbstractStore implements Store, RecordStore<PropertyIndexRecord>
 {
-    // store version, should end with this string (byte encoded)
-    private static final String VERSION = "PropertyIndex v0.9.9";
+    public static final String TYPE_DESCRIPTOR = "PropertyIndexStore";
+
     private static final int KEY_STORE_BLOCK_SIZE = 30;
 
     // in_use(byte)+prop_count(int)+key_block_id(int)
@@ -49,25 +49,40 @@ public class PropertyIndexStore extends AbstractStore implements Store
         super( fileName, config, IdType.PROPERTY_INDEX );
     }
 
-//    public PropertyIndexStore( String fileName )
-//    {
-//        super( fileName );
-//    }
+    @Override
+    public void accept( RecordStore.Processor processor, PropertyIndexRecord record )
+    {
+        processor.processPropertyIndex( this, record );
+    }
 
+    DynamicStringStore getKeyStore()
+    {
+        return keyPropertyStore;
+    }
+
+    @Override
     protected void initStorage()
     {
         keyPropertyStore = new DynamicStringStore( getStorageFileName()
             + ".keys", getConfig(), IdType.PROPERTY_INDEX_BLOCK );
     }
 
-    public String getTypeAndVersionDescriptor()
+    @Override
+    public String getTypeDescriptor()
     {
-        return VERSION;
+        return TYPE_DESCRIPTOR;
     }
 
+    @Override
     public int getRecordSize()
     {
         return RECORD_SIZE;
+    }
+
+    @Override
+    public int getRecordHeaderSize()
+    {
+        return getRecordSize();
     }
 
     @Override
@@ -103,7 +118,7 @@ public class PropertyIndexStore extends AbstractStore implements Store
         keyPropertyStore.updateHighId();
         this.updateHighId();
     }
-    
+
     public void freeBlockId( int id )
     {
         keyPropertyStore.freeBlockId( id );
@@ -126,16 +141,18 @@ public class PropertyIndexStore extends AbstractStore implements Store
         super.flushAll();
     }
 
-    public static void createStore( String fileName, IdGeneratorFactory idGeneratorFactory )
+    public static void createStore( String fileName, IdGeneratorFactory idGeneratorFactory,
+            FileSystemAbstraction fileSystem )
     {
-        createEmptyStore( fileName, VERSION, idGeneratorFactory );
+        createEmptyStore( fileName, buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR ), idGeneratorFactory,
+                fileSystem );
         DynamicStringStore.createStore( fileName + ".keys",
-            KEY_STORE_BLOCK_SIZE, idGeneratorFactory, IdType.PROPERTY_INDEX_BLOCK );
+                KEY_STORE_BLOCK_SIZE, idGeneratorFactory, fileSystem, IdType.PROPERTY_INDEX_BLOCK );
     }
 
     public PropertyIndexData[] getPropertyIndexes( int count )
     {
-        LinkedList<PropertyIndexData> indexList = 
+        LinkedList<PropertyIndexData> indexList =
             new LinkedList<PropertyIndexData>();
         long maxIdInUse = getHighestPossibleIdInUse();
         int found = 0;
@@ -151,7 +168,7 @@ public class PropertyIndexStore extends AbstractStore implements Store
                 continue;
             }
             found++;
-            indexList.add( new PropertyIndexData( record.getId(), 
+            indexList.add( new PropertyIndexData( record.getId(),
                 getStringFor( record ) ) );
         }
         return indexList.toArray( new PropertyIndexData[indexList.size()] );
@@ -160,10 +177,10 @@ public class PropertyIndexStore extends AbstractStore implements Store
     public PropertyIndexData getPropertyIndex( int id )
     {
         PropertyIndexRecord record = getRecord( id );
-        return new PropertyIndexData( record.getId(), 
+        return new PropertyIndexData( record.getId(),
             getStringFor( record ) );
     }
-    
+
     public PropertyIndexData getPropertyIndex( int id, boolean recovered )
     {
         assert recovered;
@@ -171,7 +188,7 @@ public class PropertyIndexStore extends AbstractStore implements Store
         {
             setRecovered();
             PropertyIndexRecord record = getRecord( id );
-            return new PropertyIndexData( record.getId(), 
+            return new PropertyIndexData( record.getId(),
                 getStringFor( record ) );
         }
         finally
@@ -179,20 +196,20 @@ public class PropertyIndexStore extends AbstractStore implements Store
             unsetRecovered();
         }
     }
-    
+
     public PropertyIndexRecord getRecord( int id )
     {
         PropertyIndexRecord record;
         PersistenceWindow window = acquireWindow( id, OperationType.READ );
         try
         {
-            record = getRecord( id, window );
+            record = getRecord( id, window, false );
         }
         finally
         {
             releaseWindow( window );
         }
-        Collection<DynamicRecord> keyRecords = 
+        Collection<DynamicRecord> keyRecords =
             keyPropertyStore.getLightRecords( record.getKeyBlockId() );
         for ( DynamicRecord keyRecord : keyRecords )
         {
@@ -201,12 +218,46 @@ public class PropertyIndexStore extends AbstractStore implements Store
         return record;
     }
 
+    @Override
+    public PropertyIndexRecord getRecord( long id )
+    {
+        return getRecord( (int) id );
+    }
+
+    @Override
+    public PropertyIndexRecord forceGetRecord( long id )
+    {
+        PersistenceWindow window = null;
+        try
+        {
+            window = acquireWindow( id, OperationType.READ );
+        }
+        catch ( InvalidRecordException e )
+        {
+            return new PropertyIndexRecord( (int)id );
+        }
+        
+        try
+        {
+            return getRecord( (int) id, window, true );
+        }
+        finally
+        {
+            releaseWindow( window );
+        }
+    }
+
+    public Collection<DynamicRecord> allocateKeyRecords( int keyBlockId, byte[] chars )
+    {
+        return keyPropertyStore.allocateRecords( keyBlockId, chars );
+    }
+
     public PropertyIndexRecord getLightRecord( int id )
     {
         PersistenceWindow window = acquireWindow( id, OperationType.READ );
         try
         {
-            PropertyIndexRecord record = getRecord( id, window );
+            PropertyIndexRecord record = getRecord( id, window, false );
             record.setIsLight( true );
             return record;
         }
@@ -252,10 +303,19 @@ public class PropertyIndexStore extends AbstractStore implements Store
         }
     }
 
-    public Collection<DynamicRecord> allocateKeyRecords( int keyBlockId,
-        char[] chars )
+    @Override
+    public void forceUpdateRecord( PropertyIndexRecord record )
     {
-        return keyPropertyStore.allocateRecords( keyBlockId, chars );
+        PersistenceWindow window = acquireWindow( record.getId(),
+                OperationType.WRITE );
+        try
+        {
+            updateRecord( record, window );
+        }
+        finally
+        {
+            releaseWindow( window );
+        }
     }
 
     public int nextKeyBlockId()
@@ -263,11 +323,11 @@ public class PropertyIndexStore extends AbstractStore implements Store
         return (int) keyPropertyStore.nextBlockId();
     }
 
-    private PropertyIndexRecord getRecord( int id, PersistenceWindow window )
+    private PropertyIndexRecord getRecord( int id, PersistenceWindow window, boolean force )
     {
         Buffer buffer = window.getOffsettedBuffer( id );
         boolean inUse = (buffer.get() == Record.IN_USE.byteValue());
-        if ( !inUse )
+        if ( !inUse && !force )
         {
             throw new InvalidRecordException( "Record[" + id + "] not in use" );
         }
@@ -278,7 +338,7 @@ public class PropertyIndexStore extends AbstractStore implements Store
         return record;
     }
 
-    private void updateRecord( PropertyIndexRecord record, 
+    private void updateRecord( PropertyIndexRecord record,
         PersistenceWindow window )
     {
         int id = record.getId();
@@ -313,78 +373,34 @@ public class PropertyIndexStore extends AbstractStore implements Store
     {
         int recordToFind = propRecord.getKeyBlockId();
         Iterator<DynamicRecord> records = propRecord.getKeyRecords().iterator();
-        List<char[]> charList = new LinkedList<char[]>();
-        int totalSize = 0;
-        while ( recordToFind != Record.NO_NEXT_BLOCK.intValue() && 
-            records.hasNext() )
+        Collection<DynamicRecord> relevantRecords = new ArrayList<DynamicRecord>();
+        while ( recordToFind != Record.NO_NEXT_BLOCK.intValue() &&  records.hasNext() )
         {
             DynamicRecord record = records.next();
             if ( record.inUse() && record.getId() == recordToFind )
             {
-                if ( record.isLight() )
-                {
-                    keyPropertyStore.makeHeavy( record );
-                }
-                if ( !record.isCharData() )
-                {
-                    ByteBuffer buf = ByteBuffer.wrap( record.getData() );
-                    char[] chars = new char[record.getData().length / 2];
-                    totalSize += chars.length;
-                    buf.asCharBuffer().get( chars );
-                    charList.add( chars );
-                }
-                else
-                {
-                    charList.add( record.getDataAsChar() );
-                }
                 recordToFind = (int) record.getNextBlock();
-                // TODO: optimize here, high chance next is right one
+//                // TODO: optimize here, high chance next is right one
+                relevantRecords.add( record );
                 records = propRecord.getKeyRecords().iterator();
             }
         }
-        StringBuilder buf = new StringBuilder();
-        for ( char[] str : charList )
-        {
-            buf.append( str );
-        }
-        return buf.toString();
+        return (String) PropertyStore.getStringFor( PropertyStore.readFullByteArray(
+                propRecord.getKeyBlockId(), relevantRecords, keyPropertyStore ) );
     }
 
     @Override
-    public String toString()
-    {
-        return "PropertyIndexStore";
-    }
-
-    @Override
-    protected boolean versionFound( String version )
-    {
-        if ( !version.startsWith( "PropertyIndex" ) )
-        {
-            // non clean shutdown, need to do recover with right neo
-            return false;
-        }
-//        if ( version.equals( "PropertyIndex v0.9.3" ) )
-//        {
-//            rebuildIdGenerator();
-//            closeIdGenerator();
-//            return true;
-//        }
-        if ( version.equals( "PropertyIndex v0.9.5" ) )
-        {
-            return true;
-        }
-        throw new IllegalStoreVersionException( "Store version [" + version  + 
-            "]. Please make sure you are not running old Neo4j kernel " + 
-            " towards a store that has been created by newer version " + 
-            " of Neo4j." );
-    }
-
     public List<WindowPoolStats> getAllWindowPoolStats()
     {
         List<WindowPoolStats> list = new ArrayList<WindowPoolStats>();
         list.add( keyPropertyStore.getWindowPoolStats() );
         list.add( getWindowPoolStats() );
         return list;
+    }
+
+    @Override
+    public void logIdUsage( StringLogger logger )
+    {
+        NeoStore.logIdUsage( logger, this );
     }
 }

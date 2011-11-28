@@ -19,10 +19,9 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
-public class NodeRecord extends Abstract64BitRecord
+public class NodeRecord extends PrimitiveRecord
 {
     private long nextRel = Record.NO_NEXT_RELATIONSHIP.intValue();
-    private long nextProp = Record.NO_NEXT_PROPERTY.intValue();
 
     public NodeRecord( long id )
     {
@@ -39,22 +38,10 @@ public class NodeRecord extends Abstract64BitRecord
         this.nextRel = nextRel;
     }
 
-    public long getNextProp()
-    {
-        return nextProp;
-    }
-
-    public void setNextProp( long nextProp )
-    {
-        this.nextProp = nextProp;
-    }
-
+    @Override
     public String toString()
     {
-        StringBuffer buf = new StringBuffer();
-        buf.append( "NodeRecord[" ).append( getId() ).append( "," ).append(
-            inUse() ).append( "," ).append( nextRel ).append( "," ).append(
-            nextProp ).append( "]" );
-        return buf.toString();
+        return new StringBuilder( "Node[" ).append( getId() ).append( ",used=" ).append( inUse() ).append( ",rel=" ).append(
+                nextRel ).append( ",prop=" ).append( getNextProp() ).append( "]" ).toString();
     }
 }

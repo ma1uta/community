@@ -21,8 +21,10 @@ package org.neo4j.server.rest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
@@ -113,7 +115,7 @@ public class RESTDocsGenerator extends AsciiDocGenerator
 
     private RESTDocsGenerator( String ti )
     {
-        super(ti);
+        super(ti, "rest-api");
     }
     
 
@@ -127,6 +129,18 @@ public class RESTDocsGenerator extends AsciiDocGenerator
     public RESTDocsGenerator expectedStatus( final int expectedResponseStatus )
     {
         this.expectedResponseStatus = expectedResponseStatus;
+        return this;
+    }
+    
+    /**
+     * Set the expected status of the response. The test will fail if the
+     * response has a different status. Defaults to HTTP 200 OK.
+     * 
+     * @param expectedResponseStatus the expected response status
+     */
+    public RESTDocsGenerator expectedStatus( final ClientResponse.Status expectedStatus)
+    {
+        this.expectedResponseStatus = expectedStatus.getStatusCode();
         return this;
     }
 
@@ -163,6 +177,8 @@ public class RESTDocsGenerator extends AsciiDocGenerator
         this.payload = payload;
         return this;
     }
+    
+    
 
     /**
      * Add an expected response header. If the heading is missing in the
@@ -312,7 +328,7 @@ public class RESTDocsGenerator extends AsciiDocGenerator
         }
         if ( response.getType() != null )
         {
-            assertEquals( "wrong response type: "+ data.entity, type, response.getType() );
+            assertTrue( "wrong response type: "+ data.entity, response.getType().isCompatible( type ) );
         }
         for ( String headerField : headerFields )
         {
@@ -422,6 +438,7 @@ public class RESTDocsGenerator extends AsciiDocGenerator
         {
             this.title = title;
         }
+        
 
         public void setUri( final String uri )
         {
@@ -465,13 +482,14 @@ public class RESTDocsGenerator extends AsciiDocGenerator
 
     protected void document( final DocumentationData data )
     {
+        data.description = replaceSnippets( data.description );
         FileWriter fw = null;
         try
         {
-            fw = getFW("target/rest-api", data.title);
+            fw = getFW("target" + File.separator + "docs"+ File.separator + section , data.title);
             String name = title.replace( " ", "-" )
                     .toLowerCase();
-            line( fw, "[[rest-api-" + name.replaceAll( "\\(|\\)", "" ) + "]]" );
+            line( fw, "[["+section.replaceAll( "\\(|\\)", "" )+"-" + name.replaceAll( "\\(|\\)", "" ) + "]]" );
             //make first Character uppercase
             String firstChar = data.title.substring(  0, 1 ).toUpperCase();
             line( fw, "=== " + firstChar + data.title.substring( 1 ) + " ===" );

@@ -73,6 +73,11 @@ class TransactionImpl implements Transaction
         eventIdentifier = txManager.getNextEventIdentifier();
     }
 
+    /**
+     * @return The event identifier for this transaction, a unique per database
+     *         run identifier among all transactions initiated by the
+     *         transaction manager. Currently an increasing natural number.
+     */
     Integer getEventIdentifier()
     {
         return eventIdentifier;
@@ -152,10 +157,12 @@ class TransactionImpl implements Transaction
                     catch ( IOException e )
                     {
                         log.log( Level.SEVERE, "Error writing transaction log", e );
-                        txManager.setTmNotOk();
+                        txManager.setTmNotOk( e );
                         throw Exceptions.withCause( new SystemException( "TM encountered a problem, "
                                                                          + " error writing transaction log" ), e );
                     }
+                    // TODO ties HA to our TxManager
+                    if ( !txManager.finishHook.hasAnyLocks( this ) ) txManager.finishHook.initializeTransaction( eventIdentifier );
                     return true;
                 }
                 Xid sameRmXid = null;
@@ -203,7 +210,7 @@ class TransactionImpl implements Transaction
                     catch ( IOException e )
                     {
                         log.log( Level.SEVERE, "Error writing transaction log", e );
-                        txManager.setTmNotOk();
+                        txManager.setTmNotOk( e );
                         throw Exceptions.withCause( new SystemException( "TM encountered a problem, "
                                                                          + " error writing transaction log" ), e );
                     }
@@ -516,7 +523,7 @@ class TransactionImpl implements Transaction
             catch ( IOException e )
             {
                 log.log( Level.SEVERE, "Error writing transaction log", e );
-                txManager.setTmNotOk();
+                txManager.setTmNotOk( e );
                 throw Exceptions.withCause( new SystemException( "TM encountered a problem, "
                                                                  + " error writing transaction log" ), e );
             }
@@ -610,7 +617,7 @@ class TransactionImpl implements Transaction
                 + statusString + "]";
         }
     }
-    
+
     boolean isActive()
     {
         return active;

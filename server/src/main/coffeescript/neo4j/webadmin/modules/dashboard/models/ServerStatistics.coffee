@@ -39,11 +39,11 @@ define ['lib/DateFormat', 'lib/backbone'], (DateFormat) ->
       # We don't need data as granular as neo4js gives us. 
       # Weed some of it out to save memory.
       @indexesToSave = @getTimestampIndexes(0, 30)
-      @timestamps = @extractValues(@timestamps, @indexesToSave)
+      @timestamps = @pickFromArray(@timestamps, @indexesToSave)
 
       update = {}
       for key, data of monitorData.data
-        update["metric:#{key}"] = @addTimestampsToArray(@extractValues(data, @indexesToSave), @timestamps)
+        update["metric:#{key}"] = @addTimestampsToArray(@pickFromArray(data, @indexesToSave), @timestamps)
       
       @set update
 
@@ -51,7 +51,7 @@ define ['lib/DateFormat', 'lib/backbone'], (DateFormat) ->
 
     getMetrics : (keys, fromTimestamp=0, granularity=10000) =>
       # fromTimestamp and granularity handling here is
-      # to keep data points low in order to keep charting and so on fast.
+      # to keep data points low in order to lower the memory overhead of the charts.
       startIndex = @getClosestPreceedingTimestampIndex(fromTimestamp)
       if startIndex is -1
         startIndex = 0
@@ -61,7 +61,7 @@ define ['lib/DateFormat', 'lib/backbone'], (DateFormat) ->
       for key in keys
         val = @get "metric:#{key}"
         if val and startIndex < val.length
-          @extractValues(val, indexesToInclude)
+          @pickFromArray(val, indexesToInclude)
         else 
           []
 
@@ -72,7 +72,7 @@ define ['lib/DateFormat', 'lib/backbone'], (DateFormat) ->
           return if i > 0 then i-1 else i
       return 0
 
-    extractValues : (array, indexesToExtract) ->
+    pickFromArray : (array, indexesToExtract) ->
       for i in indexesToExtract
         array[i]
 

@@ -32,7 +32,6 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -76,15 +75,12 @@ public class RestfulGraphDatabaseTest
     private static Database database;
     private static GraphDbHelper helper;
     private static EntityOutputFormat output;
-    private static String databasePath;
     private static LeaseManager leaseManager;
 
     @BeforeClass
     public static void doBefore() throws IOException
     {
-        databasePath = ServerTestUtils.createTempDir()
-                .getAbsolutePath();
-        database = new Database( ServerTestUtils.EMBEDDED_GRAPH_DATABASE_FACTORY, databasePath );
+        database = new Database( ServerTestUtils.EPHEMERAL_GRAPH_DATABASE_FACTORY, null );
         helper = new GraphDbHelper( database );
         output = new EntityOutputFormat( new JsonFormat(), URI.create( BASE_URI ), null );
         leaseManager = new LeaseManager( new FakeClock() );
@@ -108,7 +104,6 @@ public class RestfulGraphDatabaseTest
     public static void shutdownDatabase() throws IOException
     {
         database.shutdown();
-        org.apache.commons.io.FileUtils.forceDelete( new File( databasePath ) );
     }
 
     private static UriInfo uriInfo()
@@ -913,7 +908,9 @@ public class RestfulGraphDatabaseTest
         String entity = entityAsString( response );
         Map<String, Object> map = JsonHelper.jsonToMap( entity );
         assertNotNull( map.get( "node" ) );
-        assertNotNull( map.get( "reference_node" ) );
+        //this can be null
+//        assertNotNull( map.get( "reference_node" ) );
+        assertNotNull( map.get( "neo4j_version" ) );
         assertNotNull( map.get( "node_index" ) );
         assertNotNull( map.get( "extensions_info" ) );
         assertNotNull( map.get( "relationship_index" ) );
@@ -942,7 +939,7 @@ public class RestfulGraphDatabaseTest
         assertEquals( response.getMetadata()
                 .getFirst( HttpHeaders.CONTENT_ENCODING ), "UTF-8" );
     }
-
+    
     @Test
     public void shouldBeAbleToIndexNode() throws DatabaseBlockedException, JsonParseException
     {
@@ -950,9 +947,13 @@ public class RestfulGraphDatabaseTest
         URI nodeUri = (URI) response.getMetadata()
                 .getFirst( "Location" );
 
-        String key = "key";
-        String value = "value";
-        response = service.addToNodeIndex( "node", key, value, JsonHelper.createJsonFrom( nodeUri.toString() ) );
+        Map<String, String> postBody = new HashMap<String, String>();
+        postBody.put( "key", "mykey" );
+        postBody.put( "value", "my/key" );
+        postBody.put( "uri", nodeUri.toString() );
+
+        response = service.addToNodeIndex( "node", JsonHelper.createJsonFrom( postBody ) );
+
         assertEquals( 201, response.getStatus() );
         assertNotNull( response.getMetadata()
                 .getFirst( "Location" ) );
@@ -1498,8 +1499,10 @@ public class RestfulGraphDatabaseTest
 
         assertEquals(
                 Status.CREATED.getStatusCode(),
-                service.addToNodeIndex( "node", "foo", "bar",
-                        markWithUnicodeMarker( JsonHelper.createJsonFrom( nodeLocation ) ) )
+                service.addToNodeIndex(
+                        "node",
+                        markWithUnicodeMarker( "{\"key\":\"foo\", \"value\":\"bar\", \"uri\": \"" + nodeLocation
+                                               + "\"}" ) )
                         .getStatus() );
 
         assertEquals( Status.OK.getStatusCode(),
