@@ -410,6 +410,11 @@ class NodeImpl extends ArrayBasedPrimitive
         // nodeManager.putAllInRelCache( pair.other() );
     }
 
+    boolean hasMoreRelationshipsToLoad()
+    {
+        return hasMoreRelationshipsToLoad( DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES );
+    }
+    
     boolean hasMoreRelationshipsToLoad( DirectionWrapper direction, RelationshipType[] types )
     {
         return relChainPosition == null || relChainPosition.hasMore( direction, types );
@@ -660,7 +665,7 @@ class NodeImpl extends ArrayBasedPrimitive
     private void ensureAllRelationshipsAreLoaded( NodeManager nm )
     {
         ensureRelationshipMapNotNull( nm );
-        while ( hasMoreRelationshipsToLoad( DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES ) )
+        while ( hasMoreRelationshipsToLoad() )
         {
             getMoreRelationships( nm, DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES );
         }
@@ -668,7 +673,9 @@ class NodeImpl extends ArrayBasedPrimitive
     
     public int getDegree( NodeManager nm )
     {
-        return nm.getRelationshipCount( this, null, DirectionWrapper.BOTH );
+        return hasMoreRelationshipsToLoad() ?
+                nm.getRelationshipCount( this, null, DirectionWrapper.BOTH ) :
+                getDegreeByDirection( nm, DirectionWrapper.BOTH );
     }
 
     public int getDegree( NodeManager nm, RelationshipType type )
@@ -678,23 +685,28 @@ class NodeImpl extends ArrayBasedPrimitive
 
     public int getDegree( NodeManager nm, Direction direction )
     {
+        if ( direction == Direction.BOTH ) return getDegree( nm );
         ensureAllRelationshipsAreLoaded( nm );
+        return getDegreeByDirection( nm, wrapDirection( direction ) );
+    }
+
+    private int getDegreeByDirection( NodeManager nm, DirectionWrapper direction )
+    {
         int count = 0;
-        DirectionWrapper dir = wrapDirection( direction );
-        for ( RelIdArray ids : relationships ) count += ids.size( dir );
+        for ( RelIdArray ids : relationships ) count += ids.size( direction );
         
         if ( nm.getLockReleaser().hasRelationshipModifications( this ) )
         {
             ArrayMap<String, RelIdArray> add = nm.getCowRelationshipAddMap( this );
             if ( add != null )
             {
-                for ( RelIdArray addedIds : add.values() ) count += addedIds.size( dir );
+                for ( RelIdArray addedIds : add.values() ) count += addedIds.size( direction );
             }
             
             ArrayMap<String, SetAndDirectionCounter> remove = nm.getCowRelationshipRemoveMap( this );
             if ( remove != null )
             {
-                for ( SetAndDirectionCounter removedIds : remove.values() ) count -= removedIds.getCount( direction );
+                for ( SetAndDirectionCounter removedIds : remove.values() ) count -= removedIds.getCount( direction.direction() );
             }
         }
         return count;

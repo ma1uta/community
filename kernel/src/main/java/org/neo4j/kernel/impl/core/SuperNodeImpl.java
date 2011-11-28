@@ -52,24 +52,30 @@ public class SuperNodeImpl extends NodeImpl
     @Override
     public int getDegree( NodeManager nm, RelationshipType type )
     {
-        return nm.getRelationshipCount( this, type, DirectionWrapper.BOTH );
+        return hasMoreRelationshipsToLoad() ?
+                nm.getRelationshipCount( this, type, DirectionWrapper.BOTH ) :
+                super.getDegree( nm, type );
     }
     
     @Override
     public int getDegree( NodeManager nm, Direction direction )
     {
-        return nm.getRelationshipCount( this, null, wrapDirection( direction ) );
+        return hasMoreRelationshipsToLoad() ?
+                nm.getRelationshipCount( this, null, wrapDirection( direction ) ) :
+                super.getDegree( nm, direction );
     }
     
     @Override
     public int getDegree( NodeManager nm, RelationshipType type, Direction direction )
     {
-        return nm.getRelationshipCount( this, type, wrapDirection( direction ) );
+        return hasMoreRelationshipsToLoad() ?
+                nm.getRelationshipCount( this, type, wrapDirection( direction ) ) :
+                super.getDegree( nm, type, direction );
     }
-    
+
     @Override
     public Iterable<RelationshipType> getRelationshipTypes( NodeManager nm )
     {
-        return nm.getRelationshipTypes( this );
+        return hasMoreRelationshipsToLoad() ? nm.getRelationshipTypes( this ) : super.getRelationshipTypes( nm );
     }
 }
