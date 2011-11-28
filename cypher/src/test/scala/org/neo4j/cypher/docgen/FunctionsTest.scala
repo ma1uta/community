@@ -41,17 +41,17 @@ class FunctionsTest extends DocumentingTestBase {
 
   val common_arguments = List(
     "iterable" -> "An array property, or an iterable symbol, or an iterable function.",
-    "symbol" -> "The closure will have a symbol introduced in it's context. Here you decide which symbol to use. If you leave the symbol out, the default symbol +_+ (underscore) will be used.",
+    "symbol" -> "This is the identifier that can be used from the predicate.",
     "predicate" -> "A predicate that is tested against all items in iterable"
   )
 
   @Test def all() {
     testThis(
       title = "ALL",
-      syntax = "ALL(identifier in iterable : predicate)",
+      syntax = "ALL(identifier in iterable WHERE predicate)",
       arguments = common_arguments,
-      text = """Tests the predicate closure to see if all items in the iterable match.""",
-      queryText = """start a=node(%A%), b=node(%D%) match p=a-[*1..3]->b where all(x in nodes(p) : x.age > 30) return p""",
+      text = """Tests whether a predicate holds for all element of this iterable collection.""",
+      queryText = """start a=node(%A%), b=node(%D%) match p=a-[*1..3]->b where all(x in nodes(p) WHERE x.age > 30) return p""",
       returns = """All nodes in the path.""",
       (p) => assertEquals(1, p.toSeq.length))
   }
@@ -59,10 +59,10 @@ class FunctionsTest extends DocumentingTestBase {
   @Test def any() {
     testThis(
       title = "ANY",
-      syntax = "ANY(identifier in iterable : predicate)",
+      syntax = "ANY(identifier in iterable WHERE predicate)",
       arguments = common_arguments,
-      text = """Tests the predicate closure to see if at least one item in the iterable match.""",
-      queryText = """start a=node(%A%) match p=a-[*1..3]->b where any(x in nodes(p) : x.eyes = "blue") return p""",
+      text = """Tests whether a predicate holds for at least one element of this iterable collection.""",
+      queryText = """start a=node(%A%) match p=a-[*1..3]->b where any(x in nodes(p) WHERE x.eyes = "blue") return p""",
       returns = """All nodes in the path.""",
       (p) => assertEquals(3, p.toSeq.length))
   }
@@ -70,10 +70,10 @@ class FunctionsTest extends DocumentingTestBase {
   @Test def none() {
     testThis(
       title = "NONE",
-      syntax = "NONE(identifier in iterable : predicate)",
+      syntax = "NONE(identifier in iterable WHERE predicate)",
       arguments = common_arguments,
-      text = """Tests the predicate closure to see if no items in the iterable match. If even one matches, the function returns false.""",
-      queryText = """start n=node(%A%) match p=n-[*1..3]->b where NONE(x in nodes(p) : x.age = 25) return p""",
+      text = """Returns true if the predicate holds for no element in the iterable.""",
+      queryText = """start n=node(%A%) match p=n-[*1..3]->b where NONE(x in nodes(p) WHERE x.age = 25) return p""",
       returns = """All nodes in the path.""",
       (p) => assertEquals(2, p.toSeq.length))
   }
@@ -81,10 +81,10 @@ class FunctionsTest extends DocumentingTestBase {
   @Test def single() {
     testThis(
       title = "SINGLE",
-      syntax = "SINGLE(identifier in iterable : predicate)",
+      syntax = "SINGLE(identifier in iterable WHERE predicate)",
       arguments = common_arguments,
-      text = """Returns true if the closure predicate matches exactly one of the items in the iterable.""",
-      queryText = """start n=node(%A%) match p=n-->b where SINGLE(var in nodes(p) : var.eyes = "blue") return p""",
+      text = """Returns true if the predicate holds for exactly one of the elements in the iterable.""",
+      queryText = """start n=node(%A%) match p=n-->b where SINGLE(var in nodes(p) WHERE var.eyes = "blue") return p""",
       returns = """All nodes in the path.""",
       (p) => assertEquals(1, p.toSeq.length))
   }
@@ -117,7 +117,7 @@ class FunctionsTest extends DocumentingTestBase {
       syntax = "EXTRACT( identifier in iterable : expression )",
       arguments = List(
         "iterable" -> "An array property, or an iterable symbol, or an iterable function.",
-        "symbol" -> "The closure will have a symbol introduced in it's context. Here you decide which symbol to use. If you leave the symbol out, the default symbol +_+ (underscore) will be used.",
+        "symbol" -> "The closure will have a symbol introduced in it's context. Here you decide which symbol to use.",
         "expression" -> "This expression will run once per value in the iterable, and produces the result iterable."
       ),
       text = """To return a single property, or the value of a function from an iterable of nodes or relationships,
