@@ -24,7 +24,9 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +44,7 @@ import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.test.GraphDefinition;
 import org.neo4j.test.GraphDescription;
+import org.neo4j.tooling.GlobalGraphOperations;
 
 public abstract class AbstractTestBase
 {
@@ -91,7 +94,7 @@ public abstract class AbstractTestBase
         {
             Node reference = removeReference ? null
                     : graphdb.getReferenceNode();
-            for ( Node node : graphdb.getAllNodes() )
+            for ( Node node : GlobalGraphOperations.at( graphdb ).getAllNodes() )
             {
                 for ( Relationship rel : node.getRelationships() )
                 {
@@ -132,7 +135,7 @@ public abstract class AbstractTestBase
 
     protected Node getNodeWithName( String name )
     {
-        for ( Node node : graphdb.getAllNodes() )
+        for ( Node node : GlobalGraphOperations.at( graphdb ).getAllNodes() )
         {
             String nodeName = (String) node.getProperty( "name", null );
             if ( nodeName != null && nodeName.equals( name ) )
@@ -274,6 +277,7 @@ public abstract class AbstractTestBase
             Representation<T> representation, Set<String> expected )
     {
         Transaction tx = beginTx();
+        Collection<String> encounteredItems = new ArrayList<String>();
         try
         {
             for ( T item : items )
@@ -281,6 +285,7 @@ public abstract class AbstractTestBase
                 String repr = representation.represent( item );
                 System.out.println( "got " + item + ", " + repr );
                 assertTrue( repr + " not expected ", expected.remove( repr ) );
+                encounteredItems.add( repr );
             }
             tx.success();
         }
@@ -291,7 +296,7 @@ public abstract class AbstractTestBase
 
         if ( !expected.isEmpty() )
         {
-            fail( "The exepected elements " + expected + " were not returned." );
+            fail( "The exepected elements " + expected + " were not returned. These were: " + encounteredItems );
         }
     }
 

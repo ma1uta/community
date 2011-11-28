@@ -3,6 +3,7 @@ Include Neo4j in your project
 =============================
 
 After selecting the appropriate <<editions,edition>> for your platform, embed Neo4j in your Java application by including the Neo4j library jars in your build.
+The following sections will show how to do this by either altering the build path directly or by using dependency management.
 
 == Add Neo4j to the build path ==
 
@@ -18,7 +19,7 @@ JDK tools::
 Eclipse::
  * Right-click on the project and then go _Build Path -> Configure Build Path._
    In the dialog, choose _Add External JARs_, browse to the Neo4j 'lib/' directory and select all of the jar files.
- * Another option is to use http://help.eclipse.org/helios/index.jsp?topic=/org.eclipse.jdt.doc.user/reference/preferences/java/buildpath/ref-preferences-user-libraries.htm[User Libraries].
+ * Another option is to use http://help.eclipse.org/indigo/index.jsp?topic=/org.eclipse.jdt.doc.user/reference/preferences/java/buildpath/ref-preferences-user-libraries.htm[User Libraries].
 IntelliJ IDEA::
  See http://www.jetbrains.com/idea/webhelp/libraries-global-libraries-and-the-configure-library-dialog.html[Libraries, Global Libraries, and the Configure Library dialog]
 NetBeans::
@@ -52,7 +53,12 @@ The examples included here use the top-level artifact approach.
 </project>
 --------------------------------------------
 
-_Where +$\{neo4j-version}+ is the intended version and the +artifactId+ is found in <<editions>>._
+_Where +$\{neo4j-version}+ is the desired version and the +artifactId+ is found in <<editions>>._
+
+=== Eclipse and Maven ===
+
+For development in http://www.eclipse.org[Eclipse], it is recommended to install the http://www.eclipse.org/m2e/[M2Eclipse plugin] and let Maven manage the project build classpath instead, see above.
+This also adds the possibility to build your project both via the command line with Maven and have a working Eclipse setup for development.
 
 === Ivy ===
 
@@ -85,7 +91,25 @@ With that in place you can add Neo4j to the mix by having something along these 
 </dependencies>
 ..
 ----
-_Where +$\{neo4j-version}+ is the intended version and the +name+ is found in <<editions>>._
+_Where +$\{neo4j-version}+ is the desired version and the +name+ is found in <<editions>>._
+
+=== Gradle ===
+
+The example below shows an example gradle build script for including the Neo4j libraries.
+
+[source,groovy]
+----
+def neo4jVersion = "[set-version-here]"
+apply plugin: 'java'
+repositories {
+   mavenCentral()
+}
+dependencies {
+   compile "org.neo4j:neo4j:${neo4jVersion}"
+}
+----
+_Where +neo4jVersion+ is the desired version and the +name+ ("+neo4j+" in the example) is found in <<editions>>._
+
 
 [[tutorials-java-embedded-setup-startstop]]
 == Starting and stopping ==
@@ -138,5 +162,5 @@ tag=startDbWithConfig
 
 Or you could of course create you own +Map<String, String>+ programatically and use that instead.
 
-For configuration settings, see <<configuration>>.
+For configuration settings, see <<embedded-configuration>>.
 

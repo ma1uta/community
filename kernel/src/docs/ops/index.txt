@@ -1,4 +1,4 @@
-[[configuration]]
+[[embedded-configuration]]
 Configuration & Performance
 ===========================
 
@@ -9,6 +9,12 @@ The following sections describe how to tune these.
 
 :leveloffset: 2
 
+include::introduction.txt[]
+
+:leveloffset: 2
+
+include::performance-guide.txt[]
+
 include::cache.txt[]
 
 include::jvm.txt[]
@@ -17,3 +23,8 @@ include::filesystem.txt[]
 
 include::short-strings.txt[]
 
+include::short-arrays.txt[]
+
+include::io-examples.txt[]
+
+include::linux-performance.txt[]

@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.configuration.Configuration;
+import org.neo4j.helpers.collection.IteratorUtil;
+import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.database.GraphDatabaseFactory;
@@ -37,13 +39,13 @@ import org.neo4j.server.modules.RESTApiModule;
 import org.neo4j.server.modules.ServerModule;
 import org.neo4j.server.plugins.Injectable;
 import org.neo4j.server.plugins.PluginManager;
+import org.neo4j.server.rest.security.SecurityRule;
 import org.neo4j.server.startup.healthcheck.StartupHealthCheck;
 import org.neo4j.server.startup.healthcheck.StartupHealthCheckFailedException;
 import org.neo4j.server.web.WebServer;
 
 public class NeoServerWithEmbeddedWebServer implements NeoServer
 {
-
     public static final Logger log = Logger.getLogger( NeoServerWithEmbeddedWebServer.class );
 
     private Database database;
@@ -51,19 +53,16 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
     private final WebServer webServer;
     private final StartupHealthCheck startupHealthCheck;
 
-    private final AddressResolver addressResolver;
-
     private final List<ServerModule> serverModules = new ArrayList<ServerModule>();
     private PluginInitializer pluginInitializer;
     private final Bootstrapper bootstrapper;
 
-    public NeoServerWithEmbeddedWebServer( Bootstrapper bootstrapper, AddressResolver addressResolver,
+    public NeoServerWithEmbeddedWebServer( Bootstrapper bootstrapper,
             StartupHealthCheck startupHealthCheck, Configurator configurator, WebServer webServer,
             Iterable<Class<? extends ServerModule>> moduleClasses )
     {
 
         this.bootstrapper = bootstrapper;
-        this.addressResolver = addressResolver;
         this.startupHealthCheck = startupHealthCheck;
         this.configurator = configurator;
         this.webServer = webServer;
@@ -84,18 +83,33 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
 
         initWebServer();
 
-        startDatabase();
+        StringLogger logger = startDatabase();
+
+        if ( logger != null )
+        {
+            logger.logMessage( "--- SERVER STARTUP START ---" );
+
+            Configuration configuration = configurator.configuration();
+            logger.logMessage( "Server configuration:" );
+            for ( Object key : IteratorUtil.asIterable( configuration.getKeys() ) )
+            {
+                if ( key instanceof String )
+                    logger.logMessage( "  " + key + " = " + configuration.getProperty( (String) key ) );
+            }
+        }
 
         startExtensionInitialization();
 
-        startModules();
+        startModules( logger );
 
-        startWebServer();
+        startWebServer( logger );
+
+        if ( logger != null ) logger.logMessage( "--- SERVER STARTUP END ---", true );
     }
 
     /**
-     * Initializes individual plugins using the mechanism provided via @{see
-     * PluginInitializer} and the java service locator
+     * Initializes individual plugins using the mechanism provided via @{see PluginInitializer} and the java service
+     * locator
      */
     protected void startExtensionInitialization()
     {
@@ -104,7 +118,7 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
 
     /**
      * Use this method to register server modules from subclasses
-     * 
+     *
      * @param clazz
      */
     protected final void registerModule( Class<? extends ServerModule> clazz )
@@ -119,11 +133,11 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         }
     }
 
-    private void startModules()
+    private void startModules( StringLogger logger )
     {
         for ( ServerModule module : serverModules )
         {
-            module.start( this );
+            module.start( this, logger );
         }
     }
 
@@ -151,7 +165,7 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         }
     }
 
-    private void startDatabase()
+    private StringLogger startDatabase()
     {
         String dbLocation = new File( configurator.configuration()
                 .getString( Configurator.DATABASE_LOCATION_PROPERTY_KEY ) ).getAbsolutePath();
@@ -165,6 +179,7 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         {
             this.database = new Database( dbFactory, dbLocation );
         }
+        return database.getStringLogger();
     }
 
     @Override
@@ -188,6 +203,25 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         webServer.init();
     }
 
+    private SecurityRule[] createSecurityRulesFrom( Configuration configuration )
+    {
+        ArrayList<SecurityRule> rules = new ArrayList<SecurityRule>();
+
+        for ( String classname : configuration.getStringArray( Configurator.SECURITY_RULES_KEY ) )
+        {
+            try
+            {
+                rules.add( (SecurityRule) Class.forName( classname ).newInstance() );
+            }
+            catch ( Exception e) {
+                log.error( "Could not load server security rule [%s], exception details: ", classname, e.getMessage() );
+                e.printStackTrace();
+            }
+        }
+
+        return rules.toArray( new SecurityRule[0] );
+    }
+
     private int getMaxThreads()
     {
         return configurator.configuration()
@@ -201,11 +235,19 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
                 .availableProcessors();
     }
 
-    private void startWebServer()
+    private void startWebServer( StringLogger logger )
     {
         try
         {
+            SecurityRule[] securityRules = createSecurityRulesFrom( configurator.configuration() );
+            if ( logger != null ) for ( SecurityRule rule : securityRules )
+            {
+                logger.logMessage( "Active Security Rule: " + rule.getClass() );
+            }
+            webServer.addSecurityRules( securityRules );
+
             webServer.start();
+            if ( logger != null ) logger.logMessage( "Server started on: " + baseUri() );
             log.info( "Server started on [%s]", baseUri() );
         }
         catch ( Exception e )
@@ -223,7 +265,7 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
 
     protected String getWebServerAddress()
     {
-       return configurator.configuration()
+        return configurator.configuration()
                 .getString( Configurator.WEBSERVER_ADDRESS_PROPERTY_KEY, Configurator.DEFAULT_WEBSERVER_ADDRESS );
     }
 
@@ -304,10 +346,10 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
 
         }
         sb.append( "://" );
-        //sb.append( addressResolver.getHostname() );
+
         sb.append( getWebServerAddress() );
 
-        if ( webServerPort != 80 )
+        if ( webServerPort != 80 && webServerPort != 443)
         {
             sb.append( ":" );
             sb.append( webServerPort );

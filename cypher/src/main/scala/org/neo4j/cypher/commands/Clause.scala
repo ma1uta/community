@@ -20,22 +20,32 @@
 package org.neo4j.cypher.commands
 
 import org.neo4j.graphdb.PropertyContainer
+import java.lang.String
 
 abstract class Clause {
   def ++(other: Clause): Clause = And(this, other)
 
 
+<<<<<<< HEAD
   def isMatch(m: Map[String, Any]): Boolean
+=======
+  def isMatch(m: Map[ String, Any ]): Boolean
+>>>>>>> master
 
 
   // We need this information to place the filtering as close to the
   // source pipes as possible. The earlier we can filter stuff out,
   // the faster we can be
+<<<<<<< HEAD
   def dependsOn:Set[String]
+=======
+  def dependsOn: Set[ String ]
+>>>>>>> master
 
 
   // This is the un-dividable list of clauses. They can all be ANDed
   // together
+<<<<<<< HEAD
   def atoms:Seq[Clause]
 }
 
@@ -69,28 +79,95 @@ case class True() extends Clause {
   def dependsOn: Set[String] = Set()
 
   def atoms: Seq[Clause] = Seq(this)
+=======
+  def atoms: Seq[ Clause ]
+}
+
+case class And(a: Clause, b: Clause) extends Clause {
+  def isMatch(m: Map[ String, Any ]): Boolean = a.isMatch(m) && b.isMatch(m)
+
+  def atoms: Seq[ Clause ] = a.atoms ++ b.atoms
+
+  def dependsOn: Set[ String ] = a.dependsOn ++ b.dependsOn
+
+  override def toString: String = "(" + a + " AND " + b + ")"
+}
+
+case class Or(a: Clause, b: Clause) extends Clause {
+  def isMatch(m: Map[ String, Any ]): Boolean = a.isMatch(m) || b.isMatch(m)
+
+  def atoms: Seq[ Clause ] = Seq(this)
+
+  def dependsOn: Set[ String ] = a.dependsOn ++ b.dependsOn
+  override def toString: String = "(" + a + " OR " + b + ")"
+}
+
+case class Not(a: Clause) extends Clause {
+  def isMatch(m: Map[ String, Any ]): Boolean = !a.isMatch(m)
+
+  def atoms: Seq[ Clause ] = a.atoms.map(Not(_))
+
+  def dependsOn: Set[ String ] = a.dependsOn
+  override def toString: String = "NOT(" + a + ")"
+}
+
+case class IsNull(value: Value) extends Clause {
+  def isMatch(m: Map[ String, Any ]): Boolean = value(m) == null
+
+  def dependsOn: Set[ String ] = value match {
+    case x: EntityValue => Set("I depened on something that should never exist as an identifier!")
+    case x              => x.dependsOn
+  }
+
+  def atoms: Seq[ Clause ] = Seq(this)
+  override def toString: String = value + " IS NULL"
+}
+
+case class True() extends Clause {
+  def isMatch(m: Map[ String, Any ]): Boolean = true
+
+  def dependsOn: Set[ String ] = Set()
+
+  def atoms: Seq[ Clause ] = Seq(this)
+  override def toString: String = "true"
+>>>>>>> master
 }
 
 case class Has(property: PropertyValue) extends Clause {
-  def isMatch(m: Map[String, Any]): Boolean = property match {
+  def isMatch(m: Map[ String, Any ]): Boolean = property match {
     case PropertyValue(identifier, propertyName) => {
-      val propContainer = m(identifier).asInstanceOf[PropertyContainer]
+      val propContainer = m(identifier).asInstanceOf[ PropertyContainer ]
       propContainer.hasProperty(propertyName)
     }
   }
 
+<<<<<<< HEAD
   def dependsOn: Set[String] = Set(property.entity)
 
   def atoms: Seq[Clause] = Seq(this)
+=======
+  def dependsOn: Set[ String ] = Set(property.entity)
+
+  def atoms: Seq[ Clause ] = Seq(this)
+  override def toString: String = "hasProp(" + property + ")"
+>>>>>>> master
 }
 
-case class RegularExpression(a: Value, str: String) extends Clause {
-  def isMatch(m: Map[String, Any]): Boolean = {
-    val value = a.apply(m).asInstanceOf[String]
-    str.r.pattern.matcher(value).matches()
+case class RegularExpression(a: Value, regex: Value) extends Clause {
+  def isMatch(m: Map[ String, Any ]): Boolean = {
+    val value = a.apply(m).asInstanceOf[ String ]
+    regex(m).toString.r.pattern.matcher(value).matches()
   }
 
+<<<<<<< HEAD
   def dependsOn: Set[String] = a.dependsOn
 
   def atoms: Seq[Clause] = Seq(this)
+=======
+  def dependsOn: Set[ String ] = a.dependsOn ++ regex.dependsOn
+
+  def atoms: Seq[ Clause ] = Seq(this)
+
+  override def toString: String = a.toString() + " ~= /" + regex.toString() + "/"
+>>>>>>> master
 }

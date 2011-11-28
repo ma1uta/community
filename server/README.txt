@@ -1,10 +1,10 @@
 neo4j-server project
 ====================
  
-This component builds the runnable server component. 
+This project contains the runnable neo4j server component. 
 
-build-test-run
---------------
+build-test-run cycle
+--------------------
 
 When building for the first time, do:
 
@@ -19,28 +19,23 @@ Finally, run the server using:
 `mvn exec:java`
 
 
-functional-tests
-----------------
 
-To run the functional tests:
+Webadmin browser tests
+----------------------
 
-`mvn clean package -Dtests=functional`
+To run the webdriver tests for webadmin:
 
+`mvn clean test -Dtests=web`
 
+Or, to run all tests (both unit, functional and webdriver):
 
-integration-tests
-----------------
-
-To run the selenium-integration tests:
-
-`mvn clean integration-test -Dtests=web`
-
-You can also run them one-by-one via a web GUI:
-
-`tools/cukerunner.py`
+`mvn clean test -Dtests=all`
 
 You can run the tests under different browsers using maven profiles. By default, Firefox is used. 
-Available profiles are: -Phtmlunit for headless browser emulation, -Pie for internet explorer, and -Pchrome for chrome.
+Available profiles are: 
+  -Pie for internet explorer
+  -Pchrome for chrome.
+  
 Please note that the chrome driver requires an installed binary on your system, which you can find here: http://code.google.com/p/chromium/downloads/list
 
 Install it to a location of your choice, and tell the tests where to find it using the 'webdriver.chrome.driver' property:
@@ -51,24 +46,16 @@ Install it to a location of your choice, and tell the tests where to find it usi
 Webadmin development
 --------------------
 
-The webadmin build tool (brew) is disconnected from the normal build, and
-the artifact it produces (webadmin.min.js) is actually checked into this 
-source tree. If you make changes to webadmin code, run the following command
-to re-build webadmin.min.js:
+Webadmin builds during the compile and process-classes phases. If you are doing webadmin development work, you can make your changes auto-deploy, so you don't have to restart the server. Run the two commands below in separate consoles.
 
-`mvn clean package -Pwebadmin-build`
+Start the server (let this get the server started before issuing other commands):
 
-Webadmin development comes with a few helpers to make development faster. To 
-work on webadmin, let the following commands run in separate terminals:
+`mvn clean compile exec:java -Pneodev`
 
-Run the server (let this get the server started before issuing other commands):
+Auto-deploy changes to webadmin files:
 
-`mvn clean compile antrun:run -Pwebdev-exec,neodev`
-
-Auto-recompile coffeescript and HAML files:
-
-`mvn package -Pwebadmin-build,neodev -Dbrew.watch=true -DskipTests`
+`mvn compile -Dbrew.watch=true -Pneodev`
 
 Then go to http://localhost:7474/webadmin/dev.html 
 
-The dev.html file loads each individual js file, unminified, which makes debugging a lot easier. Please note however, that for your changes to be seen in the normal http://localhost:7474/webadmin/ you need to run the normal webadmin build at the top of this section.
+The dev.html file loads each js file individually and unminified, which makes debugging a lot easier. 

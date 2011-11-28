@@ -91,6 +91,7 @@ define(
       events :
         'click #visualization-reflow' : "reflowGraphLayout"
         'click #visualization-profiles-button' : "showProfilesDropdown"
+        'click #visualization-clear' : "clearVisualization"
 
       initialize : (options)->
         @server = options.server
@@ -98,31 +99,27 @@ define(
         @dataModel = options.dataModel
       
         @settings = new DataBrowserSettings(@appState.getSettings())
-        @settings.labelPropertiesChanged @settingsChanged
         @dataModel.bind("change:data", @render)
         
         @settings.onCurrentVisualizationProfileChange () =>
           @getViz().setProfile @settings.getCurrentVisualizationProfile()
 
       render : =>
-        if @browserHasRequiredFeatures()
-          if @vizEl? then @getViz().detach()
-          $(@el).html(template())
+        if @vizEl? then @getViz().detach()
+        $(@el).html(template())
 
-          @vizEl = $("#visualization", @el)
-          @getViz().attach(@vizEl)
+        @vizEl = $("#visualization", @el)
+        @getViz().attach(@vizEl)
 
-          switch @dataModel.get("type")
-            when "node"
-              @visualizeFromNode @dataModel.getData().getItem()
-            when "nodeList"
-              @visualizeFromNodes @dataModel.getData().getRawNodes()
-            when "relationship"
-              @visualizeFromRelationships [@dataModel.getData().getItem()]
-            when "relationshipList"
-              @visualizeFromRelationships @dataModel.getData().getRawRelationships()
-        else 
-          @showBrowserNotSupportedMessage()
+        switch @dataModel.get("type")
+          when "node"
+            @visualizeFromNode @dataModel.getData().getItem()
+          when "nodeList"
+            @visualizeFromNodes @dataModel.getData().getRawNodes()
+          when "relationship"
+            @visualizeFromRelationships [@dataModel.getData().getItem()]
+          when "relationshipList"
+            @visualizeFromRelationships @dataModel.getData().getRawRelationships()
 
         return this
         
@@ -134,10 +131,10 @@ define(
           @_profilesDropdown.renderFor $("#visualization-profiles-button")
 
       visualizeFromNode : (node) ->
-        @getViz().setNode(node)
+        @getViz().addNode(node)
 
       visualizeFromNodes : (nodes) ->
-        @getViz().setNodes(nodes)
+        @getViz().addNodes(nodes)
 
       visualizeFromRelationships : (rels) ->
 
@@ -161,48 +158,34 @@ define(
 
         allNodes = neo4j.Promise.join.apply(this, nodePromises)
         allNodes.then (nodes) =>
-          @getViz().setNodes nodes
-
-      settingsChanged : () =>
-        if @viz?
-          @viz.setLabelProperties(@settings.getLabelProperties())
+          @getViz().addNodes nodes
       
       getViz : () =>
         width = $(document).width() - 40;
         height = $(document).height() - 160;
         profile = @settings.getCurrentVisualizationProfile()
         @viz ?= new VisualGraph(@server, profile, width,height)
-        @settingsChanged()
         return @viz
 
-      browserHasRequiredFeatures : ->
-        Object.prototype.__defineGetter__?
-
-      showBrowserNotSupportedMessage : ->
-        $(@el).html """<div class='pad'>
-          <h1>I currently do not support visualization in this browser :(</h1>
-          <p>I can't find the __defineGetter__ API method, which the visualization lib I use, Arbor.js, needs.</p>
-          <p>If you really want to use visualization (it's pretty awesome), please consider using Google Chrome, Firefox or Safari.</p>
-          </div>""" 
-      
       reflowGraphLayout : () =>
         @viz.reflow() if @viz?
+        
+      clearVisualization : () =>
+        @viz.clear()
 
       remove : =>
-        if @browserHasRequiredFeatures()
-          @dataModel.unbind("change:data", @render)
-          @getViz().stop()
+        @dataModel.unbind("change:data", @render)
+        @getViz().stop()
         super()
 
       detach : =>
-        if @browserHasRequiredFeatures()
-          @dataModel.unbind("change:data", @render)
-          @getViz().stop()
+        @dataModel.unbind("change:data", @render)
+        @getViz().stop()
         super()
 
       attach : (parent) =>
         super(parent)
-        if @browserHasRequiredFeatures() and @vizEl?
+        if @vizEl?
           @getViz().start()
           @dataModel.bind("change:data", @render)
           

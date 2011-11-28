@@ -862,7 +862,8 @@ public class DatabaseActions
         {
             IndexRepresentation indexRepresentation = new NodeIndexRepresentation(
                     indexName );
-            for ( Node node : index.get( key, value ) )
+            IndexHits<Node> indexHits = index.get( key, value );
+            for ( Node node : indexHits )
             {
                 representations.add( new IndexedEntityRepresentation( node,
                         key, value, indexRepresentation ) );

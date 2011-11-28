@@ -32,11 +32,14 @@ import org.neo4j.kernel.CommonFactories;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 public class TestStore
 {
     public static IdGeneratorFactory ID_GENERATOR_FACTORY =
             CommonFactories.defaultIdGeneratorFactory();
+    public static FileSystemAbstraction FILE_SYSTEM =
+            CommonFactories.defaultFileSystemAbstraction();
     
     private String path()
     {
@@ -140,14 +143,14 @@ public class TestStore
 
     private static class Store extends AbstractStore
     {
-        // store version, each store ends with this string (byte encoded)
-        private static final String VERSION = "TestVersion v0.1";
+        public static final String TYPE_DESCRIPTOR = "TestVersion";
         private static final int RECORD_SIZE = 1;
 
         public Store( String fileName ) throws IOException
         {
             super( fileName, MapUtil.genericMap(
                     IdGeneratorFactory.class, ID_GENERATOR_FACTORY,
+                    StringLogger.class, StringLogger.DEV_NULL,
                     FileSystemAbstraction.class, CommonFactories.defaultFileSystemAbstraction(),
                     "store_dir", "target/var/teststore" ), IdType.NODE );
         }
@@ -156,34 +159,22 @@ public class TestStore
         {
         }
 
-//        protected void closeImpl()
-//        {
-//        }
-
-//        protected boolean fsck( boolean modify )
-//        {
-//            return false;
-//        }
-
         public int getRecordSize()
         {
             return RECORD_SIZE;
         }
 
-        public String getTypeAndVersionDescriptor()
+        public String getTypeDescriptor()
         {
-            return VERSION;
+            return TYPE_DESCRIPTOR;
         }
 
         public static Store createStore( String fileName ) throws IOException
         {
-            createEmptyStore( fileName, VERSION, ID_GENERATOR_FACTORY );
+            createEmptyStore( fileName, buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR ), ID_GENERATOR_FACTORY,
+                    FILE_SYSTEM );
             return new Store( fileName );
         }
-
-//        public void flush()
-//        {
-//        }
 
         protected void rebuildIdGenerator()
         {

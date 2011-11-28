@@ -47,7 +47,7 @@ import org.neo4j.kernel.impl.util.RelIdArray;
 import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdIterator;
 
-class NodeImpl extends Primitive
+class NodeImpl extends ArrayBasedPrimitive
 {
     private static final RelIdArray[] NO_RELATIONSHIPS = new RelIdArray[0];
 
@@ -110,7 +110,8 @@ class NodeImpl extends Primitive
     }
 
     @Override
-    protected ArrayMap<Integer, PropertyData> loadProperties( NodeManager nodeManager, boolean light )
+    protected ArrayMap<Integer, PropertyData> loadProperties(
+            NodeManager nodeManager, boolean light )
     {
         return nodeManager.loadProperties( this, light );
     }

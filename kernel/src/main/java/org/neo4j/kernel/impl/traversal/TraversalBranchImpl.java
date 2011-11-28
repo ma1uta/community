@@ -92,7 +92,7 @@ class TraversalBranchImpl implements TraversalBranch
         this.evaluation = context.evaluate( this );
     }
 
-    private void expandRelationships( RelationshipExpander expander )
+    protected void expandRelationships( RelationshipExpander expander )
     {
         if ( evaluation.continues() )
         {

@@ -19,67 +19,69 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * Implementation of the node store.
  */
-public class NodeStore extends AbstractStore implements Store
+public class NodeStore extends AbstractStore implements Store, RecordStore<NodeRecord>
 {
-    // node store version, each node store should end with this string
-    // (byte encoded)
-    private static final String VERSION = "NodeStore v0.9.9";
+    public static final String TYPE_DESCRIPTOR = "NodeStore";
 
     // in_use(byte)+next_rel_id(int)+next_prop_id(int)
     public static final int RECORD_SIZE = 9;
 
-    /**
-     * See {@link AbstractStore#AbstractStore(String, Map)}
-     */
     public NodeStore( String fileName, Map<?,?> config )
     {
         super( fileName, config, IdType.NODE );
     }
 
-    /**
-     * See {@link AbstractStore#AbstractStore(String)}
-     */
-//    public NodeStore( String fileName )
-//    {
-//        super( fileName );
-//    }
-
-    public String getTypeAndVersionDescriptor()
+    @Override
+    public void accept( RecordStore.Processor processor, NodeRecord record )
     {
-        return VERSION;
+        processor.processNode( this, record );
     }
 
+    @Override
+    public String getTypeDescriptor()
+    {
+        return TYPE_DESCRIPTOR;
+    }
+
+    @Override
     public int getRecordSize()
     {
         return RECORD_SIZE;
     }
 
+    @Override
+    public int getRecordHeaderSize()
+    {
+        return getRecordSize();
+    }
+
     /**
      * Creates a new node store contained in <CODE>fileName</CODE> If filename
-     * is <CODE>null</CODE> or the file already exists an 
+     * is <CODE>null</CODE> or the file already exists an
      * <CODE>IOException</CODE> is thrown.
-     * 
+     *
      * @param fileName
      *            File name of the new node store
-     * @throws IOException
-     *             If unable to create node store or name null
+     * @param config
+     *            Map of configuration parameters
      */
     public static void createStore( String fileName, Map<?, ?> config )
     {
         IdGeneratorFactory idGeneratorFactory = (IdGeneratorFactory) config.get(
                 IdGeneratorFactory.class );
-        createEmptyStore( fileName, VERSION, idGeneratorFactory );
+        FileSystemAbstraction fileSystem = (FileSystemAbstraction) config.get( FileSystemAbstraction.class );
+        createEmptyStore( fileName, buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR ), idGeneratorFactory, fileSystem );
         NodeStore store = new NodeStore( fileName, config );
         NodeRecord nodeRecord = new NodeRecord( store.nextId() );
         nodeRecord.setInUse( true );
@@ -92,8 +94,30 @@ public class NodeStore extends AbstractStore implements Store
         PersistenceWindow window = acquireWindow( id, OperationType.READ );
         try
         {
-            NodeRecord record = getRecord( id, window, false );
-            return record;
+            return getRecord( id, window, RecordLoad.NORMAL );
+        }
+        finally
+        {
+            releaseWindow( window );
+        }
+    }
+
+    @Override
+    public NodeRecord forceGetRecord( long id )
+    {
+        PersistenceWindow window = null;
+        try
+        {
+            window = acquireWindow( id, OperationType.READ );
+        }
+        catch ( InvalidRecordException e )
+        {
+            return new NodeRecord( id ); // inUse=false by default
+        }
+        
+        try
+        {
+            return getRecord( id, window, RecordLoad.FORCE );
         }
         finally
         {
@@ -116,13 +140,28 @@ public class NodeStore extends AbstractStore implements Store
         }
     }
 
+    @Override
+    public void forceUpdateRecord( NodeRecord record )
+    {
+        PersistenceWindow window = acquireWindow( record.getId(),
+                OperationType.WRITE );
+            try
+            {
+                updateRecord( record, window, true );
+            }
+            finally
+            {
+                releaseWindow( window );
+            }
+    }
+
     public void updateRecord( NodeRecord record )
     {
         PersistenceWindow window = acquireWindow( record.getId(),
             OperationType.WRITE );
         try
         {
-            updateRecord( record, window );
+            updateRecord( record, window, false );
         }
         finally
         {
@@ -145,7 +184,7 @@ public class NodeStore extends AbstractStore implements Store
 
         try
         {
-            NodeRecord record = getRecord( id, window, true );
+            NodeRecord record = getRecord( id, window, RecordLoad.CHECK );
             if ( record == null )
             {
                 return false;
@@ -158,56 +197,59 @@ public class NodeStore extends AbstractStore implements Store
         }
     }
 
-    private NodeRecord getRecord( long id, PersistenceWindow window, 
-        boolean check )
+    private NodeRecord getRecord( long id, PersistenceWindow window,
+        RecordLoad load  )
     {
         Buffer buffer = window.getOffsettedBuffer( id );
-        
+
         // [    ,   x] in use bit
         // [    ,xxx ] higher bits for rel id
         // [xxxx,    ] higher bits for prop id
         long inUseByte = buffer.get();
-        
+
         boolean inUse = (inUseByte & 0x1) == Record.IN_USE.intValue();
         if ( !inUse )
         {
-            if ( check )
+            switch ( load )
             {
+            case NORMAL:
+                throw new InvalidRecordException( "Record[" + id + "] not in use" );
+            case CHECK:
                 return null;
             }
-            throw new InvalidRecordException( "Record[" + id + "] not in use" );
         }
-        
+
         long nextRel = buffer.getUnsignedInt();
         long nextProp = buffer.getUnsignedInt();
-        
+
         long relModifier = (inUseByte & 0xEL) << 31;
         long propModifier = (inUseByte & 0xF0L) << 28;
-        
+
         NodeRecord nodeRecord = new NodeRecord( id );
         nodeRecord.setInUse( inUse );
         nodeRecord.setNextRel( longFromIntAndMod( nextRel, relModifier ) );
         nodeRecord.setNextProp( longFromIntAndMod( nextProp, propModifier ) );
         return nodeRecord;
     }
-    
-    private void updateRecord( NodeRecord record, PersistenceWindow window )
+
+    private void updateRecord( NodeRecord record, PersistenceWindow window, boolean force )
     {
         long id = record.getId();
         Buffer buffer = window.getOffsettedBuffer( id );
-        if ( record.inUse() )
+        if ( record.inUse() || force )
         {
             long nextRel = record.getNextRel();
             long nextProp = record.getNextProp();
-            
+
             short relModifier = nextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (short)((nextRel & 0x700000000L) >> 31);
             short propModifier = nextProp == Record.NO_NEXT_PROPERTY.intValue() ? 0 : (short)((nextProp & 0xF00000000L) >> 28);
 
             // [    ,   x] in use bit
             // [    ,xxx ] higher bits for rel id
             // [xxxx,    ] higher bits for prop id
-            short inUseUnsignedByte = (short)((Record.IN_USE.byteValue() | relModifier | propModifier));
-            buffer.put( (byte)inUseUnsignedByte ).putInt( (int) nextRel ).putInt( (int) nextProp );
+            short inUseUnsignedByte = ( record.inUse() ? Record.IN_USE : Record.NOT_IN_USE ).byteValue();
+            inUseUnsignedByte = (short) ( inUseUnsignedByte | relModifier | propModifier );
+            buffer.put( (byte) inUseUnsignedByte ).putInt( (int) nextRel ).putInt( (int) nextProp );
         }
         else
         {
@@ -218,40 +260,18 @@ public class NodeStore extends AbstractStore implements Store
             }
         }
     }
-    
-    public String toString()
-    {
-        return "NodeStore";
-    }
-    
-    @Override
-    protected boolean versionFound( String version )
-    {
-        if ( !version.startsWith( "NodeStore" ) )
-        {
-            // non clean shutdown, need to do recover with right neo
-            return false;
-        }
-//        if ( version.equals( "NodeStore v0.9.3" ) )
-//        {
-//            rebuildIdGenerator();
-//            closeIdGenerator();
-//            return true;
-//        }
-        if ( version.equals( "NodeStore v0.9.5" ) )
-        {
-            return true;
-        }
-        throw new IllegalStoreVersionException( "Store version [" + version  + 
-            "]. Please make sure you are not running old Neo4j kernel " + 
-            " towards a store that has been created by newer version " + 
-            " of Neo4j." );
-    }
 
+    @Override
     public List<WindowPoolStats> getAllWindowPoolStats()
     {
         List<WindowPoolStats> list = new ArrayList<WindowPoolStats>();
         list.add( getWindowPoolStats() );
         return list;
+    }
+
+    @Override
+    public void logIdUsage( StringLogger logger )
+    {
+        NeoStore.logIdUsage( logger, this );
     }
 }

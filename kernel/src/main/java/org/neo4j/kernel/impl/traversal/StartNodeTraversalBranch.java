@@ -38,8 +38,15 @@ class StartNodeTraversalBranch extends TraversalBranchImpl
     {
         if ( !hasExpandedRelationships() )
         {
-            expandRelationshipsWithoutChecks( expander );
+            expandRelationships( expander );
             return this;
+            
+//            if ( metadata.isUniqueFirst( this ) )
+//            {
+//                expandRelationships( expander );
+//                return this;
+//            }
+//            return null;
         }
         return super.next( expander, metadata );
     }

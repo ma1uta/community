@@ -27,6 +27,7 @@ import org.neo4j.helpers.collection.IteratorUtil;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
 import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
@@ -84,11 +85,10 @@ public class TestKernelPanic
     }
 
     private void assertMessageLogContains(String path, String exceptionString) throws FileNotFoundException {
-        final File logFile = new File(path, "messages.log");
+        final File logFile = new File(path, StringLogger.DEFAULT_NAME);
         assertTrue("exists "+logFile,logFile.exists() && logFile.isFile());
         final Scanner scanner = new Scanner(logFile).useDelimiter("\n");
         for (String line : IteratorUtil.asIterable(scanner)) {
-            System.err.println("line = " + line);
             if (line.contains(exceptionString)) return;
         }
         fail(logFile+" did not contain: "+exceptionString);

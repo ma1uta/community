@@ -105,7 +105,7 @@ public abstract class Evaluators
         {
             public Evaluation evaluate( Path path )
             {
-                return path.length() < depth ? Evaluation.EXCLUDE_AND_CONTINUE : Evaluation.INCLUDE_AND_CONTINUE;
+                return path.length() >= depth ? Evaluation.INCLUDE_AND_CONTINUE : Evaluation.EXCLUDE_AND_CONTINUE;
             }
         };
     }
@@ -124,7 +124,7 @@ public abstract class Evaluators
         {
             public Evaluation evaluate( Path path )
             {
-                return path.length() < depth ? Evaluation.EXCLUDE_AND_CONTINUE : Evaluation.INCLUDE_AND_PRUNE;
+                return path.length() == depth ? Evaluation.INCLUDE_AND_PRUNE: Evaluation.EXCLUDE_AND_CONTINUE;
             }
         };
     }

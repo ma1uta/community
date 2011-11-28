@@ -21,6 +21,7 @@ package org.neo4j.kernel.impl.batchinsert;
 
 import static java.lang.Boolean.parseBoolean;
 import static org.neo4j.kernel.Config.ALLOW_STORE_UPGRADE;
+import static org.neo4j.kernel.impl.nioneo.store.PropertyStore.encodeString;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -48,11 +49,15 @@ import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
 import org.neo4j.kernel.impl.nioneo.store.NodeStore;
+import org.neo4j.kernel.impl.nioneo.store.PrimitiveRecord;
+import org.neo4j.kernel.impl.nioneo.store.PropertyBlock;
+import org.neo4j.kernel.impl.nioneo.store.PropertyData;
 import org.neo4j.kernel.impl.nioneo.store.PropertyIndexData;
 import org.neo4j.kernel.impl.nioneo.store.PropertyIndexRecord;
 import org.neo4j.kernel.impl.nioneo.store.PropertyIndexStore;
 import org.neo4j.kernel.impl.nioneo.store.PropertyRecord;
 import org.neo4j.kernel.impl.nioneo.store.PropertyStore;
+import org.neo4j.kernel.impl.nioneo.store.PropertyType;
 import org.neo4j.kernel.impl.nioneo.store.Record;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipStore;
@@ -89,7 +94,7 @@ public class BatchInserterImpl implements BatchInserter
         Map<String,String> stringParams )
     {
         rejectAutoUpgrade( stringParams );
-        msgLog = StringLogger.getLogger( storeDir );
+        msgLog = StringLogger.logger( storeDir );
         Map<Object,Object> params = getDefaultParams();
         params.put( Config.USE_MEMORY_MAPPED_BUFFERS, "false" );
         boolean dump = Boolean.parseBoolean( stringParams.get( Config.DUMP_CONFIGURATION ) );
@@ -101,7 +106,8 @@ public class BatchInserterImpl implements BatchInserter
         this.storeDir = storeDir;
         this.idGeneratorFactory = CommonFactories.defaultIdGeneratorFactory();
         params.put( IdGeneratorFactory.class, idGeneratorFactory );
-        params.put( FileSystemAbstraction.class, CommonFactories.defaultFileSystemAbstraction() );
+        FileSystemAbstraction fileSystem = CommonFactories.defaultFileSystemAbstraction();
+        params.put( FileSystemAbstraction.class, fileSystem );
         String store = fixPath( storeDir, params );
         params.put( "neo_store", store );
         if ( dump )
@@ -122,7 +128,263 @@ public class BatchInserterImpl implements BatchInserter
             getRelationshipTypeStore().getRelationshipTypes();
         typeHolder = new RelationshipTypeHolder( types );
         graphDbService = new BatchGraphDatabaseImpl( this );
-        indexStore = new IndexStore( storeDir );
+        indexStore = new IndexStore( storeDir, fileSystem );
+    }
+
+    @Override
+    public boolean nodeHasProperty( long node, String propertyName )
+    {
+        return primitiveHasProperty( getNodeRecord( node ), propertyName );
+    }
+
+    @Override
+    public boolean relationshipHasProperty( long relationship,
+            String propertyName )
+    {
+        return primitiveHasProperty( getRelationshipRecord( relationship ),
+                propertyName );
+    }
+
+    @Override
+    public void setNodeProperty( long node, String propertyName,
+            Object propertyValue )
+    {
+        NodeRecord nodeRec = getNodeRecord( node );
+        if ( setPrimitiveProperty( nodeRec, propertyName, propertyValue ) )
+        {
+            getNodeStore().updateRecord( nodeRec );
+        }
+    }
+
+    @Override
+    public void setRelationshipProperty( long relationship,
+            String propertyName, Object propertyValue )
+    {
+        RelationshipRecord relRec = getRelationshipRecord( relationship );
+        if ( setPrimitiveProperty( relRec, propertyName, propertyValue ) )
+        {
+            getRelationshipStore().updateRecord( relRec );
+        }
+    }
+
+    @Override
+    public void removeNodeProperty( long node, String propertyName )
+    {
+        NodeRecord nodeRec = getNodeRecord( node );
+        if ( removePrimitiveProperty( nodeRec, propertyName ) )
+        {
+            getNodeStore().updateRecord( nodeRec );
+        }
+    }
+
+    @Override
+    public void removeRelationshipProperty( long relationship,
+            String propertyName )
+    {
+        RelationshipRecord relationshipRec = getRelationshipRecord( relationship );
+        if ( removePrimitiveProperty( relationshipRec, propertyName ) )
+        {
+            getRelationshipStore().updateRecord( relationshipRec );
+        }
+    }
+
+    private boolean removePrimitiveProperty( PrimitiveRecord primitive,
+            String property )
+    {
+        PropertyRecord current = null;
+        PropertyBlock target = null;
+        long nextProp = primitive.getNextProp();
+        int propIndex = indexHolder.getKeyId( property );
+        if ( nextProp == Record.NO_NEXT_PROPERTY.intValue() || propIndex == -1 )
+        {
+            // No properties or no one has that property, nothing changed
+            return false;
+        }
+        while ( nextProp != Record.NO_NEXT_PROPERTY.intValue() )
+        {
+            current = getPropertyStore().getRecord( nextProp );
+            if ( ( target = current.removePropertyBlock( propIndex ) ) != null )
+            {
+                if ( target.isLight() )
+                {
+                    getPropertyStore().makeHeavy( target );
+                }
+                for ( DynamicRecord dynRec : target.getValueRecords() )
+                {
+                    current.addDeletedRecord( dynRec );
+                }
+                break;
+            }
+            nextProp = current.getNextProp();
+        }
+        if ( current.size() > 0 )
+        {
+            getPropertyStore().updateRecord( current );
+            return false;
+        }
+        else
+        {
+            return unlinkPropertyRecord( current, primitive );
+        }
+    }
+
+    private boolean unlinkPropertyRecord( PropertyRecord propRecord,
+            PrimitiveRecord primitive )
+    {
+        assert propRecord.size() == 0;
+        boolean primitiveChanged = false;
+        long prevProp = propRecord.getPrevProp();
+        long nextProp = propRecord.getNextProp();
+        if ( primitive.getNextProp() == propRecord.getId() )
+        {
+            assert propRecord.getPrevProp() == Record.NO_PREVIOUS_PROPERTY.intValue() : propRecord
+                                                                                        + " for "
+                                                                                        + primitive;
+            primitive.setNextProp( nextProp );
+            primitiveChanged = true;
+        }
+        if ( prevProp != Record.NO_PREVIOUS_PROPERTY.intValue() )
+        {
+            PropertyRecord prevPropRecord = getPropertyStore().getRecord(
+                    prevProp );
+            assert prevPropRecord.inUse() : prevPropRecord + "->" + propRecord
+                                            + " for " + primitive;
+            prevPropRecord.setNextProp( nextProp );
+            getPropertyStore().updateRecord( prevPropRecord );
+        }
+        if ( nextProp != Record.NO_NEXT_PROPERTY.intValue() )
+        {
+            PropertyRecord nextPropRecord = getPropertyStore().getRecord(
+                    nextProp );
+            assert nextPropRecord.inUse() : propRecord + "->" + nextPropRecord
+                                            + " for " + primitive;
+            nextPropRecord.setPrevProp( prevProp );
+            getPropertyStore().updateRecord( nextPropRecord );
+        }
+        propRecord.setInUse( false );
+        /*
+         *  The following two are not needed - the above line does all the work (PropertyStore
+         *  does not write out the prev/next for !inUse records). It is nice to set this
+         *  however to check for consistency when assertPropertyChain().
+         */
+        propRecord.setPrevProp( Record.NO_PREVIOUS_PROPERTY.intValue() );
+        propRecord.setNextProp( Record.NO_NEXT_PROPERTY.intValue() );
+        getPropertyStore().updateRecord( propRecord );
+        return primitiveChanged;
+    }
+
+    /**
+     * @return true if the passed primitive needs updating in the store.
+     */
+    private boolean setPrimitiveProperty( PrimitiveRecord primitive,
+            String name,
+            Object value )
+    {
+        boolean result = false;
+        long nextProp = primitive.getNextProp();
+        int index = indexHolder.getKeyId( name );
+
+        if ( index == -1 )
+        {
+            index = createNewPropertyIndex( name );
+        }
+        PropertyBlock block = new PropertyBlock();
+        getPropertyStore().encodeValue( block, index, value );
+        int size = block.getSize();
+
+        /*
+         * current is the current record traversed
+         * thatFits is the earliest record that can host the block
+         * thatHas is the record that already has a block for this index
+         */
+        PropertyRecord current = null, thatFits = null, thatHas = null;
+        /*
+         * We keep going while there are records or until we both found the
+         * property if it exists and the place to put it, if exists.
+         */
+        while ( !( nextProp == Record.NO_NEXT_PROPERTY.intValue() || ( thatHas != null && thatFits != null ) ) )
+        {
+            current = getPropertyStore().getRecord( nextProp );
+            /*
+             * current.getPropertyBlock() is cheap but not free. If we already
+             * have found thatHas, then we can skip this lookup.
+             */
+            if ( thatHas == null && current.getPropertyBlock( index ) != null )
+            {
+                thatHas = current;
+                PropertyBlock removed = thatHas.removePropertyBlock( index );
+                if ( removed.isLight() )
+                {
+                    getPropertyStore().makeHeavy( removed );
+                    for ( DynamicRecord dynRec : removed.getValueRecords() )
+                    {
+                        thatHas.addDeletedRecord( dynRec );
+                    }
+                }
+                getPropertyStore().updateRecord( thatHas );
+            }
+            /*
+             * We check the size after we remove - potentially we can put in the same record.
+             *
+             * current.size() is cheap but not free. If we already found somewhere
+             * where it fits, no need to look again.
+             */
+            if ( thatFits == null
+                 && ( PropertyType.getPayloadSize() - current.size() >= size ) )
+            {
+                thatFits = current;
+            }
+            nextProp = current.getNextProp();
+        }
+        /*
+         * thatHas is of no importance here. We know that the block is definitely not there.
+         * However, we can be sure that if the property existed, thatHas is not null and does
+         * not contain the block.
+         *
+         * thatFits is interesting. If null, we need to create a new record and link, otherwise
+         * just add the block there.
+         */
+        if ( thatFits == null )
+        {
+            thatFits = new PropertyRecord( getPropertyStore().nextId() );
+
+            if ( primitive.getNextProp() != Record.NO_NEXT_PROPERTY.intValue() )
+            {
+                PropertyRecord first = getPropertyStore().getRecord(
+                        primitive.getNextProp() );
+                thatFits.setNextProp( first.getId() );
+                first.setPrevProp( thatFits.getId() );
+                getPropertyStore().updateRecord( first );
+                result = true;
+            }
+            primitive.setNextProp( thatFits.getId() );
+        }
+        thatFits.addPropertyBlock( block );
+        getPropertyStore().updateRecord( thatFits );
+        return result;
+    }
+
+    private boolean primitiveHasProperty( PrimitiveRecord record,
+            String propertyName )
+    {
+        long nextProp = record.getNextProp();
+        int propertyIndex = indexHolder.getKeyId( propertyName );
+        if (nextProp == Record.NO_NEXT_PROPERTY.intValue() || propertyIndex == -1)
+        {
+            return false;
+        }
+
+        PropertyRecord current = null;
+        while ( nextProp != Record.NO_NEXT_PROPERTY.intValue() )
+        {
+            current = getPropertyStore().getRecord( nextProp );
+            if ( current.getPropertyBlock( propertyIndex ) != null )
+            {
+                return true;
+            }
+            nextProp = current.getNextProp();
+        }
+        return false;
     }
 
     private void rejectAutoUpgrade( Map<String, String> stringParams )
@@ -238,6 +500,17 @@ public class BatchInserterImpl implements BatchInserter
         if ( record.getNextProp() != Record.NO_NEXT_PROPERTY.intValue() )
         {
             deletePropertyChain( record.getNextProp() );
+            /*
+             * Batch inserter does not make any attempt to maintain the store's
+             * integrity. It makes sense however to keep some things intact where
+             * the cost is relatively low. So here, when we delete the property
+             * chain we first make sure that the node record (or the relationship
+             * record below) does not point anymore to the deleted properties. This
+             * way, if during creation, something goes wrong, it will not have the properties
+             * expected instead of throwing invalid record exceptions.
+             */
+            record.setNextProp( Record.NO_NEXT_PROPERTY.intValue() );
+            getNodeStore().updateRecord( record );
         }
         record.setNextProp( createPropertyChain( properties ) );
         getNodeStore().updateRecord( record );
@@ -250,6 +523,12 @@ public class BatchInserterImpl implements BatchInserter
         if ( record.getNextProp() != Record.NO_NEXT_PROPERTY.intValue() )
         {
             deletePropertyChain( record.getNextProp() );
+            /*
+             * See setNodeProperties above for an explanation of what goes on
+             * here
+             */
+            record.setNextProp( Record.NO_NEXT_PROPERTY.intValue() );
+            getRelationshipStore().updateRecord( record );
         }
         record.setNextProp( createPropertyChain( properties ) );
         getRelationshipStore().updateRecord( record );
@@ -355,7 +634,7 @@ public class BatchInserterImpl implements BatchInserter
         graphDbService.clearCaches();
         neoStore.close();
         msgLog.logMessage( Thread.currentThread() + " Clean shutdown on BatchInserter(" + this + ")", true );
-        StringLogger.close( storeDir );
+        msgLog.close();
     }
 
     private Map<Object,Object> getDefaultParams()
@@ -394,13 +673,16 @@ public class BatchInserterImpl implements BatchInserter
 
     private long createPropertyChain( Map<String,Object> properties )
     {
-        if ( properties == null )
+        if ( properties == null || properties.isEmpty() )
         {
             return Record.NO_NEXT_PROPERTY.intValue();
         }
         PropertyStore propStore = getPropertyStore();
         List<PropertyRecord> propRecords = new ArrayList<PropertyRecord>();
-        PropertyRecord prevRecord = null;
+        PropertyRecord currentRecord = new PropertyRecord( propStore.nextId() );
+        currentRecord.setInUse( true );
+        currentRecord.setCreated();
+        propRecords.add( currentRecord );
         for ( Entry<String,Object> entry : properties.entrySet() )
         {
             int keyId = indexHolder.getKeyId( entry.getKey() );
@@ -408,64 +690,91 @@ public class BatchInserterImpl implements BatchInserter
             {
                 keyId = createNewPropertyIndex( entry.getKey() );
             }
-            long propertyId = propStore.nextId();
-            PropertyRecord propertyRecord = new PropertyRecord( propertyId );
-            propertyRecord.setInUse( true );
-            propertyRecord.setCreated();
-            propertyRecord.setKeyIndexId( keyId );
-            propStore.encodeValue( propertyRecord, entry.getValue() );
-            if ( prevRecord != null )
+
+            PropertyBlock block = new PropertyBlock();
+            propStore.encodeValue( block, keyId, entry.getValue() );
+            if ( currentRecord.size() + block.getSize() > PropertyType.getPayloadSize() )
             {
-                prevRecord.setPrevProp( propertyId );
-                propertyRecord.setNextProp( prevRecord.getId() );
+                // Here it means the current block is done for
+                PropertyRecord prevRecord = currentRecord;
+                // Create new record
+                long propertyId = propStore.nextId();
+                currentRecord = new PropertyRecord( propertyId );
+                currentRecord.setInUse( true );
+                currentRecord.setCreated();
+                // Set up links
+                prevRecord.setNextProp( propertyId );
+                currentRecord.setPrevProp( prevRecord.getId() );
+                propRecords.add( currentRecord );
+                // Now current is ready to start picking up blocks
             }
-            propRecords.add( propertyRecord );
-            prevRecord = propertyRecord;
+            currentRecord.addPropertyBlock( block );
         }
-        // reverse order results in forward update to store
+        /*
+         * Add the property records in reverse order, which means largest
+         * id first. That is to make sure we expand the property store file
+         * only once.
+         */
         for ( int i = propRecords.size() - 1; i >=0; i-- )
         {
             propStore.updateRecord( propRecords.get( i ) );
         }
-        if ( prevRecord != null )
-        {
-            return prevRecord.getId();
-        }
-        return Record.NO_NEXT_PROPERTY.intValue();
+        /*
+         *  0 will always exist, if the map was empty we wouldn't be here
+         *  and even one property will create at least one record.
+         */
+        return propRecords.get( 0 ).getId();
     }
 
-    private void deletePropertyChain( long propertyId )
+    private void deletePropertyChain( long nextProp )
     {
         PropertyStore propStore = getPropertyStore();
-        PropertyRecord propertyRecord = propStore.getRecord( propertyId );
-        propertyRecord.setInUse( false );
-        for ( DynamicRecord record : propertyRecord.getValueRecords() )
+        while ( nextProp != Record.NO_NEXT_PROPERTY.intValue() )
         {
-            record.setInUse( false );
-        }
-        propStore.updateRecord( propertyRecord );
-    }
-
-    private Map<String,Object> getPropertyChain( long propertyId )
-    {
-        PropertyStore propStore = getPropertyStore();
-        PropertyRecord propertyRecord = propStore.getRecord( propertyId );
-        long nextProperty = -1;
-        Map<String,Object> properties = new HashMap<String,Object>();
-        do
-        {
-            nextProperty = propertyRecord.getNextProp();
-            propStore.makeHeavy( propertyRecord );
-            String key = indexHolder.getStringKey(
-                propertyRecord.getKeyIndexId() );
-            Object value = propStore.getValue( propertyRecord );
-            properties.put( key, value );
-            if ( nextProperty != Record.NO_NEXT_PROPERTY.intValue() )
+            PropertyRecord propRecord = propStore.getRecord( nextProp );
+            /*
+             *  The only reason to loop over the blocks is to handle the dynamic
+             *  records that possibly hang under them. Otherwise, we could just
+             *  set the property record not in use and be done with it. The
+             *  residue of the convenience is that we do not remove individual
+             *  property blocks - we just mark the whole record as !inUse.
+             */
+            for ( PropertyBlock propBlock : propRecord.getPropertyBlocks() )
             {
-                propertyRecord =
-                    propStore.getRecord( propertyRecord.getNextProp() );
+                if ( propBlock.isLight() )
+                {
+                    propStore.makeHeavy( propBlock );
+                }
+                for ( DynamicRecord rec : propBlock.getValueRecords() )
+                {
+                    rec.setInUse( false );
+                    propRecord.addDeletedRecord( rec );
+                }
             }
-        } while ( nextProperty != Record.NO_NEXT_PROPERTY.intValue() );
+            propRecord.setInUse( false );
+            nextProp = propRecord.getNextProp();
+            propStore.updateRecord( propRecord );
+        }
+    }
+
+    private Map<String, Object> getPropertyChain( long nextProp )
+    {
+        PropertyStore propStore = getPropertyStore();
+        Map<String,Object> properties = new HashMap<String,Object>();
+
+        while ( nextProp != Record.NO_NEXT_PROPERTY.intValue() )
+        {
+            PropertyRecord propRecord = propStore.getRecord( nextProp );
+            for ( PropertyBlock propBlock : propRecord.getPropertyBlocks() )
+            {
+                String key = indexHolder.getStringKey( propBlock.getKeyIndexId() );
+                PropertyData propertyData = propBlock.newPropertyData( propRecord );
+                Object value = propertyData.getValue() != null ? propertyData.getValue() :
+                        propBlock.getType().getValue( propBlock, getPropertyStore() );
+                properties.put( key, value );
+            }
+            nextProp = propRecord.getNextProp();
+        }
         return properties;
     }
 
@@ -478,11 +787,8 @@ public class BatchInserterImpl implements BatchInserter
         record.setCreated();
         int keyBlockId = idxStore.nextKeyBlockId();
         record.setKeyBlockId( keyBlockId );
-        int length = stringKey.length();
-        char[] chars = new char[length];
-        stringKey.getChars( 0, length, chars, 0 );
         Collection<DynamicRecord> keyRecords =
-            idxStore.allocateKeyRecords( keyBlockId, chars );
+            idxStore.allocateKeyRecords( keyBlockId, encodeString( stringKey ) );
         for ( DynamicRecord keyRecord : keyRecords )
         {
             record.addKeyRecord( keyRecord );
@@ -501,11 +807,8 @@ public class BatchInserterImpl implements BatchInserter
         record.setCreated();
         int typeBlockId = (int) typeStore.nextBlockId();
         record.setTypeBlock( typeBlockId );
-        int length = name.length();
-        char[] chars = new char[length];
-        name.getChars( 0, length, chars, 0 );
         Collection<DynamicRecord> typeRecords =
-            typeStore.allocateTypeNameRecords( typeBlockId, chars );
+            typeStore.allocateTypeNameRecords( typeBlockId, encodeString( name ) );
         for ( DynamicRecord typeRecord : typeRecords )
         {
             record.addTypeRecord( typeRecord );
@@ -572,7 +875,7 @@ public class BatchInserterImpl implements BatchInserter
         }
         dir = FileUtils.fixSeparatorsInPath( dir );
         String fileSeparator = System.getProperty( "file.separator" );
-        String store = dir + fileSeparator + "neostore";
+        String store = dir + fileSeparator + NeoStore.DEFAULT_NAME;
         if ( !new File( store ).exists() )
         {
             NeoStore.createStore( store, config );
