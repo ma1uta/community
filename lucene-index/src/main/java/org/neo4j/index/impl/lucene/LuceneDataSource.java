@@ -121,8 +121,7 @@ public class LuceneDataSource extends IndexDataSource
 
     private IndexTypeCache typeCache;
 //    private final Cache caching;
-    final Map<IndexIdentifier, LuceneIndex<? extends PropertyContainer>> indexes =
-            new HashMap<IndexIdentifier, LuceneIndex<? extends PropertyContainer>>();
+    Map<IndexIdentifier, LuceneIndex<? extends PropertyContainer>> indexes;
     private DirectoryGetter directoryGetter;
 
     /**
@@ -141,6 +140,7 @@ public class LuceneDataSource extends IndexDataSource
     @Override
     protected void initializeBeforeLogicalLog( Map<?, ?> params )
     {
+        indexes = new HashMap<IndexIdentifier, LuceneIndex<? extends PropertyContainer>>();
         int searcherSize = parseInt( params, Config.LUCENE_SEARCHER_CACHE_SIZE );
         indexSearchers = new IndexSearcherLruCache( searcherSize );
         int writerSize = parseInt( params, Config.LUCENE_WRITER_CACHE_SIZE );

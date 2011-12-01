@@ -123,6 +123,7 @@ class LuceneTransaction extends IndexTransaction
             for ( Map.Entry<IndexIdentifier, Collection<IndexCommand>> entry : getCommands().entrySet() )
             {
                 if ( entry.getValue().isEmpty() ) continue;
+                IndexIdentifier identifier = entry.getKey();
                 IndexCommand firstCommand = entry.getValue().iterator().next();
                 if ( firstCommand instanceof CreateCommand )
                 {
@@ -131,8 +132,12 @@ class LuceneTransaction extends IndexTransaction
                             def.getIndexName( createCommand.getIndexNameId() ), createCommand.getConfig() );
                     continue;
                 }
+                else if ( firstCommand instanceof DeleteCommand )
+                {
+                    dataSource.deleteIndex( identifier, isRecovered() );
+                    continue;
+                }
                 
-                IndexIdentifier identifier = entry.getKey();
                 IndexType type = dataSource.getType( identifier );
                 CommitContext context = new CommitContext( dataSource, identifier, type );
                 for ( IndexCommand command : entry.getValue() )
