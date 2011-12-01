@@ -203,8 +203,8 @@ public class TestLuceneDataSource
     {
         Map<Object, Object> result = MapUtil.genericMap(
                 "store_dir", dbStoreDir,
-                "index_store_dir", getIndexStoreDir( dbStoreDir, LuceneDataSource.DEFAULT_NAME ),
-                "index_store_db", getIndexStoreDb( dbStoreDir, LuceneDataSource.DEFAULT_NAME ),
+                "index_store_dir", getIndexStoreDir( dbStoreDir, LuceneDataSource.DATA_SOURCE_NAME ),
+                "index_store_db", getIndexStoreDb( dbStoreDir, LuceneDataSource.DATA_SOURCE_NAME ),
                 IndexStore.class, indexStore,
                 LogBufferFactory.class, CommonFactories.defaultLogBufferFactory(),
                 FileSystemAbstraction.class, CommonFactories.defaultFileSystemAbstraction(),

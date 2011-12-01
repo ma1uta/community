@@ -165,7 +165,7 @@ public class LuceneIndexImplementation extends AbstractIndexImplementation
     @Override
     public String getDataSourceName()
     {
-        return LuceneDataSource.DEFAULT_NAME;
+        return LuceneDataSource.DATA_SOURCE_NAME;
     }
 
     @Override

@@ -20,7 +20,6 @@
 package org.neo4j.index.impl.lucene;
 
 import static org.neo4j.index.base.AbstractIndexImplementation.getIndexStoreDir;
-import static org.neo4j.index.impl.lucene.LuceneDataSource.DEFAULT_NAME;
 
 import java.io.File;
 
@@ -35,7 +34,7 @@ public class TestContinueKeepIndexLogs extends TestContinueKeepLogs
     @Override
     protected String dataSourceName()
     {
-        return LuceneDataSource.DEFAULT_NAME;
+        return LuceneDataSource.DATA_SOURCE_NAME;
     }
     
     @Override
@@ -49,6 +48,6 @@ public class TestContinueKeepIndexLogs extends TestContinueKeepLogs
     @Override
     protected File logDir( GraphDatabaseService db )
     {
-        return new File( getIndexStoreDir( ((AbstractGraphDatabase)db).getStoreDir(), DEFAULT_NAME ) );
+        return new File( getIndexStoreDir( ((AbstractGraphDatabase)db).getStoreDir(), LuceneDataSource.DATA_SOURCE_NAME ) );
     }
 }
