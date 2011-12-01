@@ -5,19 +5,19 @@
  * This file is part of Neo4j.
  *
  * Neo4j is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.index.impl.lucene;
+package org.neo4j.index.base;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -30,12 +30,12 @@ import org.neo4j.helpers.collection.CatchingIteratorWrapper;
 import org.neo4j.helpers.collection.IteratorUtil;
 
 public abstract class IdToEntityIterator<T extends PropertyContainer>
-        extends CatchingIteratorWrapper<T, Long> implements IndexHits<T>
+        extends CatchingIteratorWrapper<T, EntityId> implements IndexHits<T>
 {
-    private final IndexHits<Long> ids;
-    private final Set<Long> alreadyReturned = new HashSet<Long>();
+    private final IndexHits<EntityId> ids;
+    private final Set<EntityId> alreadyReturned = new HashSet<EntityId>();
     
-    public IdToEntityIterator( IndexHits<Long> ids )
+    public IdToEntityIterator( IndexHits<EntityId> ids )
     {
         super( ids );
         this.ids = ids;
@@ -48,11 +48,11 @@ public abstract class IdToEntityIterator<T extends PropertyContainer>
     }
     
     @Override
-    protected Long fetchNextOrNullFromSource( Iterator<Long> source )
+    protected EntityId fetchNextOrNullFromSource( Iterator<EntityId> source )
     {
         while ( source.hasNext() )
         {
-            Long id = source.next();
+            EntityId id = source.next();
             if ( alreadyReturned.add( id ) )
             {
                 return id;

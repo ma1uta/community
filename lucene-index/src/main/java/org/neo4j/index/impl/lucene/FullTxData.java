@@ -19,7 +19,9 @@
  */
 package org.neo4j.index.impl.lucene;
 
+import static java.lang.Long.parseLong;
 import static java.util.Collections.emptyList;
+import static org.neo4j.index.base.EntityId.entityId;
 import static org.neo4j.index.impl.lucene.LuceneDataSource.LUCENE_VERSION;
 import static org.neo4j.index.impl.lucene.LuceneIndex.KEY_DOC_ID;
 
@@ -51,9 +53,10 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.RAMDirectory;
+import org.neo4j.index.base.EntityId;
 import org.neo4j.index.lucene.QueryContext;
 
-class FullTxData extends TxData
+class FullTxData extends LuceneTxData
 {
     private static final String ORPHANS_KEY = "__all__";
     private static final String ORPHANS_VALUE = "1";
@@ -72,17 +75,17 @@ class FullTxData extends TxData
     }
 
     @Override
-    void add( TxDataHolder holder, Object entityId, String key, Object value )
+    public void add( EntityId entityId, String key, Object value )
     {
         try
         {
             ensureLuceneDataInstantiated();
-            long id = entityId instanceof Long ? (Long) entityId : ((RelationshipId)entityId).id;
+            long id = entityId.getId();
             Document document = findDocument( id );
             boolean add = false;
             if ( document == null )
             {
-                document = index.getIdentifier().entityType.newDocument( entityId );
+                document = IndexType.newDocument( entityId );
                 cachedDocuments.put( id, document );
                 add = true;
             }
@@ -152,12 +155,12 @@ class FullTxData extends TxData
     }
 
     @Override
-    void remove( TxDataHolder holder, Object entityId, String key, Object value )
+    public void remove( EntityId entityId, String key, Object value )
     {
         try
         {
             ensureLuceneDataInstantiated();
-            long id = entityId instanceof Long ? (Long) entityId : ((RelationshipId)entityId).id;
+            long id = entityId.getId();
             Document document = findDocument( id );
             if ( document != null )
             {
@@ -180,16 +183,16 @@ class FullTxData extends TxData
     }
 
     @Override
-    Collection<Long> query( TxDataHolder holder, Query query, QueryContext contextOrNull )
+    Collection<EntityId> query( Query query, QueryContext contextOrNull )
     {
         return internalQuery( query, contextOrNull );
     }
 
-    private Collection<Long> internalQuery( Query query, QueryContext contextOrNull )
+    Collection<EntityId> internalQuery( Query query, QueryContext contextOrNull )
     {
         if ( this.directory == null )
         {
-            return Collections.<Long>emptySet();
+            return Collections.<EntityId>emptySet();
         }
 
         try
@@ -199,10 +202,10 @@ class FullTxData extends TxData
             IndexSearcher theSearcher = searcher( prioritizeCorrectness );
             query = includeOrphans( query );
             Hits hits = new Hits( theSearcher, query, null, sorting, prioritizeCorrectness );
-            Collection<Long> result = new ArrayList<Long>();
+            Collection<EntityId> result = new ArrayList<EntityId>();
             for ( int i = 0; i < hits.length(); i++ )
             {
-                result.add( Long.valueOf( hits.doc( i ).get( KEY_DOC_ID ) ) );
+                result.add( entityId( parseLong( hits.doc( i ).get( KEY_DOC_ID ) ) ) );
             }
             return result;
         }
@@ -324,7 +327,7 @@ class FullTxData extends TxData
     }
 
     @Override
-    void close()
+    public void close()
     {
         safeClose( this.writer );
         safeClose( this.reader );
@@ -398,20 +401,20 @@ class FullTxData extends TxData
     }
     
     @Override
-    IndexSearcher asSearcher( TxDataHolder holder, QueryContext context )
+    IndexSearcher asSearcher( QueryContext context )
     {
         boolean refresh = context == null || !context.getTradeCorrectnessForSpeed();
         return searcher( refresh );
     }
 
     @Override
-    Collection<Long> get( TxDataHolder holder, String key, Object value )
+    public Collection<EntityId> get( String key, Object value )
     {
         return internalQuery( index.type.get( key, value ), null );
     }
-
+    
     @Override
-    Collection<Long> getOrphans( String key )
+    public Collection<EntityId> getOrphans( String key )
     {
         return emptyList();
     }

@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 
+import org.neo4j.index.base.IndexCommand;
 import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
 import org.neo4j.kernel.impl.transaction.xaframework.XaCommandFactory;
 
@@ -60,7 +61,7 @@ public class DumpLogicalLog extends org.neo4j.kernel.impl.util.DumpLogicalLog
         public XaCommand readCommand( ReadableByteChannel byteChannel, ByteBuffer buffer )
                 throws IOException
         {
-            return LuceneCommand.readCommand( byteChannel, buffer, null );
+            return IndexCommand.readCommand( byteChannel, buffer );
         }
     }
 }

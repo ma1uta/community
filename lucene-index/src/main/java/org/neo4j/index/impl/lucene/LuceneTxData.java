@@ -19,35 +19,32 @@
  */
 package org.neo4j.index.impl.lucene;
 
-import org.neo4j.graphdb.Relationship;
+import static org.neo4j.helpers.collection.IteratorUtil.singleOrNull;
 
-class RelationshipId
+import java.util.Collection;
+
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.neo4j.index.base.EntityId;
+import org.neo4j.index.base.TxData;
+import org.neo4j.index.lucene.QueryContext;
+
+abstract class LuceneTxData implements TxData
 {
-    final long id;
-    final long startNode;
-    final long endNode;
+    final LuceneIndex index;
+    
+    LuceneTxData( LuceneIndex index )
+    {
+        this.index = index;
+    }
 
-    RelationshipId( long id, long startNode, long endNode )
-    {
-        this.id = id;
-        this.startNode = startNode;
-        this.endNode = endNode;
-    }
-    
-    public static RelationshipId of( Relationship rel )
-    {
-        return new RelationshipId( rel.getId(), rel.getStartNode().getId(), rel.getEndNode().getId() );
-    }
-    
+    abstract Collection<EntityId> query( Query query, QueryContext contextOrNull );
+
+    abstract IndexSearcher asSearcher( QueryContext context );
+
     @Override
-    public boolean equals( Object obj )
+    public EntityId getSingle( String key, Object value )
     {
-        return ((RelationshipId) obj).id == id;
-    }
-    
-    @Override
-    public int hashCode()
-    {
-        return (int) id;
+        return singleOrNull( get( key, value ) );
     }
 }

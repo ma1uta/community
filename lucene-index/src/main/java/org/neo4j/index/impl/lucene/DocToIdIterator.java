@@ -19,18 +19,24 @@
  */
 package org.neo4j.index.impl.lucene;
 
+import static java.lang.Long.parseLong;
+import static org.neo4j.index.base.EntityId.entityId;
+import static org.neo4j.index.impl.lucene.LuceneIndex.KEY_DOC_ID;
+
 import java.util.Collection;
 
 import org.apache.lucene.document.Document;
 import org.neo4j.graphdb.index.IndexHits;
+import org.neo4j.index.base.AbstractIndexHits;
+import org.neo4j.index.base.EntityId;
 
-class DocToIdIterator extends AbstractIndexHits<Long>
+class DocToIdIterator extends AbstractIndexHits<EntityId>
 {
-    private final Collection<Long> exclude;
+    private final Collection<EntityId> exclude;
     private IndexSearcherRef searcherOrNull;
     private final IndexHits<Document> source;
     
-    DocToIdIterator( IndexHits<Document> source, Collection<Long> exclude, IndexSearcherRef searcherOrNull )
+    DocToIdIterator( IndexHits<Document> source, Collection<EntityId> exclude, IndexSearcherRef searcherOrNull )
     {
         this.source = source;
         this.exclude = exclude;
@@ -42,9 +48,9 @@ class DocToIdIterator extends AbstractIndexHits<Long>
     }
 
     @Override
-    protected Long fetchNextOrNull()
+    protected EntityId fetchNextOrNull()
     {
-        Long result = null;
+        EntityId result = null;
         while ( result == null )
         {
             if ( !source.hasNext() )
@@ -53,11 +59,8 @@ class DocToIdIterator extends AbstractIndexHits<Long>
                 break;
             }
             Document doc = source.next();
-            Long id = Long.valueOf( doc.get( LuceneIndex.KEY_DOC_ID ) );
-            if ( !exclude.contains( id ) )
-            {
-                result = id;
-            }
+            EntityId id = entityId( parseLong( doc.get( KEY_DOC_ID ) ) );
+            if ( !exclude.contains( id ) ) result = id;
         }
         return result;
     }

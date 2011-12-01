@@ -31,14 +31,11 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.index.Index;
-import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.index.Neo4jTestCase;
 import org.neo4j.kernel.CommonFactories;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
-import org.neo4j.kernel.impl.transaction.xaframework.LogBufferFactory;
-import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * Don't extend Neo4jTestCase since these tests restarts the db in the tests. 
@@ -122,12 +119,8 @@ public class TestRecovery
         
         // Instead I have to do this
         FileSystemAbstraction fileSystem = CommonFactories.defaultFileSystemAbstraction();
-        Map<Object, Object> params = MapUtil.genericMap(
-                "store_dir", getDbPath(),
-                IndexStore.class, new IndexStore( getDbPath(), fileSystem ),
-                FileSystemAbstraction.class, fileSystem,
-                StringLogger.class, StringLogger.DEV_NULL,
-                LogBufferFactory.class, CommonFactories.defaultLogBufferFactory() );
+        Map<Object, Object> params = TestLuceneDataSource.dataSourceConfig( getDbPath(),
+                new IndexStore( getDbPath(), fileSystem ) );
         LuceneDataSource ds = new LuceneDataSource( params );
         ds.close();
     }

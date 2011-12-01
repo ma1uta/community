@@ -65,6 +65,11 @@ the relevant Commercial Agreement.
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.neo4j</groupId>
+      <artifactId>neo4j-index-base</artifactId>
+      <version>1.6-SNAPSHOT</version>
+    </dependency>
+    <dependency>
       <groupId>${lucene.groupId}</groupId>
       <artifactId>${lucene.artifactId}</artifactId>
       <version>${lucene.version}</version>

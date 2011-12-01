@@ -21,6 +21,9 @@ package org.neo4j.index.impl.lucene;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.neo4j.index.base.AbstractIndexImplementation.getIndexStoreDir;
+import static org.neo4j.index.impl.lucene.LuceneDataSource.DEFAULT_NAME;
+import static org.neo4j.index.impl.lucene.LuceneDataSource.getFileDirectory;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,6 +34,8 @@ import org.junit.Test;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.index.Index;
+import org.neo4j.index.base.EntityType;
+import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.impl.util.FileUtils;
@@ -58,13 +63,9 @@ public class TestIndexDelectionFs
         String indexName = "index";
         String otherIndexName = "other-index";
 
-        StringBuffer tempPath = new StringBuffer( db.getStoreDir())
-                .append(File.separator).append("index").append(File.separator)
-                .append("lucene").append(File.separator).append("node")
-                .append(File.separator);
-
-        File pathToLuceneIndex = new File( tempPath.toString() + indexName );
-        File pathToOtherLuceneIndex = new File( tempPath.toString() + otherIndexName );
+        String luceneDir = getIndexStoreDir( db.getStoreDir(), DEFAULT_NAME );
+        File pathToLuceneIndex = getFileDirectory( luceneDir, new IndexIdentifier( EntityType.NODE, indexName ) );
+        File pathToOtherLuceneIndex = getFileDirectory( luceneDir, new IndexIdentifier( EntityType.NODE, otherIndexName ) );
 
         Index<Node> index = db.index().forNodes( indexName );
         Index<Node> otherIndex = db.index().forNodes(otherIndexName);

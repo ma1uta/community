@@ -19,6 +19,9 @@
  */
 package org.neo4j.index.impl.lucene;
 
+import static java.lang.Long.parseLong;
+import static org.neo4j.index.base.EntityId.entityId;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,23 +41,22 @@ import org.apache.lucene.search.TermQuery;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexHits;
+import org.neo4j.index.base.AbstractIndex;
+import org.neo4j.index.base.CombinedIndexHits;
+import org.neo4j.index.base.EntityId;
+import org.neo4j.index.base.IdToEntityIterator;
+import org.neo4j.index.base.IndexBaseXaConnection;
+import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.index.lucene.QueryContext;
-import org.neo4j.kernel.impl.cache.LruCache;
-import org.neo4j.kernel.impl.core.ReadOnlyDbException;
-import org.neo4j.kernel.impl.util.IoPrimitiveUtils;
 
-public abstract class LuceneIndex<T extends PropertyContainer> implements Index<T>
+public abstract class LuceneIndex<T extends PropertyContainer> extends AbstractIndex<T>
 {
     static final String KEY_DOC_ID = "_id_";
     static final String KEY_START_NODE_ID = "_start_node_id_";
     static final String KEY_END_NODE_ID = "_end_node_id_";
 
-    final LuceneIndexImplementation service;
-    private IndexIdentifier identifier;
     final IndexType type;
-    private volatile boolean deleted;
 
     // Will contain ids which were found to be missing from the graph when doing queries
     // Write transactions can fetch from this list and add to their transactions to
@@ -63,118 +65,33 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
 
     LuceneIndex( LuceneIndexImplementation service, IndexIdentifier identifier )
     {
-        this.service = service;
-        this.identifier = identifier;
+        super( service, identifier );
         this.type = service.dataSource().getType( identifier );
     }
-
-    LuceneXaConnection getConnection()
+    
+    @Override
+    protected IndexBaseXaConnection<LuceneTransaction> getConnection()
     {
-        assertNotDeleted();
-        if ( service.broker() == null )
-        {
-            throw new ReadOnlyDbException();
-        }
-        return service.broker().acquireResourceConnection();
+        return super.getConnection();
     }
-
-    private void assertNotDeleted()
+    
+    @Override
+    protected IndexBaseXaConnection<LuceneTransaction> getReadOnlyConnection()
     {
-        if ( deleted )
-        {
-            throw new IllegalStateException( "This index (" + identifier + ") has been deleted" );
-        }
-    }
-
-    LuceneXaConnection getReadOnlyConnection()
-    {
-        assertNotDeleted();
-        return service.broker() == null ? null :
-                service.broker().acquireReadOnlyResourceConnection();
-    }
-
-    void markAsDeleted()
-    {
-        this.deleted = true;
-        this.abandonedIds.clear();
-    }
-
-    public String getName()
-    {
-        return this.identifier.indexName;
-    }
-
-    /**
-     * See {@link Index#add(PropertyContainer, String, Object)} for more generic
-     * documentation.
-     *
-     * Adds key/value to the {@code entity} in this index. Added values are
-     * searchable withing the transaction, but composite {@code AND}
-     * queries aren't guaranteed to return added values correctly within that
-     * transaction. When the transaction has been committed all such queries
-     * are guaranteed to return correct results.
-     *
-     * @param entity the entity (i.e {@link Node} or {@link Relationship})
-     * to associate the key/value pair with.
-     * @param key the key in the key/value pair to associate with the entity.
-     * @param value the value in the key/value pair to associate with the
-     * entity.
-     */
-    public void add( T entity, String key, Object value )
-    {
-        LuceneXaConnection connection = getConnection();
-        assertKeyNotNull( key );
-        for ( Object oneValue : IoPrimitiveUtils.asArray( value ) )
-        {
-            connection.add( this, entity, key, oneValue );
-        }
-    }
-
-    private void assertKeyNotNull( String key )
-    {
-        if ( key == null )
-        {
-            throw new IllegalArgumentException( "Key can't be null" );
-        }
-    }
-
-    /**
-     * See {@link Index#remove(PropertyContainer, String, Object)} for more
-     * generic documentation.
-     *
-     * Removes key/value to the {@code entity} in this index. Removed values
-     * are excluded withing the transaction, but composite {@code AND}
-     * queries aren't guaranteed to exclude removed values correctly within
-     * that transaction. When the transaction has been committed all such
-     * queries are guaranteed to return correct results.
-     *
-     * @param entity the entity (i.e {@link Node} or {@link Relationship})
-     * to dissociate the key/value pair from.
-     * @param key the key in the key/value pair to dissociate from the entity.
-     * @param value the value in the key/value pair to dissociate from the
-     * entity.
-     */
-    public void remove( T entity, String key, Object value )
-    {
-        LuceneXaConnection connection = getConnection();
-        assertKeyNotNull( key );
-        for ( Object oneValue : IoPrimitiveUtils.asArray( value ) )
-        {
-            connection.remove( this, entity, key, oneValue );
-        }
+        return super.getReadOnlyConnection();
     }
 
     public void remove( T entity, String key )
     {
-        LuceneXaConnection connection = getConnection();
+        IndexBaseXaConnection<LuceneTransaction> connection = getConnection();
         assertKeyNotNull( key );
-        connection.remove( this, entity, key );
+        connection.remove( this, entity, key, null );
     }
 
     public void remove( T entity )
     {
-        LuceneXaConnection connection = getConnection();
-        connection.remove( this, entity );
+        IndexBaseXaConnection<LuceneTransaction> connection = getConnection();
+        connection.remove( this, entity, null, null );
     }
 
     public void delete()
@@ -217,46 +134,46 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
     {
         return query( null, queryOrQueryObject );
     }
-
+    
     protected IndexHits<T> query( Query query, String keyForDirectLookup,
             Object valueForDirectLookup, QueryContext additionalParametersOrNull )
     {
-        List<Long> ids = new ArrayList<Long>();
-        LuceneXaConnection con = getReadOnlyConnection();
-        LuceneTransaction luceneTx = con != null ? con.getLuceneTx() : null;
-        Collection<Long> removedIds = Collections.emptySet();
+        List<EntityId> ids = new ArrayList<EntityId>();
+        IndexBaseXaConnection<LuceneTransaction> con = getReadOnlyConnection();
+        LuceneTransaction tx = con != null ? con.getTx() : null;
+        Collection<EntityId> removedIds = Collections.emptySet();
         IndexSearcher additionsSearcher = null;
-        if ( luceneTx != null )
+        if ( tx != null )
         {
             if ( keyForDirectLookup != null )
             {
-                ids.addAll( luceneTx.getAddedIds( this, keyForDirectLookup, valueForDirectLookup ) );
+                ids.addAll( tx.getAddedIds( this, keyForDirectLookup, valueForDirectLookup ) );
             }
             else
             {
-                additionsSearcher = luceneTx.getAdditionsAsSearcher( this, additionalParametersOrNull );
+                additionsSearcher = tx.getAdditionsAsSearcher( this, additionalParametersOrNull );
             }
             removedIds = keyForDirectLookup != null ?
-                    luceneTx.getRemovedIds( this, keyForDirectLookup, valueForDirectLookup ) :
-                    luceneTx.getRemovedIds( this, query );
+                    tx.getRemovedIds( this, keyForDirectLookup, valueForDirectLookup ) :
+                    tx.getRemovedIds( this, query );
         }
-        service.dataSource().getReadLock();
-        IndexHits<Long> idIterator = null;
+        LuceneDataSource dataSource = (LuceneDataSource) getProvider().dataSource();
+        dataSource.getReadLock();
+        IndexHits<EntityId> idIterator = null;
         IndexSearcherRef searcher = null;
         try
         {
-            searcher = service.dataSource().getIndexSearcher( identifier, true );
+            searcher = dataSource.getIndexSearcher( getIdentifier(), true );
             if ( searcher != null )
             {
                 boolean foundInCache = false;
-                LruCache<String, Collection<Long>> cachedIdsMap = null;
-                if ( keyForDirectLookup != null )
-                {
-                    cachedIdsMap = service.dataSource().getFromCache(
-                            identifier, keyForDirectLookup );
-                    foundInCache = fillFromCache( cachedIdsMap, ids,
-                            keyForDirectLookup, valueForDirectLookup.toString(), removedIds );
-                }
+//                LruCache<String, Collection<Long>> cachedIdsMap = null;
+//                if ( keyForDirectLookup != null )
+//                {
+//                    cachedIdsMap = dataSource.getFromCache( getIdentifier(), keyForDirectLookup );
+//                    foundInCache = fillFromCache( cachedIdsMap, ids,
+//                            keyForDirectLookup, valueForDirectLookup.toString(), removedIds );
+//                }
 
                 if ( !foundInCache )
                 {
@@ -268,10 +185,10 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
                     }
                     else
                     {
-                        Collection<IndexHits<Long>> iterators = new ArrayList<IndexHits<Long>>();
+                        Collection<IndexHits<EntityId>> iterators = new ArrayList<IndexHits<EntityId>>();
                         iterators.add( searchedIds );
-                        iterators.add( new ConstantScoreIterator<Long>( ids, Float.NaN ) );
-                        idIterator = new CombinedIndexHits<Long>( iterators );
+                        iterators.add( new ConstantScoreIterator<EntityId>( ids, Float.NaN ) );
+                        idIterator = new CombinedIndexHits<EntityId>( iterators );
                     }
                 }
             }
@@ -280,10 +197,10 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
         {
             // The DocToIdIterator closes the IndexSearchRef instance anyways,
             // or the LazyIterator if it's a lazy one. So no need here.
-            service.dataSource().releaseReadLock();
+            dataSource.releaseReadLock();
         }
 
-        idIterator = idIterator == null ? new ConstantScoreIterator<Long>( ids, 0 ) : idIterator;
+        idIterator = idIterator == null ? new ConstantScoreIterator<EntityId>( ids, 0 ) : idIterator;
         return newEntityIterator( idIterator );
     }
 
@@ -293,50 +210,50 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
         return true;
     }
 
-    private IndexHits<T> newEntityIterator( IndexHits<Long> idIterator )
+    private IndexHits<T> newEntityIterator( IndexHits<EntityId> idIterator )
     {
         return new IdToEntityIterator<T>( idIterator )
         {
             @Override
-            protected T underlyingObjectToObject( Long id )
+            protected T underlyingObjectToObject( EntityId id )
             {
-                return getById( id );
+                return idToEntity( id );
             }
 
             @Override
-            protected void itemDodged( Long item )
+            protected void itemDodged( EntityId item )
             {
-                abandonedIds.add( item );
+                abandonedIds.add( item.getId() );
             }
         };
     }
 
-    private boolean fillFromCache(
-            LruCache<String, Collection<Long>> cachedNodesMap,
-            List<Long> ids, String key, String valueAsString,
-            Collection<Long> deletedNodes )
-    {
-        boolean found = false;
-        if ( cachedNodesMap != null )
-        {
-            Collection<Long> cachedNodes = cachedNodesMap.get( valueAsString );
-            if ( cachedNodes != null )
-            {
-                found = true;
-                for ( Long cachedNodeId : cachedNodes )
-                {
-                    if ( !deletedNodes.contains( cachedNodeId ) )
-                    {
-                        ids.add( cachedNodeId );
-                    }
-                }
-            }
-        }
-        return found;
-    }
+//    private boolean fillFromCache(
+//            LruCache<String, Collection<Long>> cachedNodesMap,
+//            List<Long> ids, String key, String valueAsString,
+//            Collection<Long> deletedNodes )
+//    {
+//        boolean found = false;
+//        if ( cachedNodesMap != null )
+//        {
+//            Collection<Long> cachedNodes = cachedNodesMap.get( valueAsString );
+//            if ( cachedNodes != null )
+//            {
+//                found = true;
+//                for ( Long cachedNodeId : cachedNodes )
+//                {
+//                    if ( !deletedNodes.contains( cachedNodeId ) )
+//                    {
+//                        ids.add( cachedNodeId );
+//                    }
+//                }
+//            }
+//        }
+//        return found;
+//    }
 
     private IndexHits<Document> search( IndexSearcherRef searcherRef, Query query,
-            QueryContext additionalParametersOrNull, IndexSearcher additionsSearcher, Collection<Long> removed )
+            QueryContext additionalParametersOrNull, IndexSearcher additionsSearcher, Collection<EntityId> removed )
     {
         try
         {
@@ -371,7 +288,7 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
         }
     }
 
-    private void letThroughAdditions( IndexSearcher additionsSearcher, Query query, Collection<Long> removed )
+    private void letThroughAdditions( IndexSearcher additionsSearcher, Query query, Collection<EntityId> removed )
             throws IOException
     {
         Hits hits = new Hits( additionsSearcher, query, null );
@@ -379,34 +296,21 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
         while ( iterator.hasNext() )
         {
             String idString = iterator.next().getField( KEY_DOC_ID ).stringValue();
-            removed.remove( Long.valueOf( idString ) );
+            removed.remove( entityId( parseLong( idString ) ) );
         }
     }
 
-    public void setCacheCapacity( String key, int capacity )
-    {
-        service.dataSource().setCacheCapacity( identifier, key, capacity );
-    }
-
-    public Integer getCacheCapacity( String key )
-    {
-        return service.dataSource().getCacheCapacity( identifier, key );
-    }
-
-    protected abstract T getById( long id );
+//    public void setCacheCapacity( String key, int capacity )
+//    {
+//        service.dataSource().setCacheCapacity( identifier, key, capacity );
+//    }
+//
+//    public Integer getCacheCapacity( String key )
+//    {
+//        return service.dataSource().getCacheCapacity( identifier, key );
+//    }
 
     protected abstract long getEntityId( T entity );
-
-    protected abstract LuceneCommand newAddCommand( PropertyContainer entity,
-            String key, Object value );
-
-    protected abstract LuceneCommand newRemoveCommand( PropertyContainer entity,
-            String key, Object value );
-
-    IndexIdentifier getIdentifier()
-    {
-        return this.identifier;
-    }
 
     static class NodeIndex extends LuceneIndex<Node>
     {
@@ -417,29 +321,15 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
         }
 
         @Override
-        protected Node getById( long id )
+        protected Node idToEntity( EntityId id )
         {
-            return service.graphDb().getNodeById( id );
+            return getProvider().graphDb().getNodeById( id.getId() );
         }
 
         @Override
         protected long getEntityId( Node entity )
         {
             return entity.getId();
-        }
-
-        @Override
-        protected LuceneCommand newAddCommand( PropertyContainer entity, String key, Object value )
-        {
-            return new LuceneCommand.AddCommand( getIdentifier(), LuceneCommand.NODE,
-                    ((Node) entity).getId(), key, value );
-        }
-
-        @Override
-        protected LuceneCommand newRemoveCommand( PropertyContainer entity, String key, Object value )
-        {
-            return new LuceneCommand.RemoveCommand( getIdentifier(), LuceneCommand.NODE,
-                    ((Node) entity).getId(), key, value );
         }
 
         public Class<Node> getEntityType()
@@ -458,20 +348,15 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
         }
 
         @Override
-        protected Relationship getById( long id )
+        protected Relationship idToEntity( EntityId id )
         {
-            return service.graphDb().getRelationshipById( id );
+            return getProvider().graphDb().getRelationshipById( id.getId() );
         }
 
         @Override
         protected long getEntityId( Relationship entity )
         {
             return entity.getId();
-        }
-
-        public void add( Relationship relationship )
-        {
-
         }
 
         public IndexHits<Relationship> get( String key, Object valueOrNull, Node startNodeOrNull,
@@ -519,22 +404,6 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
                 Node startNodeOrNull, Node endNodeOrNull )
         {
             return query( null, queryOrQueryObjectOrNull, startNodeOrNull, endNodeOrNull );
-        }
-
-        @Override
-        protected LuceneCommand newAddCommand( PropertyContainer entity, String key, Object value )
-        {
-            Relationship rel = (Relationship) entity;
-            return new LuceneCommand.AddRelationshipCommand( getIdentifier(), LuceneCommand.RELATIONSHIP,
-                    RelationshipId.of( rel ), key, value );
-        }
-
-        @Override
-        protected LuceneCommand newRemoveCommand( PropertyContainer entity, String key, Object value )
-        {
-            Relationship rel = (Relationship) entity;
-            return new LuceneCommand.RemoveCommand( getIdentifier(), LuceneCommand.RELATIONSHIP,
-                    RelationshipId.of( rel ), key, value );
         }
 
         public Class<Relationship> getEntityType()

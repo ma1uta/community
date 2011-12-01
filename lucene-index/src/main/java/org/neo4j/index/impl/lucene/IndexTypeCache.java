@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.neo4j.helpers.Pair;
+import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.kernel.impl.index.IndexStore;
 
 class IndexTypeCache
@@ -40,7 +41,7 @@ class IndexTypeCache
     IndexType getIndexType( IndexIdentifier identifier )
     {
         Pair<Integer, IndexType> type = cache.get( identifier );
-        Map<String, String> config = indexStore.get( identifier.entityType.getType(), identifier.indexName );
+        Map<String, String> config = indexStore.get( identifier.getEntityType().getType(), identifier.getIndexName() );
         if ( type != null && config.hashCode() == type.first() )
         {
             return type.other();

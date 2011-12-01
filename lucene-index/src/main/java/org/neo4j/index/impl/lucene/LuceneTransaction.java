@@ -19,244 +19,151 @@
  */
 package org.neo4j.index.impl.lucene;
 
+import static org.neo4j.index.base.EntityType.entityType;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
-import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
-import org.neo4j.graphdb.Relationship;
+import org.neo4j.index.base.AbstractIndex;
+import org.neo4j.index.base.EntityId;
+import org.neo4j.index.base.EntityType;
+import org.neo4j.index.base.IndexCommand;
+import org.neo4j.index.base.IndexCommand.AddCommand;
+import org.neo4j.index.base.IndexCommand.AddRelationshipCommand;
+import org.neo4j.index.base.IndexCommand.CreateCommand;
+import org.neo4j.index.base.IndexCommand.DeleteCommand;
+import org.neo4j.index.base.IndexCommand.RemoveCommand;
+import org.neo4j.index.base.IndexDefineCommand;
+import org.neo4j.index.base.IndexIdentifier;
+import org.neo4j.index.base.IndexTransaction;
+import org.neo4j.index.base.TxData;
 import org.neo4j.index.impl.lucene.CommitContext.DocumentContext;
-import org.neo4j.index.impl.lucene.LuceneCommand.CreateIndexCommand;
-import org.neo4j.index.impl.lucene.LuceneCommand.DeleteCommand;
-import org.neo4j.index.impl.lucene.LuceneCommand.RemoveCommand;
 import org.neo4j.index.lucene.QueryContext;
 import org.neo4j.index.lucene.ValueContext;
-import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
 import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
-import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 
-class LuceneTransaction extends XaTransaction
+class LuceneTransaction extends IndexTransaction
 {
-    private final Map<IndexIdentifier, TxDataBoth> txData =
-            new HashMap<IndexIdentifier, TxDataBoth>();
-    private final LuceneDataSource dataSource;
-
-    private final Map<IndexIdentifier,CommandList> commandMap = 
-            new HashMap<IndexIdentifier,CommandList>();
-
     LuceneTransaction( int identifier, XaLogicalLog xaLog,
         LuceneDataSource luceneDs )
     {
-        super( identifier, xaLog );
-        this.dataSource = luceneDs;
+        super( identifier, xaLog, luceneDs );
+    }
+    
+    @Override
+    protected TxData newTxData( AbstractIndex index, TxDataType txDataType )
+    {
+        return ((LuceneIndex)index).type.newTxData( (LuceneIndex)index );
     }
 
-    <T extends PropertyContainer> void add( LuceneIndex<T> index, T entity,
+    @Override
+    protected <T extends PropertyContainer> void add( AbstractIndex<T> index, T entity,
             String key, Object value )
     {
         value = value instanceof ValueContext ? ((ValueContext) value).getCorrectValue() : value.toString();
         TxDataBoth data = getTxData( index, true );
         insert( index, entity, key, value, data.added( true ), data.removed( false ) );
-        queueCommand( index.newAddCommand( entity, key, value ) );
-    }
-    
-    private Object getEntityId( PropertyContainer entity )
-    {
-        return entity instanceof Node ? ((Node) entity).getId() :
-                RelationshipId.of( (Relationship) entity );
-    }
-    
-    <T extends PropertyContainer> TxDataBoth getTxData( LuceneIndex<T> index,
-            boolean createIfNotExists )
-    {
-        IndexIdentifier identifier = index.getIdentifier();
-        TxDataBoth data = txData.get( identifier );
-        if ( data == null && createIfNotExists )
-        {
-            data = new TxDataBoth( index );
-            txData.put( identifier, data );
-        }
-        return data;
+        queueCommand( index.getIdentifier(), getDefinitions( true ).add( index.getName(), index.getEntityTypeEnum(),
+                getEntityId( entity ), key, value ) );
     }
 
-    <T extends PropertyContainer> void remove( LuceneIndex<T> index, T entity,
+    @Override
+    protected <T extends PropertyContainer> void remove( AbstractIndex<T> index, T entity,
             String key, Object value )
     {
-        value = value instanceof ValueContext ? ((ValueContext) value).getCorrectValue() : value.toString();
         TxDataBoth data = getTxData( index, true );
+        if ( value != null )
+        {
+            value = value instanceof ValueContext ? ((ValueContext) value).getCorrectValue() : value.toString();
+        }
         insert( index, entity, key, value, data.removed( true ), data.added( false ) );
-        queueCommand( index.newRemoveCommand( entity, key, value ) );
+        queueCommand( index.getIdentifier(), getDefinitions( true ).remove( index.getName(), index.getEntityTypeEnum(),
+                getEntityId( entity ), key, value ) );
     }
     
-    <T extends PropertyContainer> void remove( LuceneIndex<T> index, T entity, String key )
+    <T extends PropertyContainer> Collection<EntityId> getRemovedIds( LuceneIndex<T> index, Query query )
     {
-        TxDataBoth data = getTxData( index, true );
-        insert( index, entity, key, null, data.removed( true ), data.added( false ) );
-        queueCommand( index.newRemoveCommand( entity, key, null ) );
-    }
-    
-    <T extends PropertyContainer> void remove( LuceneIndex<T> index, T entity )
-    {
-        TxDataBoth data = getTxData( index, true );
-        insert( index, entity, null, null, data.removed( true ), data.added( false ) );
-        queueCommand( index.newRemoveCommand( entity, null, null ) );
-    }
-    
-    <T extends PropertyContainer> void delete( LuceneIndex<T> index )
-    {
-        txData.put( index.getIdentifier(), new DeletedTxDataBoth( index ) );
-        queueCommand( new DeleteCommand( index.getIdentifier() ) );
-    }
-    
-    private CommandList queueCommand( LuceneCommand command )
-    {
-        IndexIdentifier indexId = command.indexId;
-        CommandList commands = commandMap.get( indexId );
-        if ( commands == null )
-        {
-            commands = new CommandList();
-            commandMap.put( indexId, commands );
-        }
-        if ( command instanceof DeleteCommand )
-        {
-            commands.clear();
-        }
-        commands.add( command );
-        commands.incCounter( command );
-        return commands;
-    }
-    
-    private <T extends PropertyContainer> void insert( LuceneIndex<T> index,
-            T entity, String key, Object value, TxDataHolder insertInto, TxDataHolder removeFrom )
-    {
-        Object id = getEntityId( entity );
-        if ( removeFrom != null )
-        {
-            removeFrom.remove( id, key, value );
-        }
-        insertInto.add( id, key, value );
-    }
-
-    <T extends PropertyContainer> Collection<Long> getRemovedIds( LuceneIndex<T> index, Query query )
-    {
-        TxDataHolder removed = removedTxDataOrNull( index );
+        LuceneTxData removed = (LuceneTxData) removedTxDataOrNull( index );
         if ( removed == null )
         {
             return Collections.emptySet();
         }
-        Collection<Long> ids = removed.query( query, null );
-        return ids != null ? ids : Collections.<Long>emptySet();
+        Collection<EntityId> ids = removed.query( query, null );
+        return ids != null ? ids : Collections.<EntityId>emptySet();
     }
     
-    <T extends PropertyContainer> Collection<Long> getRemovedIds( LuceneIndex<T> index,
-            String key, Object value )
-    {
-        TxDataHolder removed = removedTxDataOrNull( index );
-        if ( removed == null )
-        {
-            return Collections.emptySet();
-        }
-        Collection<Long> ids = removed.get( key, value );
-        Collection<Long> orphanIds = removed.getOrphans( key );
-        return merge( ids, orphanIds );
-    }
-    
-    static Collection<Long> merge( Collection<Long> c1, Collection<Long> c2 )
-    {
-        if ( c1 == null && c2 == null )
-        {
-            return Collections.<Long>emptySet();
-        }
-        else if ( c1 != null && c2 != null )
-        {
-            Collection<Long> result = new HashSet<Long>( c1 );
-            result.addAll( c2 );
-            return result;
-        }
-        else
-        {
-            return c1 != null ? c1 : c2;
-        }
-    }
-
-    <T extends PropertyContainer> Collection<Long> getAddedIds( LuceneIndex<T> index,
+    <T extends PropertyContainer> Collection<EntityId> getAddedIds( LuceneIndex<T> index,
             Query query, QueryContext contextOrNull )
     {
-        TxDataHolder added = addedTxDataOrNull( index );
+        LuceneTxData added = (LuceneTxData) addedTxDataOrNull( index );
         if ( added == null )
         {
             return Collections.emptySet();
         }
-        Collection<Long> ids = added.query( query, contextOrNull );
-        return ids != null ? ids : Collections.<Long>emptySet();
+        Collection<EntityId> ids = added.query( query, contextOrNull );
+        return ids != null ? ids : Collections.<EntityId>emptySet();
     }
     
-    <T extends PropertyContainer> Collection<Long> getAddedIds( LuceneIndex<T> index,
-            String key, Object value )
-    {
-        TxDataHolder added = addedTxDataOrNull( index );
-        if ( added == null )
-        {
-            return Collections.emptySet();
-        }
-        Collection<Long> ids = added.get( key, value );
-        return ids != null ? ids : Collections.<Long>emptySet();
-    }
-    
-    private <T extends PropertyContainer> TxDataHolder addedTxDataOrNull( LuceneIndex<T> index )
-    {
-        TxDataBoth data = getTxData( index, false );
-        return data != null ? data.added( false ) : null;
-    }
-    
-    private <T extends PropertyContainer> TxDataHolder removedTxDataOrNull( LuceneIndex<T> index )
-    {
-        TxDataBoth data = getTxData( index, false );
-        return data != null ? data.removed( false ) : null;
-    }
-    
-    @Override
-    protected void doAddCommand( XaCommand command )
-    { // we override inject command and manage our own in memory command list
-    }
-    
-    @Override
-    protected void injectCommand( XaCommand command )
-    {
-        queueCommand( ( LuceneCommand ) command ).incCounter( (LuceneCommand ) command );
-    }
-
     @Override
     protected void doCommit()
     {
+        LuceneDataSource dataSource = (LuceneDataSource) getDataSource();
+        IndexDefineCommand def = getDefinitions( false );
         dataSource.getWriteLock();
         try
         {
-            for ( Map.Entry<IndexIdentifier, CommandList> entry :
-                this.commandMap.entrySet() )
+            for ( Map.Entry<IndexIdentifier, Collection<IndexCommand>> entry : getCommands().entrySet() )
             {
-                if ( entry.getValue().isEmpty() )
+                if ( entry.getValue().isEmpty() ) continue;
+                IndexCommand firstCommand = entry.getValue().iterator().next();
+                if ( firstCommand instanceof CreateCommand )
                 {
+                    CreateCommand createCommand = (CreateCommand) firstCommand;
+                    dataSource.getIndexStore().setIfNecessary( entityType( createCommand.getEntityType() ).getType(),
+                            def.getIndexName( createCommand.getIndexNameId() ), createCommand.getConfig() );
                     continue;
                 }
                 
                 IndexIdentifier identifier = entry.getKey();
-                CommandList commandList = entry.getValue();
-                IndexType type = identifier == LuceneCommand.CreateIndexCommand.FAKE_IDENTIFIER || !commandList.containsWrites() ? null :
-                    dataSource.getType( identifier );
-                CommitContext context = new CommitContext( dataSource, identifier, type, commandList );
-                for ( LuceneCommand command : commandList.commands )
+                IndexType type = dataSource.getType( identifier );
+                CommitContext context = new CommitContext( dataSource, identifier, type );
+                for ( IndexCommand command : entry.getValue() )
                 {
-                    command.perform( context );
+                    if ( command instanceof AddCommand || command instanceof AddRelationshipCommand )
+                    {
+                        context.ensureWriterInstantiated();
+                        String key = def.getKey( command.getKeyId() );
+                        context.indexType.addToDocument( context.getDocument( command.getEntityId(), true ).document, key, command.getValue() );
+//                        context.dataSource.invalidateCache( context.identifier, key, command.getValue() );
+                    }
+                    else if ( command instanceof RemoveCommand )
+                    {
+                        context.ensureWriterInstantiated();
+                        DocumentContext document = context.getDocument( command.getEntityId(), false );
+                        if ( document != null )
+                        {
+                            String key = def.getKey( command.getKeyId() );
+                            context.indexType.removeFromDocument( document.document, key, command.getValue() );
+//                            context.dataSource.invalidateCache( context.identifier, key, value );
+                        }
+                    }
+                    else if ( command instanceof DeleteCommand )
+                    {
+                        context.documents.clear();
+                        context.dataSource.deleteIndex( context.identifier, isRecovered() );
+                    }
+                    else
+                    {
+                        throw new IllegalArgumentException( command + ", " + command.getClass().getName() );
+                    }
                 }
                 
                 applyDocuments( context.writer, type, context.documents );
@@ -303,145 +210,53 @@ class LuceneTransaction extends XaTransaction
         }
     }
 
-    private void closeTxData()
-    {
-        for ( TxDataBoth data : this.txData.values() )
-        {
-            data.close();
-        }
-        this.txData.clear();
-    }
+    // TODO this is all for the abandoned ids
+//    @Override
+//    protected void doPrepare()
+//    {
+//        boolean containsDeleteCommand = false;
+//        for ( CommandList list : commandMap.values() )
+//        {
+//            for ( IndexCommand command : list.commands )
+//            {
+//                if ( command instanceof DeleteCommand )
+//                {
+//                    containsDeleteCommand = true;
+//                }
+//                addCommand( command );
+//            }
+//        }
+//        if ( !containsDeleteCommand )
+//        { // unless the entire index is deleted
+//            addAbandonedEntitiesToTheTx();
+//        } // else: the DeleteCommand will clear abandonedIds
+//    }
+//
+//    private void addAbandonedEntitiesToTheTx()
+//    {
+//        for ( Map.Entry<IndexIdentifier, TxDataBoth> entry : txData.entrySet() )
+//        {
+//            Collection<Long> abandonedIds = entry.getValue().index.abandonedIds;
+//            if ( !abandonedIds.isEmpty() )
+//            {
+//                CommandList commands = commandMap.get( entry.getKey() );
+//                for ( Long id : abandonedIds )
+//                {
+//                    RemoveCommand command = new RemoveCommand( entry.getKey(), entry.getKey().entityTypeByte, id, null, null );
+//                    addCommand( command );
+//                    commands.add( command );
+//                }
+//                abandonedIds.clear();
+//            }
+//        }
+//    }
 
-    @Override
-    protected void doPrepare()
-    {
-        boolean containsDeleteCommand = false;
-        for ( CommandList list : commandMap.values() )
-        {
-            for ( LuceneCommand command : list.commands )
-            {
-                if ( command instanceof DeleteCommand )
-                {
-                    containsDeleteCommand = true;
-                }
-                addCommand( command );
-            }
-        }
-        if ( !containsDeleteCommand )
-        { // unless the entire index is deleted
-            addAbandonedEntitiesToTheTx();
-        } // else: the DeleteCommand will clear abandonedIds
-    }
-
-    private void addAbandonedEntitiesToTheTx()
-    {
-        for ( Map.Entry<IndexIdentifier, TxDataBoth> entry : txData.entrySet() )
-        {
-            Collection<Long> abandonedIds = entry.getValue().index.abandonedIds;
-            if ( !abandonedIds.isEmpty() )
-            {
-                CommandList commands = commandMap.get( entry.getKey() );
-                for ( Long id : abandonedIds )
-                {
-                    RemoveCommand command = new RemoveCommand( entry.getKey(), entry.getKey().entityTypeByte, id, null, null );
-                    addCommand( command );
-                    commands.add( command );
-                }
-                abandonedIds.clear();
-            }
-        }
-    }
-
-    @Override
-    protected void doRollback()
-    {
-        commandMap.clear();
-        closeTxData();
-    }
-
-    @Override
-    public boolean isReadOnly()
-    {
-        return commandMap.isEmpty();
-    }
-    
-    // Bad name
-    private class TxDataBoth
-    {
-        private TxDataHolder add;
-        private TxDataHolder remove;
-        final LuceneIndex index;
-        
-        public TxDataBoth( LuceneIndex index )
-        {
-            this.index = index;
-        }
-        
-        TxDataHolder added( boolean createIfNotExists )
-        {
-            if ( this.add == null && createIfNotExists )
-            {
-                this.add = new TxDataHolder( index, index.type.newTxData( index ) );
-            }
-            return this.add;
-        }
-
-        TxDataHolder removed( boolean createIfNotExists )
-        {
-            if ( this.remove == null && createIfNotExists )
-            {
-                this.remove = new TxDataHolder( index, index.type.newTxData( index ) );
-            }
-            return this.remove;
-        }
-        
-        void close()
-        {
-            safeClose( add );
-            safeClose( remove );
-        }
-
-        private void safeClose( TxDataHolder data )
-        {
-            if ( data != null )
-            {
-                data.close();
-            }
-        }
-    }
-    
-    private class DeletedTxDataBoth extends TxDataBoth
-    {
-        public DeletedTxDataBoth( LuceneIndex index )
-        {
-            super( index );
-        }
-
-        @Override
-        TxDataHolder added( boolean createIfNotExists )
-        {
-            throw illegalStateException();
-        }
-        
-        @Override
-        TxDataHolder removed( boolean createIfNotExists )
-        {
-            throw illegalStateException();
-        }
-
-        private IllegalStateException illegalStateException()
-        {
-            throw new IllegalStateException( "This index (" + index.getIdentifier() + 
-                    ") has been marked as deleted in this transaction" );
-        }
-    }
-    
     static class CommandList
     {
-        private final List<LuceneCommand> commands = new ArrayList<LuceneCommand>();
+        private final List<IndexCommand> commands = new ArrayList<IndexCommand>();
         private boolean containsWrites;
         
-        void add( LuceneCommand command )
+        void add( IndexCommand command )
         {
             this.commands.add( command );
         }
@@ -457,7 +272,7 @@ class LuceneTransaction extends XaTransaction
             containsWrites = false;
         }
 
-        void incCounter( LuceneCommand command )
+        void incCounter( IndexCommand command )
         {
             if ( command.isConsideredNormalWriteCommand() )
             {
@@ -476,29 +291,17 @@ class LuceneTransaction extends XaTransaction
         }
     }
 
-    void createIndex( Class<? extends PropertyContainer> entityType, String name,
-            Map<String, String> config )
+    @Override
+    protected void createIndex( EntityType entityType, String indexName, Map<String, String> config )
     {
-        byte entityTypeByte = 0;
-        if ( entityType == Node.class )
-        {
-            entityTypeByte = LuceneCommand.NODE;
-        }
-        else if ( entityType == Relationship.class )
-        {
-            entityTypeByte = LuceneCommand.RELATIONSHIP;
-        }
-        else
-        {
-            throw new IllegalArgumentException( "Unknown entity typee " + entityType );
-        }
-        queueCommand( new CreateIndexCommand( entityTypeByte, name, config ) );
+        queueCommand( new IndexIdentifier( entityType, indexName ),
+                getDefinitions( true ).create( indexName, entityType, config ) );
     }
 
     <T extends PropertyContainer> IndexSearcher getAdditionsAsSearcher( LuceneIndex<T> index,
             QueryContext context )
     {
-        TxDataHolder data = addedTxDataOrNull( index );
-        return data != null ? data.asSearcher( context ) : null;
+        TxData data = addedTxDataOrNull( index );
+        return data != null ? ((LuceneTxData)data).asSearcher( context ) : null;
     }
 }

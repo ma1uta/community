@@ -22,6 +22,7 @@ package org.neo4j.index.impl.lucene;
 import java.util.Collection;
 import java.util.Iterator;
 
+import org.neo4j.index.base.AbstractIndexHits;
 
 class ConstantScoreIterator<T> extends AbstractIndexHits<T>
 {

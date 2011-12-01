@@ -19,7 +19,12 @@
  */
 package org.neo4j.index.impl.lucene;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.neo4j.index.base.AbstractIndexImplementation.getIndexStoreDb;
+import static org.neo4j.index.base.AbstractIndexImplementation.getIndexStoreDir;
 import static org.neo4j.kernel.CommonFactories.defaultFileSystemAbstraction;
 
 import java.io.File;
@@ -34,6 +39,8 @@ import org.junit.Test;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.index.base.EntityType;
+import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.kernel.CommonFactories;
 import org.neo4j.kernel.Config;
 import org.neo4j.kernel.impl.index.IndexStore;
@@ -70,7 +77,7 @@ public class TestLuceneDataSource
 
     private IndexIdentifier identifier(String name)
     {
-        return new IndexIdentifier( LuceneCommand.NODE, dataSource.nodeEntityType, name);
+        return new IndexIdentifier( EntityType.NODE, name);
     }
 
     @After
@@ -177,7 +184,7 @@ public class TestLuceneDataSource
     public void testInvalidatingSearcherCreatesANewOne() throws InstantiationException
     {
         dataSource = new LuceneDataSource( config() );
-        IndexIdentifier identifier = new IndexIdentifier( LuceneCommand.NODE, dataSource.nodeEntityType, "foo" );
+        IndexIdentifier identifier = new IndexIdentifier( EntityType.NODE, "foo" );
         IndexSearcherRef oldSearcher = dataSource.getIndexSearcher( identifier, false );
         dataSource.invalidateIndexSearcher( identifier );
         IndexSearcherRef newSearcher = dataSource.getIndexSearcher( identifier, false );
@@ -186,14 +193,22 @@ public class TestLuceneDataSource
         assertFalse( newSearcher.isClosed() );
         assertNotSame( oldSearcher.getSearcher(), newSearcher.getSearcher() );
     }
-
+    
     private Map<Object, Object> config()
     {
-        return MapUtil.genericMap(
-                "store_dir", getDbPath(),
+        return dataSourceConfig( getDbPath(), indexStore );
+    }
+
+    static Map<Object, Object> dataSourceConfig( String dbStoreDir, IndexStore indexStore )
+    {
+        Map<Object, Object> result = MapUtil.genericMap(
+                "store_dir", dbStoreDir,
+                "index_store_dir", getIndexStoreDir( dbStoreDir, LuceneDataSource.DEFAULT_NAME ),
+                "index_store_db", getIndexStoreDb( dbStoreDir, LuceneDataSource.DEFAULT_NAME ),
                 IndexStore.class, indexStore,
                 LogBufferFactory.class, CommonFactories.defaultLogBufferFactory(),
                 FileSystemAbstraction.class, CommonFactories.defaultFileSystemAbstraction(),
                 StringLogger.class, StringLogger.DEV_NULL );
+        return result;
     }
 }

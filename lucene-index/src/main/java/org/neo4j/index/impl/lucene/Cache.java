@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.kernel.impl.cache.LruCache;
 
 public class Cache

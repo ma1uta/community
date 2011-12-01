@@ -5,19 +5,19 @@
  * This file is part of Neo4j.
  *
  * Neo4j is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.index;
+package org.neo4j.index.base;
 
 import static org.neo4j.helpers.collection.MapUtil.reverse;
 import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.read2bLengthAndString;
@@ -49,8 +49,8 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
  */
 public class IndexDefineCommand extends XaCommand
 {
-    private final AtomicInteger nextIndexNameId = new AtomicInteger();
-    private final AtomicInteger nextKeyId = new AtomicInteger();
+    private final AtomicInteger nextIndexNameId = new AtomicInteger( 1 );
+    private final AtomicInteger nextKeyId = new AtomicInteger( 1 );
     private final Map<String, Byte> indexNameIdRange;
     private final Map<String, Byte> keyIdRange;
     private final Map<Byte, String> idToIndexName;
@@ -74,6 +74,8 @@ public class IndexDefineCommand extends XaCommand
     
     private static String getFromMap( Map<Byte, String> map, byte id )
     {
+        if ( id == 0 ) return null;
+        
         String result = map.get( id );
         if ( result == null )
         {
@@ -82,36 +84,36 @@ public class IndexDefineCommand extends XaCommand
         return result;
     }
 
-    public IndexCommand create( String indexName, Class<?> entityType, Map<String, String> config )
+    public IndexCommand create( String indexName, EntityType entityType, Map<String, String> config )
     {
         return new IndexCommand.CreateCommand( indexNameId( indexName ),
-                entityTypeId( entityType ), config );
+                entityType.byteValue(), config );
     }
     
-    public IndexCommand add( String indexName, Class<?> entityType, long entityId, String key,
+    public IndexCommand add( String indexName, EntityType entityType, EntityId entityId, String key,
             Object value )
     {
-        return new IndexCommand.AddCommand( indexNameId( indexName ), entityTypeId( entityType ),
+        // TODO Inverse to enum
+        switch ( entityType )
+        {
+        case NODE: return new IndexCommand.AddCommand( indexNameId( indexName ), entityType.byteValue(),
                 entityId, keyId( key ), value );
+        case RELATIONSHIP: return new IndexCommand.AddRelationshipCommand( indexNameId( indexName ), entityType.byteValue(),
+                entityId, keyId( key ), value );
+        default: throw new IllegalArgumentException( entityType.toString() );
+        }
     }
     
-    public IndexCommand addRelationship( String indexName, Class<?> entityType, long entityId, String key,
-            Object value, long startNode, long endNode )
-    {
-        return new IndexCommand.AddRelationshipCommand( indexNameId( indexName ),
-                entityTypeId( entityType ), entityId, keyId( key ), value, startNode, endNode );
-    }
-    
-    public IndexCommand remove( String indexName, Class<?> entityType, long entityId,
+    public IndexCommand remove( String indexName, EntityType entityType, EntityId entityId,
             String key, Object value )
     {
-        return new IndexCommand.RemoveCommand( indexNameId( indexName ), entityTypeId( entityType ),
+        return new IndexCommand.RemoveCommand( indexNameId( indexName ), entityType.byteValue(),
                 entityId, key != null ? keyId( key ) : 0, value );
     }
     
-    public IndexCommand delete( String indexName, Class<?> entityType )
+    public IndexCommand delete( String indexName, EntityType entityType )
     {
-        return new IndexCommand.DeleteCommand( indexNameId( indexName ), entityTypeId( entityType ) );
+        return new IndexCommand.DeleteCommand( indexNameId( indexName ), entityType.byteValue() );
     }
     
     public String getIndexName( byte id )
@@ -152,6 +154,7 @@ public class IndexDefineCommand extends XaCommand
     private byte id( String key, Map<String, Byte> idRange, AtomicInteger nextId,
             Map<Byte, String> reverse )
     {
+        if ( key == null ) return 0;
         Byte id = idRange.get( key );
         if ( id == null )
         {

@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.neo4j.helpers.Pair;
+import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.kernel.impl.cache.LruCache;
 
 /**

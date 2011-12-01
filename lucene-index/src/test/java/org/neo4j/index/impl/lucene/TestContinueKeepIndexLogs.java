@@ -19,11 +19,15 @@
  */
 package org.neo4j.index.impl.lucene;
 
+import static org.neo4j.index.base.AbstractIndexImplementation.getIndexStoreDir;
+import static org.neo4j.index.impl.lucene.LuceneDataSource.DEFAULT_NAME;
+
 import java.io.File;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.index.Index;
+import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.impl.transaction.xaframework.TestContinueKeepLogs;
 
 public class TestContinueKeepIndexLogs extends TestContinueKeepLogs
@@ -45,6 +49,6 @@ public class TestContinueKeepIndexLogs extends TestContinueKeepLogs
     @Override
     protected File logDir( GraphDatabaseService db )
     {
-        return new File( super.logDir( db ), "index" );
+        return new File( getIndexStoreDir( ((AbstractGraphDatabase)db).getStoreDir(), DEFAULT_NAME ) );
     }
 }

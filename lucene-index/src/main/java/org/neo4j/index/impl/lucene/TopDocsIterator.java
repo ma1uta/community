@@ -30,6 +30,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollector;
 import org.neo4j.helpers.collection.ArrayIterator;
+import org.neo4j.index.base.AbstractIndexHits;
 import org.neo4j.index.lucene.QueryContext;
 
 class TopDocsIterator extends AbstractIndexHits<Document>

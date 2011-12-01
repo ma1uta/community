@@ -25,7 +25,8 @@ import java.util.Map;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.search.IndexSearcher;
-import org.neo4j.index.impl.lucene.LuceneTransaction.CommandList;
+import org.neo4j.index.base.EntityId;
+import org.neo4j.index.base.IndexIdentifier;
 
 /**
  * This presents a context for each {@link LuceneCommand} when they are
@@ -37,19 +38,15 @@ class CommitContext
     final IndexIdentifier identifier;
     final IndexType indexType;
     final Map<Long, DocumentContext> documents = new HashMap<Long, DocumentContext>();
-    final CommandList commandList;
-    final boolean recovery;
     
     IndexWriter writer;
     IndexSearcher searcher;
     
-    CommitContext( LuceneDataSource dataSource, IndexIdentifier identifier, IndexType indexType, CommandList commandList )
+    CommitContext( LuceneDataSource dataSource, IndexIdentifier identifier, IndexType indexType )
     {
         this.dataSource = dataSource;
         this.identifier = identifier;
         this.indexType = indexType;
-        this.commandList = commandList;
-        this.recovery = commandList.isRecovery();
     }
     
     void ensureWriterInstantiated()
@@ -61,9 +58,9 @@ class CommitContext
         }
     }
     
-    DocumentContext getDocument( Object entityId, boolean allowCreate )
+    DocumentContext getDocument( EntityId entityId, boolean allowCreate )
     {
-        long id = entityId instanceof Long ? (Long) entityId : ((RelationshipId)entityId).id;
+        long id = entityId.getId();
         DocumentContext context = documents.get( id );
         if ( context != null )
         {
@@ -78,7 +75,7 @@ class CommitContext
         }
         else if ( allowCreate )
         {
-            context = new DocumentContext( identifier.entityType.newDocument( entityId ), false, id );
+            context = new DocumentContext( IndexType.newDocument( entityId ), false, id );
             documents.put( id, context );
         }
         return context;

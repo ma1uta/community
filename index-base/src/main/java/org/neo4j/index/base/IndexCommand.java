@@ -5,20 +5,21 @@
  * This file is part of Neo4j.
  *
  * Neo4j is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.index;
+package org.neo4j.index.base;
 
+import static org.neo4j.index.base.EntityId.entityId;
 import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.read2bMap;
 import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.read3bLengthAndString;
 import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.readBytes;
@@ -36,6 +37,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.util.Map;
 
 import org.neo4j.graphdb.index.Index;
+import org.neo4j.index.base.EntityId.RelationshipId;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBuffer;
 import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
 
@@ -66,17 +68,17 @@ public abstract class IndexCommand extends XaCommand
     
     private final byte commandType;
     private final byte indexNameId;
-    private final byte entityType;
-    private final long entityId;
+    private final EntityType entityType;
+    private final EntityId entityId;
     private final byte keyId;
     private final byte valueType;
     private final Object value;
     
-    IndexCommand( byte commandType, byte indexNameId, byte entityType, long entityId, byte keyId, Object value )
+    IndexCommand( byte commandType, byte indexNameId, byte entityType, EntityId entityId, byte keyId, Object value )
     {
         this.commandType = commandType;
         this.indexNameId = indexNameId;
-        this.entityType = entityType;
+        this.entityType = EntityType.entityType( entityType );
         this.entityId = entityId;
         this.keyId = keyId;
         this.value = value;
@@ -90,10 +92,15 @@ public abstract class IndexCommand extends XaCommand
     
     public byte getEntityType()
     {
+        return entityType.byteValue();
+    }
+    
+    public EntityType getEntityTypeClass()
+    {
         return entityType;
     }
     
-    public long getEntityId()
+    public EntityId getEntityId()
     {
         return entityId;
     }
@@ -136,7 +143,7 @@ public abstract class IndexCommand extends XaCommand
          */
         
         writeHeader( buffer );
-        putIntOrLong( buffer, entityId );
+        putIntOrLong( buffer, entityId.getId() );
         
         // Value
         switch ( valueType )
@@ -154,7 +161,7 @@ public abstract class IndexCommand extends XaCommand
 
     protected void writeHeader( LogBuffer buffer ) throws IOException
     {
-        buffer.put( (byte)((commandType<<5) | (valueType<<2) | (entityType<<1) | (needsLong( entityId ))) );
+        buffer.put( (byte)((commandType<<5) | (valueType<<2) | (entityType.byteValue()<<1) | (needsLong( entityId.getId() ))) );
         buffer.put( (byte)((startNodeNeedsLong()<<7) | (endNodeNeedsLong()<<6) | (indexNameId)) );
         buffer.put( keyId );
     }
@@ -230,7 +237,7 @@ public abstract class IndexCommand extends XaCommand
     
     public static class AddCommand extends IndexCommand
     {
-        AddCommand( byte indexNameId, byte entityType, long entityId, byte keyId, Object value )
+        AddCommand( byte indexNameId, byte entityType, EntityId entityId, byte keyId, Object value )
         {
             super( ADD_COMMAND, indexNameId, entityType, entityId, keyId, value );
         }
@@ -238,62 +245,42 @@ public abstract class IndexCommand extends XaCommand
     
     public static class AddRelationshipCommand extends IndexCommand
     {
-        private final long startNode;
-        private final long endNode;
-
-        AddRelationshipCommand( byte indexNameId, byte entityType, long entityId, byte keyId,
-                Object value, long startNode, long endNode )
+        AddRelationshipCommand( byte indexNameId, byte entityType, EntityId entityId, byte keyId,
+                Object value )
         {
             super( ADD_RELATIONSHIP_COMMAND, indexNameId, entityType, entityId, keyId, value );
-            this.startNode = startNode;
-            this.endNode = endNode;
         }
         
-        public long getStartNode()
+        @Override
+        public RelationshipId getEntityId()
         {
-            return startNode;
-        }
-        
-        public long getEndNode()
-        {
-            return endNode;
+            return (RelationshipId) super.getEntityId();
         }
         
         @Override
         protected byte startNodeNeedsLong()
         {
-            return needsLong( startNode );
+            return needsLong( getEntityId().getStartNode() );
         }
         
         @Override
         protected byte endNodeNeedsLong()
         {
-            return needsLong( endNode );
+            return needsLong( getEntityId().getEndNode() );
         }
         
         @Override
         public void writeToFile( LogBuffer buffer ) throws IOException
         {
             super.writeToFile( buffer );
-            putIntOrLong( buffer, startNode );
-            putIntOrLong( buffer, endNode );
-        }
-        
-        @Override
-        public boolean equals( Object obj )
-        {
-            if ( !super.equals( obj ) )
-            {
-                return false;
-            }
-            AddRelationshipCommand other = (AddRelationshipCommand) obj;
-            return startNode == other.startNode && endNode == other.endNode;
+            putIntOrLong( buffer, getEntityId().getStartNode() );
+            putIntOrLong( buffer, getEntityId().getEndNode() );
         }
     }
     
     public static class RemoveCommand extends IndexCommand
     {
-        RemoveCommand( byte indexNameId, byte entityType, long entityId, byte keyId, Object value )
+        RemoveCommand( byte indexNameId, byte entityType, EntityId entityId, byte keyId, Object value )
         {
             super( REMOVE_COMMAND, indexNameId, entityType, entityId, keyId, value );
         }
@@ -303,7 +290,7 @@ public abstract class IndexCommand extends XaCommand
     {
         DeleteCommand( byte indexNameId, byte entityType )
         {
-            super( DELETE_COMMAND, indexNameId, entityType, 0L, (byte)0, null );
+            super( DELETE_COMMAND, indexNameId, entityType, entityId( 0 ), (byte)0, null );
         }
         
         @Override
@@ -325,7 +312,7 @@ public abstract class IndexCommand extends XaCommand
 
         CreateCommand( byte indexNameId, byte entityType, Map<String, String> config )
         {
-            super( CREATE_COMMAND, indexNameId, entityType, 0L, (byte)0, null ); 
+            super( CREATE_COMMAND, indexNameId, entityType, entityId( 0 ), (byte)0, null ); 
             this.config = config;
         }
         
@@ -407,11 +394,11 @@ public abstract class IndexCommand extends XaCommand
             if ( valueType != VALUE_TYPE_NULL && value == null ) return null;
             if ( commandType == ADD_COMMAND )
             {
-                return new AddCommand( indexNameId, entityType, entityId.longValue(), keyId, value );
+                return new AddCommand( indexNameId, entityType, entityId( entityId.longValue() ), keyId, value );
             }
             else if ( commandType == REMOVE_COMMAND )
             {
-                return new RemoveCommand( indexNameId, entityType, entityId.longValue(), keyId, value );
+                return new RemoveCommand( indexNameId, entityType, entityId( entityId.longValue() ), keyId, value );
             }
             else
             {
@@ -420,8 +407,8 @@ public abstract class IndexCommand extends XaCommand
                 Number startNode = startNodeNeedsLong ? (Number)readLong( channel, buffer ) : (Number)readInt( channel, buffer );
                 Number endNode = endNodeNeedsLong ? (Number)readLong( channel, buffer ) : (Number)readInt( channel, buffer );
                 if ( startNode == null || endNode == null ) return null;
-                return new AddRelationshipCommand( indexNameId, entityType, entityId.longValue(),
-                        keyId, value, startNode.longValue(), endNode.longValue() );
+                return new AddRelationshipCommand( indexNameId, entityType,
+                        entityId( entityId.longValue(), startNode.longValue(), endNode.longValue() ), keyId, value );
             }
         default: throw new RuntimeException( "Unknown command type " + commandType );
         }
@@ -431,16 +418,14 @@ public abstract class IndexCommand extends XaCommand
     public boolean equals( Object obj )
     {
         IndexCommand other = (IndexCommand) obj;
-        boolean equals = commandType == other.commandType &&
+        boolean equals =
+                entityId.equals( other.entityId ) &&
+                commandType == other.commandType &&
                 entityType == other.entityType &&
                 indexNameId == other.indexNameId &&
                 keyId == other.keyId &&
                 valueType == other.valueType;
-        if ( !equals )
-        {
-            return false;
-        }
-        
+        if ( !equals ) return false;
         return value == null ? other.value == null : value.equals( other.value );
     }
 }

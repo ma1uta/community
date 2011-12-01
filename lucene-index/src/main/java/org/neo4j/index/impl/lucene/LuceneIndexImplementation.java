@@ -26,16 +26,16 @@ import java.util.Map;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.index.Index;
-import org.neo4j.graphdb.index.IndexImplementation;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.index.base.AbstractIndexImplementation;
+import org.neo4j.index.base.EntityType;
+import org.neo4j.index.base.IndexDataSource;
+import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.kernel.Config;
-import org.neo4j.kernel.impl.index.IndexConnectionBroker;
-import org.neo4j.kernel.impl.index.ReadOnlyIndexConnectionBroker;
-import org.neo4j.kernel.impl.transaction.TxModule;
 
-public class LuceneIndexImplementation extends IndexImplementation
+public class LuceneIndexImplementation extends AbstractIndexImplementation
 {
     static final String KEY_TYPE = "type";
     static final String KEY_ANALYZER = "analyzer";
@@ -54,53 +54,32 @@ public class LuceneIndexImplementation extends IndexImplementation
 
     public static final int DEFAULT_LAZY_THRESHOLD = 100;
 
-    private final IndexConnectionBroker<LuceneXaConnection> broker;
-    private final LuceneDataSource dataSource;
-    private final GraphDatabaseService graphDb;
     final int lazynessThreshold;
 
     public LuceneIndexImplementation( GraphDatabaseService db, Config config )
     {
-        this.graphDb = db;
+        super( db, config );
         this.lazynessThreshold = DEFAULT_LAZY_THRESHOLD;
-        TxModule txModule = config.getTxModule();
-        boolean isReadOnly = config.isReadOnly();
-        Map<Object, Object> params = new HashMap<Object, Object>( config.getParams() );
-        params.put( "read_only", isReadOnly );
-        params.put( "ephemeral", config.isEphemeral() );
-        dataSource = (LuceneDataSource) txModule.registerDataSource( LuceneDataSource.DEFAULT_NAME,
-                LuceneDataSource.class.getName(), LuceneDataSource.DEFAULT_BRANCH_ID, params, true );
-        broker = isReadOnly ? new ReadOnlyIndexConnectionBroker<LuceneXaConnection>( txModule.getTxManager() )
-                : new ConnectionBroker( txModule.getTxManager(), dataSource );
     }
-
-    IndexConnectionBroker<LuceneXaConnection> broker()
+    
+    @Override
+    public LuceneDataSource dataSource()
     {
-        return this.broker;
-    }
-
-    LuceneDataSource dataSource()
-    {
-        return this.dataSource;
-    }
-
-    GraphDatabaseService graphDb()
-    {
-        return this.graphDb;
+        return (LuceneDataSource) super.dataSource();
     }
 
     @Override
     public Index<Node> nodeIndex( String indexName, Map<String, String> config )
     {
-        IndexIdentifier identifier = new IndexIdentifier( LuceneCommand.NODE,
-                dataSource.nodeEntityType, indexName );
-        synchronized ( dataSource.indexes )
+        LuceneDataSource ds = dataSource();
+        IndexIdentifier identifier = new IndexIdentifier( EntityType.NODE, indexName );
+        synchronized ( ds.indexes )
         {
-            LuceneIndex index = dataSource.indexes.get( identifier );
+            LuceneIndex index = ds.indexes.get( identifier );
             if ( index == null )
             {
                 index = new LuceneIndex.NodeIndex( this, identifier );
-                dataSource.indexes.put( identifier, index );
+                ds.indexes.put( identifier, index );
             }
             return index;
         }
@@ -109,15 +88,15 @@ public class LuceneIndexImplementation extends IndexImplementation
     @Override
     public RelationshipIndex relationshipIndex( String indexName, Map<String, String> config )
     {
-        IndexIdentifier identifier = new IndexIdentifier( LuceneCommand.RELATIONSHIP,
-                dataSource.relationshipEntityType, indexName );
-        synchronized ( dataSource.indexes )
+        LuceneDataSource ds = dataSource();
+        IndexIdentifier identifier = new IndexIdentifier( EntityType.RELATIONSHIP, indexName );
+        synchronized ( ds.indexes )
         {
-            LuceneIndex index = dataSource.indexes.get( identifier );
+            LuceneIndex index = ds.indexes.get( identifier );
             if ( index == null )
             {
                 index = new LuceneIndex.RelationshipIndex( this, identifier );
-                dataSource.indexes.put( identifier, index );
+                ds.indexes.put( identifier, index );
             }
             return (RelationshipIndex) index;
         }
@@ -187,5 +166,17 @@ public class LuceneIndexImplementation extends IndexImplementation
     public String getDataSourceName()
     {
         return LuceneDataSource.DEFAULT_NAME;
+    }
+
+    @Override
+    protected Class<? extends IndexDataSource> getDataSourceClass()
+    {
+        return LuceneDataSource.class;
+    }
+
+    @Override
+    protected byte[] getDataSourceBranchId()
+    {
+        return LuceneDataSource.BRANCH_ID;
     }
 }

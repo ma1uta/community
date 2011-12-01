@@ -22,6 +22,7 @@ package org.neo4j.index.impl.lucene;
 import java.io.IOException;
 
 import org.apache.lucene.index.IndexWriter;
+import org.neo4j.index.base.IndexIdentifier;
 import org.neo4j.kernel.impl.cache.LruCache;
 
 /**

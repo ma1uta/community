@@ -54,7 +54,6 @@ import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.index.Neo4jTestCase;
 import org.neo4j.index.impl.lucene.LuceneBatchInserterIndexProvider;
-import org.neo4j.index.impl.lucene.LuceneIndex;
 import org.neo4j.index.lucene.QueryContext;
 import org.neo4j.index.lucene.ValueContext;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
@@ -579,7 +578,7 @@ public class ImdbExampleTest
     {
         // START SNIPPET: cache
         Index<Node> index = graphDb.index().forNodes( "actors" );
-        ( (LuceneIndex<Node>) index ).setCacheCapacity( "name", 300000 );
+//        ( (LuceneIndex<Node>) index ).setCacheCapacity( "name", 300000 );
         // END SNIPPET: cache
     }
 

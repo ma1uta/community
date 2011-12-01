@@ -22,6 +22,7 @@ package org.neo4j.index.impl.lucene;
 import java.io.IOException;
 
 import org.apache.lucene.document.Document;
+import org.neo4j.index.base.AbstractIndexHits;
 
 public class HitsIterator extends AbstractIndexHits<Document>
 {

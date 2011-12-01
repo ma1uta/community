@@ -40,6 +40,10 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Similarity;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.Version;
+import org.neo4j.index.base.EntityId;
+import org.neo4j.index.base.EntityId.RelationshipId;
+import org.neo4j.index.base.IndexIdentifier;
+import org.neo4j.index.base.TxData;
 import org.neo4j.index.lucene.QueryContext;
 
 abstract class IndexType
@@ -355,7 +359,21 @@ abstract class IndexType
                 Index.NOT_ANALYZED ) );
         return doc;
     }
-
+    
+    static Document newDocument( EntityId entity )
+    {
+        Document doc = newBaseDocument( entity.getId() );
+        if ( entity instanceof RelationshipId )
+        {
+            RelationshipId rel = (RelationshipId) entity;
+            doc.add( new Field( LuceneIndex.KEY_START_NODE_ID, "" + rel.getStartNode(),
+                    Store.YES, org.apache.lucene.document.Field.Index.NOT_ANALYZED ) );
+            doc.add( new Field( LuceneIndex.KEY_END_NODE_ID, "" + rel.getEndNode(),
+                    Store.YES, org.apache.lucene.document.Field.Index.NOT_ANALYZED ) );
+        }
+        return doc;
+    }
+    
     Term idTerm( long entityId )
     {
         return new Term( LuceneIndex.KEY_DOC_ID, "" + entityId );

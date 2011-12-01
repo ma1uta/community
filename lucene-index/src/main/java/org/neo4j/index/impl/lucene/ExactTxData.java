@@ -19,7 +19,8 @@
  */
 package org.neo4j.index.impl.lucene;
 
-import java.util.ArrayList;
+import static org.neo4j.index.base.IndexTransaction.merge;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,13 +30,15 @@ import java.util.Set;
 
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.neo4j.index.base.EntityId;
 import org.neo4j.index.lucene.QueryContext;
 import org.neo4j.index.lucene.ValueContext;
 
-public class ExactTxData extends TxData
+public class ExactTxData extends LuceneTxData
 {
-    private Map<String, Map<Object, Set<Object>>> data;
+    private Map<String, Map<Object, Set<EntityId>>> data;
     private boolean hasOrphans;
+    private FullTxData fullTxData;
 
     ExactTxData( LuceneIndex index )
     {
@@ -43,73 +46,58 @@ public class ExactTxData extends TxData
     }
 
     @Override
-    void add( TxDataHolder holder, Object entityId, String key, Object value )
+    public void add( EntityId entityId, String key, Object value )
     {
+        if ( fullTxData != null ) fullTxData.add( entityId, key, value );
         idCollection( key, value, true ).add( entityId );
     }
 
-    private Set<Object> idCollection( String key, Object value, boolean create )
+    private Set<EntityId> idCollection( String key, Object value, boolean create )
     {
-        Map<Object, Set<Object>> keyMap = keyMap( key, create );
-        if ( keyMap == null )
-        {
-            return null;
-        }
-
-        Set<Object> ids = keyMap.get( value );
+        Map<Object, Set<EntityId>> keyMap = keyMap( key, create );
+        if ( keyMap == null ) return null;
+        Set<EntityId> ids = keyMap.get( value );
         if ( ids == null && create )
         {
-            ids = new HashSet<Object>();
+            ids = new HashSet<EntityId>();
             keyMap.put( value, ids );
-            if ( value == null )
-            {
-                hasOrphans = true;
-            }
+            if ( value == null ) hasOrphans = true;
         }
         return ids;
     }
 
-    private Map<Object, Set<Object>> keyMap( String key, boolean create )
+    private Map<Object, Set<EntityId>> keyMap( String key, boolean create )
     {
         if ( data == null )
         {
-            if ( create )
-            {
-                data = new HashMap<String, Map<Object,Set<Object>>>();
-            }
-            else
-            {
-                return null;
-            }
+            if ( create ) data = new HashMap<String, Map<Object,Set<EntityId>>>();
+            else return null;
         }
 
-        Map<Object, Set<Object>> inner = data.get( key );
+        Map<Object, Set<EntityId>> inner = data.get( key );
         if ( inner == null && create )
         {
-            inner = new HashMap<Object, Set<Object>>();
+            inner = new HashMap<Object, Set<EntityId>>();
             data.put( key, inner );
-            if ( key == null )
-            {
-                hasOrphans = true;
-            }
+            if ( key == null ) hasOrphans = true;
         }
         return inner;
     }
 
-    private TxData toFullTxData()
+    private FullTxData toFullTxData()
     {
         FullTxData data = new FullTxData( index );
         if ( this.data != null )
         {
-            for ( Map.Entry<String, Map<Object, Set<Object>>> entry : this.data.entrySet() )
+            for ( Map.Entry<String, Map<Object, Set<EntityId>>> entry : this.data.entrySet() )
             {
                 String key = entry.getKey();
-                for ( Map.Entry<Object, Set<Object>> valueEntry : entry.getValue().entrySet() )
+                for ( Map.Entry<Object, Set<EntityId>> valueEntry : entry.getValue().entrySet() )
                 {
                     Object value = valueEntry.getKey();
-                    for ( Object id : valueEntry.getValue() )
+                    for ( EntityId id : valueEntry.getValue() )
                     {
-                        data.add( null, id, key, value );
+                        data.add( id, key, value );
                     }
                 }
             }
@@ -118,101 +106,62 @@ public class ExactTxData extends TxData
     }
 
     @Override
-    void close()
+    public void close()
     {
     }
 
     @Override
-    Collection<Long> query( TxDataHolder holder, Query query, QueryContext contextOrNull )
+    Collection<EntityId> query( Query query, QueryContext contextOrNull )
     {
-        if ( contextOrNull != null && contextOrNull.getTradeCorrectnessForSpeed() )
-        {
-            return Collections.<Long>emptyList();
-        }
+        if ( contextOrNull != null && contextOrNull.getTradeCorrectnessForSpeed() ) return Collections.<EntityId>emptyList();
+        return getFullTxData().query( query, contextOrNull );
+    }
 
-        TxData fullTxData = toFullTxData();
-        holder.set( fullTxData );
-        return fullTxData.query( holder, query, contextOrNull );
+    private FullTxData getFullTxData()
+    {
+        if ( fullTxData == null ) fullTxData = toFullTxData();
+        return fullTxData;
     }
 
     @Override
-    void remove( TxDataHolder holder, Object entityId, String key, Object value )
+    public void remove( EntityId entityId, String key, Object value )
     {
-        if ( data == null )
-        {
-            return;
-        }
-        
+        if ( data == null ) return;
         if ( key == null || value == null )
         {
-            TxData fullData = toFullTxData();
-            fullData.remove( holder, entityId, key, value );
-            holder.set( fullData );
+            getFullTxData().remove( entityId, key, value );
         }
         else
         {
-            Collection<Object> ids = idCollection( key, value, false );
-            if ( ids != null )
-            {
-                ids.remove( entityId );
-            }
+            if ( fullTxData != null ) fullTxData.remove( entityId, key, value );
+            Collection<EntityId> ids = idCollection( key, value, false );
+            if ( ids != null ) ids.remove( entityId );
         }
     }
 
     @Override
-    Collection<Long> get( TxDataHolder holder, String key, Object value )
+    public Collection<EntityId> get( String key, Object value )
     {
+        if ( fullTxData != null ) return fullTxData.get( key, value );
         value = value instanceof ValueContext ? ((ValueContext) value).getCorrectValue() : value.toString();
-        Set<Object> ids = idCollection( key, value, false );
-        if ( ids == null || ids.isEmpty() )
-        {
-            return Collections.<Long>emptySet();
-        }
-        return toLongs( ids );
+        Set<EntityId> ids = idCollection( key, value, false );
+        return ids == null || ids.isEmpty() ? Collections.<EntityId>emptySet() : ids;
     }
     
     @Override
-    Collection<Long> getOrphans( String key )
+    public Collection<EntityId> getOrphans( String key )
     {
-        if ( !hasOrphans )
-        {
-            return null;
-        }
-        
-        Set<Object> orphans = idCollection( null, null, false );
-        Set<Object> keyOrphans = idCollection( key, null, false );
-        Collection<Long> orphanLongs = orphans != null ? toLongs( orphans ) : null;
-        Collection<Long> keyOrphanLongs = keyOrphans != null ? toLongs( keyOrphans ) : null;
-        return LuceneTransaction.merge( orphanLongs, keyOrphanLongs );
-    }
-
-    @SuppressWarnings( { "unchecked", "rawtypes" } )
-    private Collection<Long> toLongs( Set<Object> ids )
-    {
-        if ( ids.iterator().next() instanceof Long )
-        {
-            return (Collection) ids;
-        }
-        else
-        {
-            Collection<Long> longs = new ArrayList<Long>();
-            for ( Object id : ids )
-            {
-                longs.add( ((RelationshipId) id).id );
-            }
-            return longs;
-        }
+        if ( fullTxData != null ) return fullTxData.getOrphans( key );
+        if ( !hasOrphans ) return null;
+        Set<EntityId> orphans = idCollection( null, null, false );
+        Set<EntityId> keyOrphans = idCollection( key, null, false );
+        return merge( orphans, keyOrphans );
     }
     
     @Override
-    IndexSearcher asSearcher( TxDataHolder holder, QueryContext context )
+    IndexSearcher asSearcher( QueryContext context )
     {
-        if ( context != null && context.getTradeCorrectnessForSpeed() )
-        {
-            return null;
-        }
-        TxData fullTxData = toFullTxData();
-        holder.set( fullTxData );
-        return fullTxData.asSearcher( holder, context );
+        if ( context != null && context.getTradeCorrectnessForSpeed() ) return null;
+        return getFullTxData().asSearcher( context );
     }
 }

@@ -5,25 +5,26 @@
  * This file is part of Neo4j.
  *
  * Neo4j is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.index;
+package org.neo4j.index.base;
 
 import static java.io.File.createTempFile;
 import static org.junit.Assert.assertEquals;
 import static org.neo4j.helpers.collection.MapUtil.stringMap;
+import static org.neo4j.index.base.EntityId.entityId;
+import static org.neo4j.index.base.IndexCommand.readCommand;
 import static org.neo4j.kernel.CommonFactories.defaultLogBufferFactory;
-import static org.neo4j.kernel.impl.index.IndexCommand.readCommand;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -39,8 +40,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.helpers.Pair;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBuffer;
 import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
@@ -120,12 +119,12 @@ public class TestIndexCommand
         List<XaCommand> commands = new ArrayList<XaCommand>();
         IndexDefineCommand definitions = new IndexDefineCommand();
         commands.add( definitions );
-        commands.add( definitions.create( INDEX_NAME_1, Node.class, SOME_CONFIG ) );
-        commands.add( definitions.add( INDEX_NAME_1, Node.class, NODE_ID_1, KEY_1, STRING_VALUE_1 ) );
-        commands.add( definitions.add( INDEX_NAME_1, Node.class, NODE_ID_1, KEY_2, STRING_VALUE_2 ) );
-        commands.add( definitions.addRelationship( INDEX_NAME_2, Relationship.class, REL_ID_1, KEY_3, INT_VALUE, NODE_ID_2, NODE_ID_3 ) );
-        commands.add( definitions.remove( INDEX_NAME_1, Node.class, NODE_ID_2, KEY_1, STRING_VALUE_1 ) );
-        commands.add( definitions.delete( INDEX_NAME_2, Relationship.class ) );
+        commands.add( definitions.create( INDEX_NAME_1, EntityType.NODE, SOME_CONFIG ) );
+        commands.add( definitions.add( INDEX_NAME_1, EntityType.NODE, entityId( NODE_ID_1 ), KEY_1, STRING_VALUE_1 ) );
+        commands.add( definitions.add( INDEX_NAME_1, EntityType.NODE, entityId( NODE_ID_1 ), KEY_2, STRING_VALUE_2 ) );
+        commands.add( definitions.add( INDEX_NAME_2, EntityType.RELATIONSHIP, entityId( REL_ID_1, NODE_ID_2, NODE_ID_3 ), KEY_3, INT_VALUE ) );
+        commands.add( definitions.remove( INDEX_NAME_1, EntityType.NODE, entityId( NODE_ID_2 ), KEY_1, STRING_VALUE_1 ) );
+        commands.add( definitions.delete( INDEX_NAME_2, EntityType.RELATIONSHIP ) );
         return commands;
     }
 
