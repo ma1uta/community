@@ -96,7 +96,7 @@ public interface GraphDatabaseService
      * @param name the name of the node.
      * @return the named {@link Node} with the given {@code name}.
      */
-//    public Node getReferenceNode( String name );
+    public Node getReferenceNode( String name );
 
     /**
      * Returns all nodes in the graph.

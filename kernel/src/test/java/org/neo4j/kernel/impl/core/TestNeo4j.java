@@ -48,33 +48,6 @@ import org.neo4j.tooling.GlobalGraphOperations;
 public class TestNeo4j extends AbstractNeo4jTestCase
 {
     @Test
-    public void testReferenceNode()
-    {
-        // fix this test when we can set reference node again
-        Node oldReferenceNode = null;
-        try
-        {
-            // get old reference node if one is set
-            oldReferenceNode = getGraphDb().getReferenceNode();
-        }
-        catch ( RuntimeException e )
-        {
-            // ok no one set, oldReferenceNode is null then
-        }
-        GraphDbModule graphDbModule = ( (AbstractGraphDatabase) getGraphDb() ).getConfig().getGraphDbModule();
-
-        Node newReferenceNode = getGraphDb().createNode();
-        graphDbModule.setReferenceNodeId( newReferenceNode.getId() );
-        assertEquals( newReferenceNode, getGraphDb().getReferenceNode() );
-        newReferenceNode.delete();
-        if ( oldReferenceNode != null )
-        {
-            graphDbModule.setReferenceNodeId( oldReferenceNode.getId() );
-            assertEquals( oldReferenceNode, getGraphDb().getReferenceNode() );
-        }
-    }
-
-    @Test
     public void testBasicNodeRelationships()
     {
         Node firstNode = null;

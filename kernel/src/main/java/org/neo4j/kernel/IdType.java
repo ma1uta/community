@@ -30,7 +30,9 @@ public enum IdType
     PROPERTY_INDEX_BLOCK( false ),
     RELATIONSHIP_TYPE( 16, false ),
     RELATIONSHIP_TYPE_BLOCK( false ),
-    NEOSTORE_BLOCK( false );
+    NEOSTORE_BLOCK( false ),
+    REFERENCE_NODE( false ),
+    REFERENCE_NODE_BLOCK( false );
 
     private final long max;
     private final boolean allowAggressiveReuse;

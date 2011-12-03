@@ -337,6 +337,11 @@ class EmbeddedGraphDbImpl
         return nodeManager.getReferenceNode();
     }
 
+    public Node getReferenceNode( String name )
+    {
+        return nodeManager.getReferenceNode( name );
+    }
+    
     private boolean inShutdown = false;
     public synchronized void shutdown()
     {

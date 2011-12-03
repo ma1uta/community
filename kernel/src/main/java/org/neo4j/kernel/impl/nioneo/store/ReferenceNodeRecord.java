@@ -19,31 +19,28 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
-public class NameData<T>
+public class ReferenceNodeRecord extends AbstractNameRecord
 {
-    private final int id;
-    private final String name;
-    private final T payload;
-
-    public NameData( int id, String name, T payload )
+    private long nodeId;
+    
+    public ReferenceNodeRecord( int id )
     {
-        this.id = id;
-        this.name = name;
-        this.payload = payload;
-    }
-
-    public int getId()
-    {
-        return this.id;
-    }
-
-    public String getName()
-    {
-        return this.name;
+        super( id );
     }
     
-    public T getPayload()
+    public long getNodeId()
     {
-        return payload;
+        return nodeId;
+    }
+    
+    public void setNodeId( long nodeId )
+    {
+        this.nodeId = nodeId;
+    }
+    
+    @Override
+    protected String additionalToString()
+    {
+        return "nodeId=" + nodeId;
     }
 }

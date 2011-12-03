@@ -26,6 +26,7 @@ import static org.junit.Assert.fail;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
@@ -40,6 +41,7 @@ public class TestNeo4jConstrains extends AbstractNeo4jTestCase
 {
     private String key = "testproperty";
 
+    @Ignore( "Assumption about getReferenceNode after ref node deleted is no longer true" )
     @Test
     public void testDeleteReferenceNodeOrLastNodeIsOk()
     {

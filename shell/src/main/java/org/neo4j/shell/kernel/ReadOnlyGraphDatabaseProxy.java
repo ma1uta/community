@@ -123,6 +123,12 @@ public class ReadOnlyGraphDatabaseProxy implements GraphDatabaseService, IndexMa
     {
         return new ReadOnlyNodeProxy( actual.getReferenceNode() );
     }
+    
+    @Override
+    public Node getReferenceNode( String name )
+    {
+        return new ReadOnlyNodeProxy( actual.getReferenceNode( name ) );
+    }
 
     public Relationship getRelationshipById( long id )
     {

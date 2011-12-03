@@ -65,6 +65,7 @@ public class NeoStore extends AbstractStore
     private PropertyStore propStore;
     private RelationshipStore relStore;
     private RelationshipTypeStore relTypeStore;
+    private ReferenceNodeStore refNodeStore;
     private final LastCommittedTxIdSetter lastCommittedTxIdSetter;
     private final IdGeneratorFactory idGeneratorFactory;
     private final TxHook txHook;
@@ -175,6 +176,7 @@ public class NeoStore extends AbstractStore
         propStore = new PropertyStore( getStorageFileName() + ".propertystore.db", getConfig() );
         relStore = new RelationshipStore( getStorageFileName() + ".relationshipstore.db", getConfig() );
         nodeStore = new NodeStore( getStorageFileName() + ".nodestore.db", getConfig() );
+        refNodeStore = new ReferenceNodeStore( getStorageFileName() + ".referencenodestore.db", getConfig() );
     }
 
     private void tryToUpgradeStores()
@@ -224,25 +226,19 @@ public class NeoStore extends AbstractStore
     protected void closeStorage()
     {
         if ( lastCommittedTxIdSetter != null ) lastCommittedTxIdSetter.close();
-        if ( relTypeStore != null )
+        safeClose( relTypeStore, propStore, relStore, nodeStore, refNodeStore );
+        relTypeStore = null;
+        propStore = null;
+        relStore = null;
+        nodeStore = null;
+        refNodeStore = null;
+    }
+
+    private void safeClose( AbstractStore... stores )
+    {
+        for ( AbstractStore store : stores )
         {
-            relTypeStore.close();
-            relTypeStore = null;
-        }
-        if ( propStore != null )
-        {
-            propStore.close();
-            propStore = null;
-        }
-        if ( relStore != null )
-        {
-            relStore.close();
-            relStore = null;
-        }
-        if ( nodeStore != null )
-        {
-            nodeStore.close();
-            nodeStore = null;
+            if ( store != null ) store.close();
         }
     }
 
@@ -258,6 +254,7 @@ public class NeoStore extends AbstractStore
         propStore.flushAll();
         relStore.flushAll();
         nodeStore.flushAll();
+        refNodeStore.flushAll();
     }
 
     @Override
@@ -302,8 +299,8 @@ public class NeoStore extends AbstractStore
         NodeStore.createStore( fileName + ".nodestore.db", config );
         RelationshipStore.createStore( fileName + ".relationshipstore.db", idGeneratorFactory, fileSystem );
         PropertyStore.createStore( fileName + ".propertystore.db", config );
-        RelationshipTypeStore.createStore( fileName
-            + ".relationshiptypestore.db", config );
+        RelationshipTypeStore.createStore( fileName + ".relationshiptypestore.db", config );
+        ReferenceNodeStore.createStore( fileName + ".referencenodestore.db", config );
         if ( !config.containsKey( "neo_store" ) )
         {
             // TODO Ugly
@@ -597,6 +594,11 @@ public class NeoStore extends AbstractStore
     {
         return propStore;
     }
+    
+    public ReferenceNodeStore getReferenceNodeStore()
+    {
+        return refNodeStore;
+    }
 
     @Override
     public void makeStoreOk()
@@ -605,6 +607,7 @@ public class NeoStore extends AbstractStore
         propStore.makeStoreOk();
         relStore.makeStoreOk();
         nodeStore.makeStoreOk();
+        refNodeStore.makeStoreOk();
         super.makeStoreOk();
         isStarted = true;
     }
@@ -616,6 +619,7 @@ public class NeoStore extends AbstractStore
         propStore.rebuildIdGenerators();
         relStore.rebuildIdGenerators();
         nodeStore.rebuildIdGenerators();
+        refNodeStore.rebuildIdGenerators();
         super.rebuildIdGenerators();
     }
 
@@ -626,6 +630,7 @@ public class NeoStore extends AbstractStore
         propStore.updateIdGenerators();
         relStore.updateHighId();
         nodeStore.updateHighId();
+        refNodeStore.updateIdGenerators();
     }
 
     public int getRelationshipGrabSize()
@@ -641,13 +646,14 @@ public class NeoStore extends AbstractStore
         list.addAll( propStore.getAllWindowPoolStats() );
         list.addAll( relStore.getAllWindowPoolStats() );
         list.addAll( relTypeStore.getAllWindowPoolStats() );
+        list.addAll( refNodeStore.getAllWindowPoolStats() );
         return list;
     }
 
     public boolean isStoreOk()
     {
-        return getStoreOk() && relTypeStore.getStoreOk() &&
-            propStore.getStoreOk() && relStore.getStoreOk() && nodeStore.getStoreOk();
+        return getStoreOk() && relTypeStore.getStoreOk() && propStore.getStoreOk() &&
+                relStore.getStoreOk() && nodeStore.getStoreOk() && refNodeStore.getStoreOk();
     }
 
     @Override
@@ -658,6 +664,7 @@ public class NeoStore extends AbstractStore
         relStore.logVersions( msgLog );
         relTypeStore.logVersions( msgLog );
         propStore.logVersions( msgLog );
+        refNodeStore.logVersions( msgLog );
     }
 
     public void logIdUsage( StringLogger msgLog )
@@ -666,6 +673,7 @@ public class NeoStore extends AbstractStore
         relStore.logIdUsage( msgLog );
         relTypeStore.logIdUsage( msgLog );
         propStore.logIdUsage( msgLog );
+        refNodeStore.logIdUsage( msgLog );
     }
     
     public NeoStoreRecord asRecord()

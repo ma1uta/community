@@ -53,19 +53,14 @@ public class RelationshipTypeHolder
         this.relTypeCreator = relTypeCreator;
     }
 
-    void addRawRelationshipTypes( NameData[] types )
+    void addRawRelationshipTypes( NameData<Void>...types )
     {
-        for ( int i = 0; i < types.length; i++ )
+        for ( NameData<Void> type : types )
         {
-            addRawRelationshipType( types[i] );
+            RelationshipTypeImpl relType = new RelationshipTypeImpl( type.getName() );
+            relTypes.put( type.getName(), type.getId() );
+            relTranslation.put( type.getId(), relType );
         }
-    }
-    
-    void addRawRelationshipType( NameData type )
-    {
-        RelationshipTypeImpl relType = new RelationshipTypeImpl( type.getName() );
-        relTypes.put( type.getName(), type.getId() );
-        relTranslation.put( type.getId(), relType );
     }
 
     public RelationshipType addValidRelationshipType( String name,

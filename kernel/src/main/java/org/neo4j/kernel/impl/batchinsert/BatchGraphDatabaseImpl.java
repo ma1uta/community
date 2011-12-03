@@ -136,6 +136,11 @@ class BatchGraphDatabaseImpl implements GraphDatabaseService
     {
         return getNodeById( 0 );
     }
+    
+    public Node getReferenceNode( String name )
+    {
+        throw new UnsupportedOperationException();
+    }
 
     public Relationship getRelationshipById( long id )
     {

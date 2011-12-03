@@ -236,6 +236,14 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         file.delete();
         file = new File( file( "neo.relationshiptypestore.db.names.id" ) );
         file.delete();
+        file = new File( file( "neo.referencenodestore.db" ) );
+        file.delete();
+        file = new File( file( "neo.referencenodestore.db.id" ) );
+        file.delete();
+        file = new File( file( "neo.referencenodestore.db.names" ) );
+        file.delete();
+        file = new File( file( "neo.referencenodestore.db.names.id" ) );
+        file.delete();
         file = new File( "." );
         for ( File nioFile : file.listFiles() )
         {
@@ -647,13 +655,13 @@ public class TestNeoStore extends AbstractNeo4jTestCase
     private void validateRelTypes( int relType1, int relType2 )
         throws IOException
     {
-        NameData data = rtStore.getName( relType1 );
+        NameData<Void> data = rtStore.getName( relType1 );
         assertEquals( relType1, data.getId() );
         assertEquals( "relationshiptype1", data.getName() );
         data = rtStore.getName( relType2 );
         assertEquals( relType2, data.getId() );
         assertEquals( "relationshiptype2", data.getName() );
-        NameData allData[] = rtStore.getNames( Integer.MAX_VALUE );
+        NameData<Void> allData[] = rtStore.getNames( Integer.MAX_VALUE );
         assertEquals( 2, allData.length );
         for ( int i = 0; i < 2; i++ )
         {

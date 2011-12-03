@@ -378,15 +378,9 @@ class ReadTransaction implements NeoStoreTransaction
     }
 
     @Override
-    public NameData[] loadRelationshipTypes()
+    public NameData<Void>[] loadRelationshipTypes()
     {
-        NameData relTypeData[] = neoStore.getRelationshipTypeStore().getNames( Integer.MAX_VALUE );
-        NameData rawRelTypeData[] = new NameData[relTypeData.length];
-        for ( int i = 0; i < relTypeData.length; i++ )
-        {
-            rawRelTypeData[i] = new NameData( relTypeData[i].getId(), relTypeData[i].getName() );
-        }
-        return rawRelTypeData;
+        return neoStore.getRelationshipTypeStore().getNames( Integer.MAX_VALUE );
     }
 
     @Override
@@ -447,6 +441,24 @@ class ReadTransaction implements NeoStoreTransaction
 
     @Override
     public void graphRemoveProperty( PropertyData index )
+    {
+        throw readOnlyException();
+    }
+    
+    @Override
+    public void createReferenceNode( String name, int id, long nodeId )
+    {
+        throw readOnlyException();
+    }
+    
+    @Override
+    public NameData<Long>[] loadAllReferenceNodes()
+    {
+        return neoStore.getReferenceNodeStore().getNames( Integer.MAX_VALUE );
+    }
+    
+    @Override
+    public void deleteReferenceNode( int id )
     {
         throw readOnlyException();
     }

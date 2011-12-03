@@ -340,4 +340,10 @@ public interface NeoStoreTransaction
      *         in the record.
      */
     public int getKeyIdForProperty( PropertyData property );
+
+    public void createReferenceNode( String name, int id, long nodeId );
+
+    public NameData<Long>[] loadAllReferenceNodes();
+
+    public void deleteReferenceNode( int id );
 }

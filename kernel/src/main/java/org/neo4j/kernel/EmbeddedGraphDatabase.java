@@ -19,18 +19,10 @@
  */
 package org.neo4j.kernel;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.TransactionFailureException;
-import org.neo4j.graphdb.event.KernelEventHandler;
-import org.neo4j.graphdb.event.TransactionEventHandler;
-import org.neo4j.graphdb.index.IndexManager;
 
 /**
  * An implementation of {@link GraphDatabaseService} that is used to embed Neo4j
@@ -48,10 +40,8 @@ import org.neo4j.graphdb.index.IndexManager;
  *
  * For more information, see {@link GraphDatabaseService}.
  */
-public final class EmbeddedGraphDatabase extends AbstractGraphDatabase
+public final class EmbeddedGraphDatabase extends AbstractGraphDatabaseWithDbImpl
 {
-    private final EmbeddedGraphDbImpl graphDbImpl;
-
     /**
      * Creates an embedded {@link GraphDatabaseService} with a store located in
      * <code>storeDir</code>, which will be created if it doesn't already exist.
@@ -77,14 +67,14 @@ public final class EmbeddedGraphDatabase extends AbstractGraphDatabase
     public EmbeddedGraphDatabase( String storeDir, Map<String,String> params )
     {
         super( storeDir );
-        this.graphDbImpl = new EmbeddedGraphDbImpl( this.getStoreDir(), null, params, this,
+        setGraphDbImplAtConstruction( new EmbeddedGraphDbImpl( this.getStoreDir(), null, params, this,
                 CommonFactories.defaultLockManagerFactory(),
                 CommonFactories.defaultIdGeneratorFactory(),
                 CommonFactories.defaultRelationshipTypeCreator(),
                 CommonFactories.defaultTxIdGeneratorFactory(),
                 CommonFactories.defaultTxHook(),
                 CommonFactories.defaultLastCommittedTxIdSetter(),
-                CommonFactories.defaultFileSystemAbstraction() );
+                CommonFactories.defaultFileSystemAbstraction() ) );
     }
 
     /**
@@ -99,91 +89,5 @@ public final class EmbeddedGraphDatabase extends AbstractGraphDatabase
     public static Map<String,String> loadConfigurations( String file )
     {
         return EmbeddedGraphDbImpl.loadConfigurations( file );
-    }
-
-    public Node createNode()
-    {
-        return graphDbImpl.createNode();
-    }
-
-    public Node getNodeById( long id )
-    {
-        return graphDbImpl.getNodeById( id );
-    }
-
-    public Relationship getRelationshipById( long id )
-    {
-        return graphDbImpl.getRelationshipById( id );
-    }
-
-    public Node getReferenceNode()
-    {
-        return graphDbImpl.getReferenceNode();
-    }
-
-    @Override protected void close()
-    {
-        graphDbImpl.shutdown();
-    }
-
-    /**
-     * @throws TransactionFailureException if unable to start transaction
-     */
-    public Transaction beginTx()
-    {
-        return graphDbImpl.beginTx();
-    }
-
-    /**
-     * Returns a non-standard configuration object. Will most likely be removed
-     * in future releases.
-     *
-     * @return a configuration object
-     */
-    @Override
-    public Config getConfig()
-    {
-        return graphDbImpl.getConfig();
-    }
-
-    @Override
-    public <T> Collection<T> getManagementBeans( Class<T> type )
-    {
-        return graphDbImpl.getManagementBeans( type );
-    }
-
-    @Override
-    public KernelData getKernelData()
-    {
-        return graphDbImpl.getKernelData();
-    }
-
-    public KernelEventHandler registerKernelEventHandler(
-            KernelEventHandler handler )
-    {
-        return this.graphDbImpl.registerKernelEventHandler( handler );
-    }
-
-    public <T> TransactionEventHandler<T> registerTransactionEventHandler(
-            TransactionEventHandler<T> handler )
-    {
-        return this.graphDbImpl.registerTransactionEventHandler( handler );
-    }
-
-    public KernelEventHandler unregisterKernelEventHandler(
-            KernelEventHandler handler )
-    {
-        return this.graphDbImpl.unregisterKernelEventHandler( handler );
-    }
-
-    public <T> TransactionEventHandler<T> unregisterTransactionEventHandler(
-            TransactionEventHandler<T> handler )
-    {
-        return this.graphDbImpl.unregisterTransactionEventHandler( handler );
-    }
-
-    public IndexManager index()
-    {
-        return this.graphDbImpl.index();
     }
 }

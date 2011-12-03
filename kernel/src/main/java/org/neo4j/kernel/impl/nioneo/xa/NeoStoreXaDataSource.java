@@ -46,6 +46,7 @@ import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.nioneo.store.PropertyStore;
+import org.neo4j.kernel.impl.nioneo.store.ReferenceNodeStore;
 import org.neo4j.kernel.impl.nioneo.store.Store;
 import org.neo4j.kernel.impl.nioneo.store.StoreId;
 import org.neo4j.kernel.impl.nioneo.store.WindowPoolStats;
@@ -200,6 +201,8 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
                 neoStore.getPropertyStore() );
             this.idGenerators.put( PropertyIndex.class,
                 neoStore.getPropertyStore().getIndexStore() );
+            this.idGenerators.put( ReferenceNodeStore.class,
+                neoStore.getReferenceNodeStore() );
             setKeepLogicalLogsIfSpecified( (String) config.get( Config.KEEP_LOGICAL_LOGS ), Config.DEFAULT_DATA_SOURCE_NAME );
             setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
         }

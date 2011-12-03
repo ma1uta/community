@@ -30,9 +30,9 @@ public class RelationshipTypeHolder
     private final ArrayMap<Integer,String> idToName = 
         new ArrayMap<Integer,String>( 5, false, false);
     
-    RelationshipTypeHolder( NameData[] types )
+    RelationshipTypeHolder( NameData<Integer>[] types )
     {
-        for ( NameData type : types )
+        for ( NameData<Integer> type : types )
         {
            relTypes.put( type.getName(), type.getId() );
            idToName.put( type.getId(), type.getName() );

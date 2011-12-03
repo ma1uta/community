@@ -67,7 +67,7 @@ public class NodeManager
 {
     private static Logger log = Logger.getLogger( NodeManager.class.getName() );
 
-    private long referenceNodeId = 0;
+//    private long referenceNodeId = 0;
 
     private final GraphDatabaseService graphDbService;
     private final Cache<Long,NodeImpl> nodeCache;
@@ -79,6 +79,7 @@ public class NodeManager
     private final LockReleaser lockReleaser;
     private final PropertyIndexManager propertyIndexManager;
     private final RelationshipTypeHolder relTypeHolder;
+    private final ReferenceNodeHolder refNodeHolder;
     private final PersistenceManager persistenceManager;
     private final EntityIdGenerator idGenerator;
 
@@ -116,6 +117,7 @@ public class NodeManager
         this.idGenerator = idGenerator;
         this.relTypeHolder = new RelationshipTypeHolder( transactionManager,
             persistenceManager, idGenerator, relTypeCreator );
+        this.refNodeHolder = new ReferenceNodeHolder( transactionManager, persistenceManager, idGenerator );
 
         this.cacheType = cacheType;
         this.nodeCache = cacheType.node( cacheManager );
@@ -379,14 +381,6 @@ public class NodeManager
     private RelationshipImpl newRelationshipImpl( long id, long startNodeId, long endNodeId,
             RelationshipType type, int typeId, boolean newRel )
     {
-//        int rest = (int)(((startNodeId|endNodeId)&0xFFFFC0000000L)>>30);
-//        if ( rest == 0 && typeId < 16 )
-//        {
-//            return new SuperLowRelationshipImpl( id, startNodeId, endNodeId, typeId, newRel );
-//        }
-//        return rest <= 3 ?
-//                new LowRelationshipImpl( id, startNodeId, endNodeId, type, newRel ) :
-//                new HighRelationshipImpl( id, startNodeId, endNodeId, type, newRel );
         return new LowRelationshipImpl( id, startNodeId, endNodeId, typeId, newRel );
     }
 
@@ -531,16 +525,13 @@ public class NodeManager
 
     public Node getReferenceNode() throws NotFoundException
     {
-        if ( referenceNodeId == -1 )
-        {
-            throw new NotFoundException( "No reference node set" );
-        }
-        return getNodeById( referenceNodeId );
+        return getReferenceNode( "root" );
     }
 
-    void setReferenceNodeId( long nodeId )
+    public Node getReferenceNode( String name )
     {
-        this.referenceNodeId = nodeId;
+        NameData<Long> reference = refNodeHolder.getOrCreate( name );
+        return getNodeById( reference.getPayload() );
     }
 
     private Relationship getRelationshipByIdOrNull( long relId )
@@ -882,11 +873,16 @@ public class NodeManager
         relTypeHolder.removeRelType( id );
     }
 
-    void addPropertyIndexes( NameData[] propertyIndexes )
+    void addPropertyIndexes( NameData<Void>[] propertyIndexes )
     {
         propertyIndexManager.addPropertyIndexes( propertyIndexes );
     }
 
+    public void removeReferenceNodeFromCache( int id )
+    {
+        refNodeHolder.remove( id );
+    }
+    
     void setHasAllpropertyIndexes( boolean hasAll )
     {
         propertyIndexManager.setHasAll( hasAll );
@@ -927,9 +923,14 @@ public class NodeManager
         return relTypeHolder.getIdFor( type );
     }
 
-    void addRawRelationshipTypes( NameData[] relTypes )
+    void addRawRelationshipTypes( NameData<Void>[] relTypes )
     {
         relTypeHolder.addRawRelationshipTypes( relTypes );
+    }
+    
+    void addRawReferenceNodes( NameData<Long>[] refNodes )
+    {
+        refNodeHolder.addRaw( refNodes );
     }
 
     public Iterable<RelationshipType> getRelationshipTypes()
@@ -940,7 +941,10 @@ public class NodeManager
     ArrayMap<Integer,PropertyData> deleteNode( NodeImpl node )
     {
         deletePrimitive( node );
-        return persistenceManager.nodeDelete( node.getId() );
+        ArrayMap<Integer, PropertyData> properties = persistenceManager.nodeDelete( node.getId() );
+        NameData<Long> ref = refNodeHolder.get( node.getId() );
+        if ( ref != null ) persistenceManager.deleteReferenceNode( ref.getId() );
+        return properties;
         // remove from node cache done via event
     }
 
@@ -1134,14 +1138,22 @@ public class NodeManager
         return this.lockManager;
     }
 
-    void addRelationshipType( NameData type )
+    @SuppressWarnings( "unchecked" )
+    void addRelationshipType( NameData<Void> type )
     {
-        relTypeHolder.addRawRelationshipType( type );
+        relTypeHolder.addRawRelationshipTypes( type );
     }
 
-    void addPropertyIndex( NameData index )
+    @SuppressWarnings( "unchecked" )
+    void addReferenceNode( NameData<Long> type )
     {
-        propertyIndexManager.addPropertyIndex( index );
+        refNodeHolder.addRaw( type );
+    }
+    
+    @SuppressWarnings( "unchecked" )
+    void addPropertyIndex( NameData<Void> index )
+    {
+        propertyIndexManager.addPropertyIndexes( index );
     }
 
     public TransactionData getTransactionData()

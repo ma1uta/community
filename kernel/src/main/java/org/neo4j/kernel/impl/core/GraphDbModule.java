@@ -31,8 +31,6 @@ import javax.transaction.SystemException;
 import javax.transaction.TransactionManager;
 
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.kernel.Config;
@@ -126,6 +124,9 @@ public class GraphDbModule
         {
             nodeManager.setHasAllpropertyIndexes( true );
         }
+        
+        nodeManager.addRawReferenceNodes( persistenceManager.loadAllReferenceNodes() );
+        
         nodeManager.start( params );
         startIsOk = false;
     }
@@ -180,36 +181,36 @@ public class GraphDbModule
         }
     }
     
-    public void setReferenceNodeId( Long nodeId )
-    {
-        nodeManager.setReferenceNodeId( nodeId.longValue() );
-        try
-        {
-            nodeManager.getReferenceNode();
-        }
-        catch ( NotFoundException e )
-        {
-            log.warning( "Reference node[" + nodeId + "] not valid." );
-        }
-    }
+//    public void setReferenceNodeId( Long nodeId )
+//    {
+//        nodeManager.setReferenceNodeId( nodeId.longValue() );
+//        try
+//        {
+//            nodeManager.getReferenceNode();
+//        }
+//        catch ( NotFoundException e )
+//        {
+//            log.warning( "Reference node[" + nodeId + "] not valid." );
+//        }
+//    }
 
-    public Long getCurrentReferenceNodeId()
-    {
-        try
-        {
-            return nodeManager.getReferenceNode().getId();
-        }
-        catch ( NotFoundException e )
-        {
-            return -1L;
-        }
-    }
+//    public Long getCurrentReferenceNodeId()
+//    {
+//        try
+//        {
+//            return nodeManager.getReferenceNode().getId();
+//        }
+//        catch ( NotFoundException e )
+//        {
+//            return -1L;
+//        }
+//    }
 
-    public void createNewReferenceNode()
-    {
-        Node node = nodeManager.createNode();
-        nodeManager.setReferenceNodeId( node.getId() );
-    }
+//    public void createNewReferenceNode()
+//    {
+//        Node node = nodeManager.createNode();
+//        nodeManager.setReferenceNodeId( node.getId() );
+//    }
 
     public void reload( Map<Object,Object> params )
     {

@@ -19,15 +19,8 @@
  */
 package org.neo4j.kernel;
 
-import java.util.Collection;
 import java.util.Map;
 
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.event.KernelEventHandler;
-import org.neo4j.graphdb.event.TransactionEventHandler;
-import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 
@@ -36,9 +29,8 @@ import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
  * and {@link IdGeneratorFactory}. Otherwise its functionality is equivalent to
  * {@link EmbeddedGraphDatabase}.
  */
-public class HighlyConfigurableGraphDatabase extends AbstractGraphDatabase
+public class HighlyConfigurableGraphDatabase extends AbstractGraphDatabaseWithDbImpl
 {
-    private final EmbeddedGraphDbImpl impl;
     protected final FileSystemAbstraction fileSystem;
 
     public HighlyConfigurableGraphDatabase( String storeDir, Map<String, String> config,
@@ -46,97 +38,12 @@ public class HighlyConfigurableGraphDatabase extends AbstractGraphDatabase
     {
         super( storeDir );
         config = config != null ? config : MapUtil.stringMap();
-        impl = new EmbeddedGraphDbImpl( getStoreDir(), null, config, this, CommonFactories.defaultLockManagerFactory(),
+        setGraphDbImplAtConstruction( new EmbeddedGraphDbImpl( getStoreDir(), null, config, this,
+                CommonFactories.defaultLockManagerFactory(),
                 idGenerators, CommonFactories.defaultRelationshipTypeCreator(),
                 CommonFactories.defaultTxIdGeneratorFactory(),
                 CommonFactories.defaultTxHook(),
-                CommonFactories.defaultLastCommittedTxIdSetter(), fileSystem );
+                CommonFactories.defaultLastCommittedTxIdSetter(), fileSystem ) );
         this.fileSystem = fileSystem;
-    }
-
-    @Override
-    public Node createNode()
-    {
-        return impl.createNode();
-    }
-
-    @Override
-    public Node getNodeById( long id )
-    {
-        return impl.getNodeById( id );
-    }
-
-    @Override
-    public Relationship getRelationshipById( long id )
-    {
-        return impl.getRelationshipById( id );
-    }
-
-    @Override
-    public Node getReferenceNode()
-    {
-        return impl.getReferenceNode();
-    }
-
-    @Override
-    protected void close()
-    {
-        impl.shutdown();
-    }
-
-    @Override
-    public Transaction beginTx()
-    {
-        return impl.beginTx();
-    }
-
-    @Override
-    public <T> TransactionEventHandler<T> registerTransactionEventHandler(
-            TransactionEventHandler<T> handler )
-    {
-        return impl.registerTransactionEventHandler( handler );
-    }
-
-    @Override
-    public <T> TransactionEventHandler<T> unregisterTransactionEventHandler(
-            TransactionEventHandler<T> handler )
-    {
-        return impl.unregisterTransactionEventHandler( handler );
-    }
-
-    @Override
-    public KernelEventHandler registerKernelEventHandler( KernelEventHandler handler )
-    {
-        return impl.registerKernelEventHandler( handler );
-    }
-
-    @Override
-    public KernelEventHandler unregisterKernelEventHandler( KernelEventHandler handler )
-    {
-        return impl.unregisterKernelEventHandler( handler );
-    }
-
-    @Override
-    public IndexManager index()
-    {
-        return impl.index();
-    }
-
-    @Override
-    public Config getConfig()
-    {
-        return impl.getConfig();
-    }
-
-    @Override
-    public <T> Collection<T> getManagementBeans( Class<T> type )
-    {
-        return impl.getManagementBeans( type );
-    }
-    
-    @Override
-    public KernelData getKernelData()
-    {
-        return impl.getKernelData();
     }
 }

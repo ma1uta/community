@@ -30,9 +30,9 @@ public class PropertyIndexHolder
     private final ArrayMap<Integer,String> idToIndex = 
         new ArrayMap<Integer,String>( 5, false, false);
     
-    PropertyIndexHolder( NameData[] indexes )
+    PropertyIndexHolder( NameData<Integer>[] indexes )
     {
-        for ( NameData index : indexes )
+        for ( NameData<Integer> index : indexes )
         {
             propertyIndexes.put( index.getName(), index.getId() );
             idToIndex.put( index.getId(), index.getName() );

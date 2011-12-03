@@ -29,6 +29,7 @@ import org.neo4j.kernel.impl.persistence.PersistenceManager;
 
 public class DefaultRelationshipTypeCreator implements RelationshipTypeCreator
 {
+    @SuppressWarnings( "unchecked" )
     public int getOrCreate( TransactionManager txManager, EntityIdGenerator idGenerator,
             PersistenceManager persistence, RelationshipTypeHolder relTypeHolder, String name )
     {
@@ -52,7 +53,7 @@ public class DefaultRelationshipTypeCreator implements RelationshipTypeCreator
         if ( createrThread.succeded() )
         {
             int id = createrThread.getRelTypeId();
-            relTypeHolder.addRawRelationshipType( new NameData( id, name ) );
+            relTypeHolder.addRawRelationshipTypes( new NameData<Void>( id, name, null ) );
             return id;
         }
         throw new TransactionFailureException(

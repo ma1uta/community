@@ -418,4 +418,19 @@ public class PersistenceManager
     {
         return getReadOnlyResourceIfPossible().getKeyIdForProperty( property );
     }
+
+    public void createReferenceNode( String name, int id, long nodeId )
+    {
+        getResource( false ).createReferenceNode( name, id, nodeId );
+    }
+
+    public NameData<Long>[] loadAllReferenceNodes()
+    {
+        return getReadOnlyResourceIfPossible().loadAllReferenceNodes();
+    }
+
+    public void deleteReferenceNode( int id )
+    {
+        getResource( false ).deleteReferenceNode( id );
+    }
 }

@@ -37,7 +37,6 @@ public class EmbeddedNeo4jWithIndexing
     // START SNIPPET: createRelTypes
     private static enum RelTypes implements RelationshipType
     {
-        USERS_REFERENCE,
         USER
     }
     // END SNIPPET: createRelTypes
@@ -56,9 +55,7 @@ public class EmbeddedNeo4jWithIndexing
         {
             // Create users sub reference node (see design guidelines on
             // http://wiki.neo4j.org/ )
-            Node usersReferenceNode = graphDb.createNode();
-            graphDb.getReferenceNode().createRelationshipTo(
-                usersReferenceNode, RelTypes.USERS_REFERENCE );
+            Node usersReferenceNode = graphDb.getReferenceNode( "users" );
             // Create some users and index their names with the IndexService
             for ( int id = 0; id < 100; id++ )
             {
@@ -88,8 +85,6 @@ public class EmbeddedNeo4jWithIndexing
                 user.delete();
                 relationship.delete();
             }
-            usersReferenceNode.getSingleRelationship( RelTypes.USERS_REFERENCE,
-                    Direction.INCOMING ).delete();
             usersReferenceNode.delete();
             tx.success();
         }

@@ -127,7 +127,7 @@ public abstract class KernelExtensionContractTest<S, X extends KernelExtension<S
     {
         try
         {
-            graphDbImpl = EmbeddedGraphDatabase.class.getDeclaredField( "graphDbImpl" );
+            graphDbImpl = AbstractGraphDatabaseWithDbImpl.class.getDeclaredField( "graphDbImpl" );
             extensions = EmbeddedGraphDbImpl.class.getDeclaredField( "extensions" );
         }
         catch ( RuntimeException e )

@@ -108,19 +108,13 @@ public class PropertyIndexManager
         return idToIndexMap.get( keyId ) != null;
     }
 
-    void addPropertyIndexes( NameData[] indexes )
+    void addPropertyIndexes( NameData<Void>... indexes )
     {
-        for ( NameData rawIndex : indexes )
+        for ( NameData<Void> rawIndex : indexes )
         {
             addPropertyIndex( new PropertyIndex( rawIndex.getName(), 
                 rawIndex.getId() ) );
         }
-    }
-
-    void addPropertyIndex( NameData rawIndex )
-    {
-        addPropertyIndex( new PropertyIndex( rawIndex.getName(), 
-            rawIndex.getId() ) );
     }
     
     public PropertyIndex getIndexFor( int keyId )

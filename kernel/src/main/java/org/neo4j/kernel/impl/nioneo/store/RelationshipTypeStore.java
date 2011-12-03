@@ -32,7 +32,7 @@ import org.neo4j.kernel.IdType;
  * Implementation of the relationship type store. Uses a dynamic store to store
  * relationship type names.
  */
-public class RelationshipTypeStore extends AbstractNameStore<RelationshipTypeRecord>
+public class RelationshipTypeStore extends AbstractNameStore<RelationshipTypeRecord, Void>
 {
     public static final String TYPE_DESCRIPTOR = "RelationshipTypeStore";
     private static final int RECORD_SIZE = 1/*inUse*/ + 5/*nameId*/;

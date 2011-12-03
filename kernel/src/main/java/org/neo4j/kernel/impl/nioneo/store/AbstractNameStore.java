@@ -29,7 +29,7 @@ import java.util.Map;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.impl.util.StringLogger;
 
-public abstract class AbstractNameStore<T extends AbstractNameRecord> extends AbstractStore implements Store, RecordStore<T>
+public abstract class AbstractNameStore<T extends AbstractNameRecord, R> extends AbstractStore implements Store, RecordStore<T>
 {
     private DynamicStringStore nameStore;
     protected static final int NAME_STORE_BLOCK_SIZE = 30;
@@ -116,9 +116,9 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord> extends Ab
         super.flushAll();
     }
 
-    public NameData[] getNames( int maxCount )
+    public NameData<R>[] getNames( int maxCount )
     {
-        LinkedList<NameData> recordList = new LinkedList<NameData>();
+        LinkedList<NameData<R>> recordList = new LinkedList<NameData<R>>();
         long maxIdInUse = getHighestPossibleIdInUse();
         int found = 0;
         for ( int i = 0; i <= maxIdInUse && found < maxCount; i++ )
@@ -136,26 +136,31 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord> extends Ab
             if ( record != null && record.getNameId() != Record.RESERVED.intValue() )
             {
                 String name = getStringFor( record );
-                recordList.add( new NameData( i, name ) );
+                recordList.add( newNameData( name, record ) );
             }
         }
         return recordList.toArray( new NameData[recordList.size()] );
     }
 
-    public NameData getName( int id )
+    protected NameData<R> newNameData( String name, T record )
     {
-        T record = getRecord( id );
-        return new NameData( record.getId(), getStringFor( record ) );
+        return new NameData<R>( record.getId(), name, null );
     }
 
-    public NameData getName( int id, boolean recovered )
+    public NameData<R> getName( int id )
+    {
+        T record = getRecord( id );
+        return newNameData( getStringFor( record ), record );
+    }
+
+    public NameData<R> getName( int id, boolean recovered )
     {
         assert recovered;
         try
         {
             setRecovered();
             T record = getRecord( id );
-            return new NameData( record.getId(), getStringFor( record ) );
+            return newNameData( getStringFor( record ), record );
         }
         finally
         {
@@ -336,6 +341,13 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord> extends Ab
             if ( !isInRecoveryMode() )
             {
                 freeId( id );
+            }
+            
+            if ( record.isLight() ) makeHeavy( record );
+            for ( DynamicRecord nameRecord : record.getNameRecords() )
+            {
+                nameRecord.setInUse( false );
+                nameStore.updateRecord( nameRecord );
             }
         }
     }

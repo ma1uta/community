@@ -725,7 +725,7 @@ public class LockReleaser
         }
     }
 
-    public void addRelationshipType( NameData type )
+    public void addRelationshipType( NameData<Void> type )
     {
         if ( nodeManager != null )
         {
@@ -733,7 +733,15 @@ public class LockReleaser
         }
     }
 
-    public void addPropertyIndex( NameData index )
+    public void addReferenceNode( NameData<Long> type )
+    {
+        if ( nodeManager != null )
+        {
+            nodeManager.addReferenceNode( type );
+        }
+    }
+    
+    public void addPropertyIndex( NameData<Void> index )
     {
         if ( nodeManager != null )
         {
@@ -757,6 +765,14 @@ public class LockReleaser
         }
     }
 
+    public void removeReferenceNodeFromCache( int id )
+    {
+        if ( nodeManager != null )
+        {
+            nodeManager.removeReferenceNodeFromCache( id );
+        }
+    }
+    
     public void removeGraphPropertiesFromCache()
     {
         if ( nodeManager != null )

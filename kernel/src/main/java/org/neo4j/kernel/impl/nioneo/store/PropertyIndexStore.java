@@ -27,7 +27,7 @@ import org.neo4j.kernel.IdType;
 /**
  * Implementation of the property store.
  */
-public class PropertyIndexStore extends AbstractNameStore<PropertyIndexRecord>
+public class PropertyIndexStore extends AbstractNameStore<PropertyIndexRecord, Void>
 {
     public static final String TYPE_DESCRIPTOR = "PropertyIndexStore";
     private static final int RECORD_SIZE = 1/*inUse*/ + 4/*prop count*/ + 4/*nameId*/;

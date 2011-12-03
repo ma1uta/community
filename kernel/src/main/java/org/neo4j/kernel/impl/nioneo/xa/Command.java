@@ -37,6 +37,8 @@ import org.neo4j.kernel.impl.nioneo.store.PropertyRecord;
 import org.neo4j.kernel.impl.nioneo.store.PropertyStore;
 import org.neo4j.kernel.impl.nioneo.store.PropertyType;
 import org.neo4j.kernel.impl.nioneo.store.Record;
+import org.neo4j.kernel.impl.nioneo.store.ReferenceNodeRecord;
+import org.neo4j.kernel.impl.nioneo.store.ReferenceNodeStore;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipStore;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeRecord;
@@ -1071,6 +1073,125 @@ public abstract class Command extends XaCommand
         }
     }
 
+    // TODO Copied from RelationshpTypeCommand, fix
+    static class ReferenceNodeCommand extends Command
+    {
+        private final ReferenceNodeRecord record;
+        private final ReferenceNodeStore store;
+
+        ReferenceNodeCommand( ReferenceNodeStore store,
+                ReferenceNodeRecord record )
+        {
+            super( record.getId() );
+            this.record = record;
+            this.store = store;
+        }
+        
+        @Override
+        public void accept( CommandRecordVisitor visitor )
+        {
+//            visitor.visitRelationshipType( record );
+        }
+
+        @Override
+        boolean isCreated()
+        {
+            return record.isCreated();
+        }
+
+        @Override
+        boolean isDeleted()
+        {
+            return !record.inUse();
+        }
+
+        @Override
+        public void execute()
+        {
+            if ( isRecovered() )
+            {
+                logger.fine( this.toString() );
+                store.updateRecord( record, true );
+            }
+            else
+            {
+                store.updateRecord( record );
+            }
+        }
+
+        @Override
+        public String toString()
+        {
+            return record.toString();
+        }
+
+        @Override
+        public void writeToFile( LogBuffer buffer ) throws IOException
+        {
+            byte inUse = record.inUse() ? Record.IN_USE.byteValue()
+                : Record.NOT_IN_USE.byteValue();
+            buffer.put( REL_TYPE_COMMAND );
+            buffer.putInt( record.getId() ).put( inUse ).putLong( record.getNodeId() ).putInt( record.getNameId() );
+
+            Collection<DynamicRecord> typeRecords = record.getNameRecords();
+            buffer.putInt( typeRecords.size() );
+            for ( DynamicRecord typeRecord : typeRecords )
+            {
+                writeDynamicRecord( buffer, typeRecord );
+            }
+        }
+
+        public static Command readCommand( NeoStore neoStore,
+            ReadableByteChannel byteChannel, ByteBuffer buffer )
+            throws IOException
+        {
+            buffer.clear();
+            buffer.limit( 21 );
+            if ( byteChannel.read( buffer ) != buffer.limit() )
+            {
+                return null;
+            }
+            buffer.flip();
+            int id = buffer.getInt();
+            byte inUseFlag = buffer.get();
+            boolean inUse = false;
+            if ( (inUseFlag & Record.IN_USE.byteValue()) ==
+                Record.IN_USE.byteValue() )
+            {
+                inUse = true;
+            }
+            else if ( inUseFlag != Record.NOT_IN_USE.byteValue() )
+            {
+                throw new IOException( "Illegal in use flag: " + inUseFlag );
+            }
+            ReferenceNodeRecord record = new ReferenceNodeRecord( id );
+            record.setInUse( inUse );
+            record.setNodeId( buffer.getLong() );
+            record.setNameId( buffer.getInt() );
+            int nrTypeRecords = buffer.getInt();
+            for ( int i = 0; i < nrTypeRecords; i++ )
+            {
+                DynamicRecord dr = readDynamicRecord( byteChannel, buffer );
+                if ( dr == null )
+                {
+                    return null;
+                }
+                record.addNameRecord( dr );
+            }
+            return new ReferenceNodeCommand( neoStore == null ? null : neoStore.getReferenceNodeStore(), record );
+        }
+
+        @Override
+        public boolean equals( Object o )
+        {
+            if ( !(o instanceof RelationshipTypeCommand) )
+            {
+                return false;
+            }
+            return getKey() == ((Command) o).getKey();
+        }
+    }
+    
     public static Command readCommand( NeoStore neoStore, ReadableByteChannel byteChannel,
         ByteBuffer buffer ) throws IOException
     {
