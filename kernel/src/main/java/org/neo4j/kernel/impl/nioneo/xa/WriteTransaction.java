@@ -95,6 +95,8 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         new HashMap<Integer,PropertyIndexRecord>();
     private final Map<Integer,ReferenceNodeRecord> refNodeRecords =
         new HashMap<Integer,ReferenceNodeRecord>();
+    private final Map<String,ReferenceNodeRecord> refNodeRecordsByName =
+            new HashMap<String,ReferenceNodeRecord>();
     private NeoStoreRecord neoStoreRecord;
 
     private final ArrayList<Command.NodeCommand> nodeCommands =
@@ -310,8 +312,8 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         try
         {
             boolean freeIds = neoStore.getTxHook().freeIdsDuringRollback();
-            freeRecords( relTypeRecords, getRelationshipTypeStore(), freeIds, CacheRemover.RELATIONSHIP_TYPE );
-            freeRecords( refNodeRecords, neoStore.getReferenceNodeStore(), freeIds, CacheRemover.REFERENCE_NODE );
+            freeNameRecords( relTypeRecords, getRelationshipTypeStore(), freeIds, CacheRemover.RELATIONSHIP_TYPE );
+            freeNameRecords( refNodeRecords, neoStore.getReferenceNodeStore(), freeIds, CacheRemover.REFERENCE_NODE );
             for ( NodeRecord record : nodeRecords.values() )
             {
                 if ( freeIds && record.isCreated() )
@@ -389,23 +391,29 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         }
         finally
         {
-            nodeRecords.clear();
-            propertyRecords.clear();
-            relRecords.clear();
-            relTypeRecords.clear();
-            propIndexRecords.clear();
-            refNodeRecords.clear();
-
-            nodeCommands.clear();
-            propCommands.clear();
-            propIndexCommands.clear();
-            relCommands.clear();
-            relTypeCommands.clear();
-            refNodeCommands.clear();
+            clearLists();
         }
     }
 
-    private <T extends AbstractNameRecord,R> void freeRecords( Map<Integer, T> records, AbstractNameStore<T,R> store, boolean freeIds,
+    private void clearLists()
+    {
+        nodeRecords.clear();
+        propertyRecords.clear();
+        relRecords.clear();
+        relTypeRecords.clear();
+        propIndexRecords.clear();
+        refNodeRecords.clear();
+        refNodeRecordsByName.clear();
+
+        nodeCommands.clear();
+        propCommands.clear();
+        propIndexCommands.clear();
+        relCommands.clear();
+        relTypeCommands.clear();
+        refNodeCommands.clear();
+    }
+
+    private <T extends AbstractNameRecord,R> void freeNameRecords( Map<Integer, T> records, AbstractNameStore<T,R> store, boolean freeIds,
             CacheRemover cacheRemover )
     {
         for ( T record : records.values() )
@@ -549,6 +557,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             {
                 command.execute();
                 if ( command.isDeleted() ) removeReferenceNodeFromCache( (int)command.getKey() );
+                else if ( command.isCreated() ) addReferenceNode( (int)command.getKey() );
             }
             
             lockReleaser.commitCows();
@@ -556,19 +565,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         }
         finally
         {
-            nodeRecords.clear();
-            propertyRecords.clear();
-            relRecords.clear();
-            relTypeRecords.clear();
-            propIndexRecords.clear();
-            refNodeRecords.clear();
-
-            nodeCommands.clear();
-            propCommands.clear();
-            propIndexCommands.clear();
-            relCommands.clear();
-            relTypeCommands.clear();
-            refNodeCommands.clear();
+            clearLists();
         }
     }
 
@@ -679,19 +676,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         }
         finally
         {
-            nodeRecords.clear();
-            propertyRecords.clear();
-            relRecords.clear();
-            relTypeRecords.clear();
-            propIndexRecords.clear();
-            refNodeRecords.clear();
-
-            nodeCommands.clear();
-            propCommands.clear();
-            propIndexCommands.clear();
-            relCommands.clear();
-            relTypeCommands.clear();
-            refNodeCommands.clear();
+            clearLists();
         }
     }
 
@@ -1673,9 +1658,10 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         relTypeRecords.put( record.getId(), record );
     }
 
-    void addReferenceNodeRecord( ReferenceNodeRecord record )
+    void addReferenceNodeRecord( String name, ReferenceNodeRecord record )
     {
         refNodeRecords.put( record.getId(), record );
+        refNodeRecordsByName.put( name, record );
     }
     
     void addPropertyIndexRecord( PropertyIndexRecord record )
@@ -1992,7 +1978,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         {
             record.addNameRecord( typeRecord );
         }
-        addReferenceNodeRecord( record );
+        addReferenceNodeRecord( name, record );
     }
     
     @Override
@@ -2007,8 +1993,19 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         ReferenceNodeRecord record = neoStore.getReferenceNodeStore().getRecord( id );
         if ( !record.inUse() ) throw new InvalidRecordException( "Reference node record " + id + " not in use" );
         record.setInUse( false );
+        String name = neoStore.getReferenceNodeStore().getStringFor( record );
         neoStore.getReferenceNodeStore().updateRecord( record );
         refNodeRecords.put( id, record );
+        refNodeRecordsByName.remove( name );
+    }
+    
+    @Override
+    public NameData<Long> loadReferenceNode( String name )
+    {
+        // TODO We don't need to load it, just use this method as a checker for if it has been
+        // created in this tx already.
+        ReferenceNodeRecord record = refNodeRecordsByName.get( name );
+        return record != null ? new NameData<Long>( record.getId(), name, record.getNodeId() ) : null;
     }
     
     private static enum RecordAdded

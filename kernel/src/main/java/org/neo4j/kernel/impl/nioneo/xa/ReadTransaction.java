@@ -462,4 +462,10 @@ class ReadTransaction implements NeoStoreTransaction
     {
         throw readOnlyException();
     }
+    
+    @Override
+    public NameData<Long> loadReferenceNode( String name )
+    {
+        return null;
+    }
 }

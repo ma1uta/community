@@ -433,4 +433,9 @@ public class PersistenceManager
     {
         getResource( false ).deleteReferenceNode( id );
     }
+    
+    public NameData<Long> loadReferenceNode( String name )
+    {
+        return getReadOnlyResourceIfPossible().loadReferenceNode( name );
+    }
 }

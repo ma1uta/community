@@ -46,13 +46,16 @@ public class TestReferenceNodes
         String path = TargetDirectory.forTest( getClass() ).directory( "refs", true ).getAbsolutePath();
         GraphDatabaseService db = new EmbeddedGraphDatabase( path );
         
+        Transaction tx = db.beginTx();
         Node users = db.getReferenceNode( "users" );
         Node products = db.getReferenceNode( "products" );
         assertEquals( users, db.getReferenceNode( "users" ) );
         assertEquals( products, db.getReferenceNode( "products" ) );
         assertFalse( users.equals( products ) );
+        tx.success();
+        tx.finish();
         
-        Transaction tx = db.beginTx();
+        tx = db.beginTx();
         Node product = db.createNode();
         products.createRelationshipTo( product, Types.PRODUCT );
         Node user = db.createNode();
@@ -69,9 +72,9 @@ public class TestReferenceNodes
         tx = db.beginTx();
         users = db.getReferenceNode( "users" );
         users.delete();
+        assertFalse( users.getId() == db.getReferenceNode( "users" ).getId() );
         tx.success();
         tx.finish();
-        assertFalse( users.getId() == db.getReferenceNode( "users" ).getId() );
         db.shutdown();
     }
     
@@ -79,8 +82,11 @@ public class TestReferenceNodes
     public void deleteIssue()
     {
         GraphDatabaseService db = new ImpermanentGraphDatabase();
-        Node refNode = db.getReferenceNode( "yeah" );
         Transaction tx = db.beginTx();
+        Node refNode = db.getReferenceNode( "yeah" );
+        tx.success(); tx.finish();
+        
+        tx = db.beginTx();
         refNode.delete();
         Node newRefNode = db.getReferenceNode( "yeah" );
         assertFalse( refNode.equals( newRefNode ) );

@@ -346,4 +346,6 @@ public interface NeoStoreTransaction
     public NameData<Long>[] loadAllReferenceNodes();
 
     public void deleteReferenceNode( int id );
+
+    public NameData<Long> loadReferenceNode( String name );
 }

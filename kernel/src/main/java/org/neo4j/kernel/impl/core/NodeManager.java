@@ -30,6 +30,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.transaction.SystemException;
 import javax.transaction.TransactionManager;
 
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -52,6 +53,7 @@ import org.neo4j.kernel.impl.cache.StrongReferenceCache;
 import org.neo4j.kernel.impl.cache.WeakLruCache;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
+import org.neo4j.kernel.impl.nioneo.store.ReferenceNodeStore;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
 import org.neo4j.kernel.impl.persistence.EntityIdGenerator;
 import org.neo4j.kernel.impl.persistence.PersistenceManager;
@@ -525,13 +527,43 @@ public class NodeManager
 
     public Node getReferenceNode() throws NotFoundException
     {
-        return getReferenceNode( "root" );
+        return getReferenceNode( "legacy-reference-node" );
     }
 
     public Node getReferenceNode( String name )
     {
-        NameData<Long> reference = refNodeHolder.getOrCreate( name );
-        return getNodeById( reference.getPayload() );
+        // Does it already exist?
+        NameData<Long> reference = refNodeHolder.get( name );
+        if ( reference != null ) return getNodeById( reference.getPayload() );
+        
+        // No, create it (use the object representing the graph as lock)
+        acquireLock( graphProperties, LockType.WRITE );
+        try
+        {
+            // Double checked locking, check again when we got the lock if it
+            // already exists
+            reference = refNodeHolder.get( name );
+            reference = reference != null ? reference : persistenceManager.loadReferenceNode( name );
+            if ( reference != null )
+            {
+                lockManager.releaseWriteLock( graphProperties, transactionManager.getTransaction() );
+                return getNodeById( reference.getPayload() );
+            }
+            
+            // Still doesn't exist, create it
+            Node node = createNode();
+            int nameId = (int) idGenerator.nextId( ReferenceNodeStore.class );
+            persistenceManager.createReferenceNode( name, nameId, node.getId() );
+            return node;
+        }
+        catch ( SystemException e )
+        {
+            throw new RuntimeException( e );
+        }
+        finally
+        {
+            releaseLock( graphProperties, LockType.WRITE );
+        }
     }
 
     private Relationship getRelationshipByIdOrNull( long relId )
