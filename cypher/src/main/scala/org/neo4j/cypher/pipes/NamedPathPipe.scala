@@ -19,19 +19,20 @@
  */
 package org.neo4j.cypher.pipes
 
-import org.neo4j.cypher.{PathImpl, SymbolTable}
+import org.neo4j.cypher.PathImpl
 import org.neo4j.graphdb.{Path, PropertyContainer}
 import scala.collection.JavaConverters._
 import org.neo4j.cypher.commands._
 import collection.Seq
 import java.lang.String
+import org.neo4j.cypher.symbols.{PathType, Identifier}
 
 class NamedPathPipe(source: Pipe, path: NamedPath) extends Pipe {
   def getFirstNode[U]: String = {
     val firstNode = path.pathPattern.head match {
       case RelatedTo(left, right, relName, x, xx, optional) => left
       case VarLengthRelatedTo(pathName, start, end, minHops, maxHops, relType, direction, iterableRel, optional) => start
-      case ShortestPath(_, start, _, _, _, _, _) => start
+      case ShortestPath(_, start, _, _, _, _, _, _) => start
     }
     firstNode
   }
@@ -46,7 +47,7 @@ class NamedPathPipe(source: Pipe, path: NamedPath) extends Pipe {
       val p: Seq[PropertyContainer] = path.pathPattern.foldLeft(Seq(get(firstNode)))((soFar, p) => p match {
         case RelatedTo(left, right, relName, x, xx, optional) => soFar ++ Seq(get(relName), get(right))
         case VarLengthRelatedTo(pathName, start, end, minHops, maxHops, relType, direction, iterableRel, optional) => getPath(m, pathName, soFar)
-        case ShortestPath(pathName, _, _, _, _, _, _) => getPath(m, pathName, soFar)
+        case ShortestPath(pathName, _, _, _, _, _, _, _) => getPath(m, pathName, soFar)
       })
 
       f(m + (path.pathName -> buildPath(p)))
@@ -76,7 +77,7 @@ class NamedPathPipe(source: Pipe, path: NamedPath) extends Pipe {
     soFar ++ pathTail
   }
 
-  val symbols: SymbolTable = source.symbols.add(Seq(PathIdentifier(path.pathName)))
+  val symbols = source.symbols.add(Identifier(path.pathName, PathType()))
 
   override def executionPlan(): String = source.executionPlan() + "\r\nExtractPath(" + path.pathName + " = " + path.pathPattern.mkString(", ") + ")"
 }

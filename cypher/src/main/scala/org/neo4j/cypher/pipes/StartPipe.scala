@@ -19,17 +19,16 @@
  */
 package org.neo4j.cypher.pipes
 
-import org.neo4j.cypher.SymbolTable
 import org.neo4j.graphdb.{Relationship, Node, PropertyContainer}
-import org.neo4j.cypher.commands.{RelationshipIdentifier, Identifier, NodeIdentifier}
 import java.lang.String
+import org.neo4j.cypher.symbols.{AnyType, NodeType, RelationshipType, Identifier}
 
 abstract class StartPipe[T <: PropertyContainer](inner: Pipe, name: String, createSource: Map[String,Any] => Iterable[T]) extends Pipe {
   def this(inner: Pipe, name: String, sourceIterable: Iterable[T]) = this(inner, name, m => sourceIterable)
 
-  def symbolType: Identifier
+  def identifierType: AnyType
 
-  val symbols: SymbolTable = inner.symbols.add(Seq(symbolType))
+  val symbols = inner.symbols.add(Identifier(name, identifierType))
 
   def foreach[U](f: (Map[String, Any]) => U) {
     inner.foreach(innerMap => {
@@ -45,12 +44,12 @@ abstract class StartPipe[T <: PropertyContainer](inner: Pipe, name: String, crea
 
 class NodeStartPipe(inner: Pipe, name: String, createSource: Map[String,Any] => Iterable[Node])
   extends StartPipe[Node](inner, name, createSource) {
-  def symbolType: Identifier = NodeIdentifier(name)
+  def identifierType = NodeType()
   def visibleName: String = "Nodes"
 }
 
 class RelationshipStartPipe(inner: Pipe, name: String, createSource: Map[String,Any] => Iterable[Relationship])
   extends StartPipe[Relationship](inner, name, createSource) {
-  def symbolType: Identifier = RelationshipIdentifier(name)
+  def identifierType = RelationshipType()
   def visibleName: String = "Rels"
 }

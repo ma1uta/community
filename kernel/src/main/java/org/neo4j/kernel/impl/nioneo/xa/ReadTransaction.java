@@ -35,13 +35,13 @@ import org.neo4j.kernel.impl.core.RelationshipLoadingPosition;
 import org.neo4j.kernel.impl.core.SingleChainPosition;
 import org.neo4j.kernel.impl.core.SuperNodeChainPosition;
 import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
+import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
 import org.neo4j.kernel.impl.nioneo.store.NodeState;
 import org.neo4j.kernel.impl.nioneo.store.NodeStore;
 import org.neo4j.kernel.impl.nioneo.store.PropertyBlock;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
-import org.neo4j.kernel.impl.nioneo.store.PropertyIndexData;
 import org.neo4j.kernel.impl.nioneo.store.PropertyIndexRecord;
 import org.neo4j.kernel.impl.nioneo.store.PropertyIndexStore;
 import org.neo4j.kernel.impl.nioneo.store.PropertyRecord;
@@ -51,7 +51,6 @@ import org.neo4j.kernel.impl.nioneo.store.RelationshipGroupRecord;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipGroupStore;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipStore;
-import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeData;
 import org.neo4j.kernel.impl.persistence.NeoStoreTransaction;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.util.ArrayMap;
@@ -321,10 +320,10 @@ class ReadTransaction implements NeoStoreTransaction
     }
 
     @Override
-    public PropertyIndexData[] loadPropertyIndexes( int count )
+    public NameData[] loadPropertyIndexes( int count )
     {
         PropertyIndexStore indexStore = getPropertyStore().getIndexStore();
-        return indexStore.getPropertyIndexes( count );
+        return indexStore.getNames( count );
     }
 
     /*
@@ -423,16 +422,13 @@ class ReadTransaction implements NeoStoreTransaction
     }
 
     @Override
-    public RelationshipTypeData[] loadRelationshipTypes()
+    public NameData[] loadRelationshipTypes()
     {
-        RelationshipTypeData relTypeData[] =
-            neoStore.getRelationshipTypeStore().getRelationshipTypes();
-        RelationshipTypeData rawRelTypeData[] =
-            new RelationshipTypeData[relTypeData.length];
+        NameData relTypeData[] = neoStore.getRelationshipTypeStore().getNames( Integer.MAX_VALUE );
+        NameData rawRelTypeData[] = new NameData[relTypeData.length];
         for ( int i = 0; i < relTypeData.length; i++ )
         {
-            rawRelTypeData[i] = new RelationshipTypeData(
-                relTypeData[i].getId(), relTypeData[i].getName() );
+            rawRelTypeData[i] = new NameData( relTypeData[i].getId(), relTypeData[i].getName() );
         }
         return rawRelTypeData;
     }

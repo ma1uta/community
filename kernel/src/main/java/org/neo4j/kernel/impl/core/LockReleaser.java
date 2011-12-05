@@ -41,9 +41,8 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.NotInTransactionException;
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.graphdb.event.TransactionData;
+import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
-import org.neo4j.kernel.impl.nioneo.store.PropertyIndexData;
-import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeData;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.LockType;
 import org.neo4j.kernel.impl.util.ArrayMap;
@@ -770,7 +769,7 @@ public class LockReleaser
         }
     }
 
-    public void addRelationshipType( RelationshipTypeData type )
+    public void addRelationshipType( NameData type )
     {
         if ( nodeManager != null )
         {
@@ -778,7 +777,7 @@ public class LockReleaser
         }
     }
 
-    public void addPropertyIndex( PropertyIndexData index )
+    public void addPropertyIndex( NameData index )
     {
         if ( nodeManager != null )
         {

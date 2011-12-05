@@ -17,19 +17,26 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.cypher.pipes
+package org.neo4j.kernel.impl.nioneo.store;
 
-import java.lang.String
-import org.neo4j.cypher.SymbolTable
+public class NameData
+{
+    private final int id;
+    private final String name;
 
-class JoinPipe(a: Pipe, b: Pipe) extends Pipe {
-  val symbols: SymbolTable = a.symbols ++ b.symbols
+    public NameData( int id, String name )
+    {
+        this.id = id;
+        this.name = name;
+    }
 
-  def foreach[U](f: (Map[String, Any]) => U) {
-    a.foreach((aMap) => {
-      b.foreach((bMap) => {
-        f.apply(aMap ++ bMap)
-      })
-    })
-  }
+    public int getId()
+    {
+        return this.id;
+    }
+
+    public String getName()
+    {
+        return this.name;
+    }
 }

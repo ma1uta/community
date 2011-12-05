@@ -21,10 +21,11 @@
 package org.neo4j.cypher.pipes.matching
 
 import org.scalatest.Assertions
-import org.neo4j.cypher.{SymbolTable, GraphDatabaseTestBase}
+import org.neo4j.cypher.GraphDatabaseTestBase
 import org.neo4j.graphdb.{Node, Direction}
 import org.neo4j.cypher.commands._
 import org.junit.{Before, Test}
+import org.neo4j.cypher.symbols.{NodeType, RelationshipType, Identifier, SymbolTable}
 
 class MatchingContextTest extends GraphDatabaseTestBase with Assertions {
   var a: Node = null
@@ -54,7 +55,7 @@ class MatchingContextTest extends GraphDatabaseTestBase with Assertions {
     val r = relate(a, b, "rel", "r")
 
     val patterns: Seq[Pattern] = Seq(RelatedTo("a", "b", "r", "rel", Direction.OUTGOING, false))
-    val matchingContext = new MatchingContext(patterns, bind("a"))
+    val matchingContext = new MatchingContext(patterns, new SymbolTable(Identifier("r", RelationshipType())))
 
     assertMatches(matchingContext.getMatches(Map("r" -> r)), 1, Map("a" -> a, "b" -> b, "r" -> r))
   }
@@ -63,7 +64,7 @@ class MatchingContextTest extends GraphDatabaseTestBase with Assertions {
     val r = relate(a, b, "rel", "r")
 
     val patterns: Seq[Pattern] = Seq(RelatedTo("a", "b", "r", "rel", Direction.INCOMING, false))
-    val matchingContext = new MatchingContext(patterns, bind("a"))
+    val matchingContext = new MatchingContext(patterns, new SymbolTable(Identifier("r", RelationshipType())))
 
     assertMatches(matchingContext.getMatches(Map("r" -> r)), 1, Map("a" -> b, "b" -> a, "r" -> r))
   }
@@ -72,7 +73,7 @@ class MatchingContextTest extends GraphDatabaseTestBase with Assertions {
     val r = relate(a, b, "rel")
 
     val patterns: Seq[Pattern] = Seq(RelatedTo("a", "b", "r", "rel", Direction.BOTH, false))
-    val matchingContext = new MatchingContext(patterns, bind("a"))
+    val matchingContext = new MatchingContext(patterns, new SymbolTable(Identifier("r", RelationshipType())))
 
     assertMatches(matchingContext.getMatches(Map("r" -> r)), 2,
       Map("a" -> a, "b" -> b, "r" -> r),
@@ -88,7 +89,7 @@ class MatchingContextTest extends GraphDatabaseTestBase with Assertions {
       RelatedTo("b", "c", "r2", "rel", Direction.BOTH, false)
     )
 
-    val symbols = new SymbolTable(Set[Identifier](RelationshipIdentifier("r1"), RelationshipIdentifier("r2")))
+    val symbols = new SymbolTable(Identifier("r1", RelationshipType()),Identifier("r2", RelationshipType()))
 
     val matchingContext = new MatchingContext(patterns, symbols)
 
@@ -125,7 +126,7 @@ class MatchingContextTest extends GraphDatabaseTestBase with Assertions {
 
     val patterns: Seq[Pattern] = Seq(RelatedTo("pA", "pB", "pR", "rel", Direction.OUTGOING, false))
 
-    val symbols = new SymbolTable(Set[Identifier](NodeIdentifier("pA"), RelationshipIdentifier("pR")))
+    val symbols = new SymbolTable(Identifier("pA", NodeType()), Identifier("pR", RelationshipType()))
     val matchingContext = new MatchingContext(patterns, symbols)
 
 
@@ -143,7 +144,8 @@ class MatchingContextTest extends GraphDatabaseTestBase with Assertions {
     )
     val matchingContext = new MatchingContext(patterns, bind("a"))
 
-    assertMatches(matchingContext.getMatches(Map("a" -> a)), 2,
+    val traversable = matchingContext.getMatches(Map("a" -> a))
+    assertMatches(traversable, 2,
       Map("a" -> a, "b" -> c, "c" -> b, "r1" -> r2, "r2" -> r1),
       Map("a" -> a, "b" -> b, "c" -> c, "r1" -> r1, "r2" -> r2))
   }
@@ -201,10 +203,12 @@ class MatchingContextTest extends GraphDatabaseTestBase with Assertions {
     val r2 = relate(c, a, "rel")
 
     val patterns: Seq[Pattern] = Seq(RelatedTo("a", "b", "r", "rel", Direction.OUTGOING))
-    val matchingContext = new MatchingContext(patterns, bind("a"))
 
+    val matchingContext = new MatchingContext(patterns, bind("a"))
     assertMatches(matchingContext.getMatches(Map("a" -> a)), 1, Map("a" -> a, "b" -> b, "r" -> r1))
-    assertMatches(matchingContext.getMatches(Map("b" -> a)), 1, Map("b" -> a, "a" -> c, "r" -> r2))
+
+    val matchingContext2 = new MatchingContext(patterns, bind("b"))
+    assertMatches(matchingContext2.getMatches(Map("b" -> a)), 1, Map("b" -> a, "a" -> c, "r" -> r2))
   }
 
   @Test def typeConstraintFiltersMatches() {
@@ -416,8 +420,8 @@ class MatchingContextTest extends GraphDatabaseTestBase with Assertions {
 
 
   def bind(boundSymbols: String*): SymbolTable = {
-    val toSet = boundSymbols.map(x => NodeIdentifier(x))
-    new SymbolTable(toSet)
+    val identifiersToCreate = boundSymbols.map(x => Identifier(x, NodeType()))
+    new SymbolTable(identifiersToCreate:_*)
   }
 
   def assertMatches(matches: Traversable[Map[String, Any]], expectedSize: Int, expected: Map[String, Any]*) {

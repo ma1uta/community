@@ -179,8 +179,7 @@ public class NeoStore extends AbstractStore
      */
     private void instantiateChildStores()
     {
-        relTypeStore = new RelationshipTypeStore( getStorageFileName() + RelationshipTypeStore.FILE_NAME,
-                getConfig(), IdType.RELATIONSHIP_TYPE );
+        relTypeStore = new RelationshipTypeStore( getStorageFileName() + RelationshipTypeStore.FILE_NAME, getConfig() );
         propStore = new PropertyStore( getStorageFileName() + PropertyStore.FILE_NAME, getConfig() );
         relStore = new RelationshipStore( getStorageFileName() + RelationshipStore.FILE_NAME, getConfig() );
         nodeStore = new NodeStore( getStorageFileName() + NodeStore.FILE_NAME, getConfig() );

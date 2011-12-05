@@ -1,3 +1,5 @@
+package org.neo4j.cypher.symbols
+
 /**
  * Copyright (c) 2002-2011 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
@@ -17,26 +19,38 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.nioneo.store;
+/**
+ * TODO
+ */
 
-public class RelationshipTypeData
+object StringType
 {
-    private final String name;
-    private final int id;
+  lazy val instance = new StringType()
 
-    public RelationshipTypeData( int id, String name )
-    {
-        this.id = id;
-        this.name = name;
-    }
-
-    public int getId()
-    {
-        return this.id;
-    }
-
-    public String getName()
-    {
-        return this.name;
-    }
+  def apply() = instance
 }
+
+class StringType extends ScalarType
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

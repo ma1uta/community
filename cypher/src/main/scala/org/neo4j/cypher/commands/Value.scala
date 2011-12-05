@@ -20,11 +20,14 @@
 package org.neo4j.cypher.commands
 
 import scala.collection.JavaConverters._
-import org.neo4j.graphdb._
 import java.lang.String
 import org.neo4j.cypher._
+import pipes.Dependant
+import symbols._
+import org.neo4j.graphdb.{Path, Relationship, NotFoundException, PropertyContainer, Node}
+import collection.Seq
 
-abstract class Value extends (Map[String, Any] => Any) {
+abstract class Value extends (Map[String, Any] => Any) with Dependant {
   def identifier: Identifier
 
   def checkAvailable(symbols: SymbolTable)
@@ -35,24 +38,25 @@ abstract class Value extends (Map[String, Any] => Any) {
 case class Literal(v: Any) extends Value {
   def apply(m: Map[String, Any]) = v
 
-  def identifier: Identifier = LiteralIdentifier(v.toString)
+  def identifier = Identifier(v.toString, ScalarType())
 
   def checkAvailable(symbols: SymbolTable) {}
 
   def dependsOn: Set[String] = Set()
 
   override def toString() = if (v.isInstanceOf[String]) "\"" + v + "\"" else v.toString
+
+  def dependencies = Seq()
 }
 
 abstract case class FunctionValue(functionName: String, arguments: Value*) extends Value {
-
-  def identifier: Identifier = ValueIdentifier(functionName + "(" + arguments.map(_.identifier.name).mkString(",") + ")");
-
   def checkAvailable(symbols: SymbolTable) {
     arguments.foreach(_.checkAvailable(symbols))
   }
 
   def dependsOn: Set[String] = arguments.flatMap(_.dependsOn).toSet
+
+  def dependencies: Seq[Identifier] = arguments.flatMap(_.dependencies)
 }
 
 
@@ -74,42 +78,70 @@ case class PropertyValue(entity: String, property: String) extends Value {
     }
   }
 
-  def identifier: Identifier = PropertyIdentifier(entity, property)
+  def identifier: Identifier = Identifier(entity + "." + property, AnyType())
 
   def checkAvailable(symbols: SymbolTable) {
-    symbols.assertHas(PropertyContainerIdentifier(entity))
+    symbols.assertHas(Identifier(entity, MapType()))
   }
 
   def dependsOn: Set[String] = Set(entity)
 
   override def toString(): String = entity + "." + property
+
+  def dependencies: Seq[Identifier] = Seq(Identifier(entity, MapType()))
 }
 
 case class RelationshipTypeValue(relationship: Value) extends FunctionValue("TYPE", relationship) {
   def apply(m: Map[String, Any]): Any = relationship(m).asInstanceOf[Relationship].getType.name()
 
+  def identifier = Identifier("TYPE(" + relationship.identifier.name + ")", StringType())
+
   override def checkAvailable(symbols: SymbolTable) {
-    symbols.assertHas(RelationshipIdentifier(relationship.identifier.name))
+    symbols.assertHas(relationship.identifier.name, RelationshipType())
   }
 
   override def toString() = "type(" + relationship + ")"
 }
 
+case class CoalesceValue(values: Value*) extends FunctionValue("COALESCE", values: _*) {
+  def apply(m: Map[String, Any]): Any = values.map(valueObject => valueObject(m)).find(value => value != null) match {
+    case None => null
+    case Some(x) => x
+  }
+
+  def argumentsString: String = values.map(_.identifier.name).mkString(",")
+
+  //TODO: Find out the closest matching return type
+  def identifier = Identifier("COALESCE(" + argumentsString + ")", AnyType())
+
+  override def toString() = "coalesce(" + argumentsString + ")"
+}
+
 case class ArrayLengthValue(inner: Value) extends FunctionValue("LENGTH", inner) {
   def apply(m: Map[String, Any]): Any = inner(m) match {
     case path: Path => path.length()
-    case iter:Traversable[_] => iter.toList.length
-    case s:String => s.length()
+    case iter: Traversable[_] => iter.toList.length
+    case s: String => s.length()
     case x => throw new IterableRequiredException(inner)
   }
-}
 
+  def identifier = Identifier("LENGTH(" + inner.identifier.name + ")", IntegerType())
+
+  override def checkAvailable(symbols: SymbolTable) {
+    symbols.assertHas(inner.identifier.name, new IterableType(AnyType()))
+  }
+}
 
 case class IdValue(inner: Value) extends FunctionValue("ID", inner) {
   def apply(m: Map[String, Any]): Any = inner(m) match {
     case node: Node => node.getId
     case rel: Relationship => rel.getId
-    case x => throw new SyntaxException("Expected " + inner.identifier.name + " to be a node or relationship.")
+  }
+
+  def identifier = Identifier("ID(" + inner.identifier.name + ")", LongType())
+
+  override def checkAvailable(symbols: SymbolTable) {
+    symbols.assertHas(inner.identifier.name, MapType())
   }
 }
 
@@ -118,24 +150,34 @@ case class PathNodesValue(path: Value) extends FunctionValue("NODES", path) {
     case p: Path => p.nodes().asScala.toSeq
     case x => throw new SyntaxException("Expected " + path.identifier.name + " to be a path.")
   }
+
+  def identifier = Identifier("NODES(" + path.identifier.name + ")", new IterableType(NodeType()))
+
+  override def checkAvailable(symbols: SymbolTable) {
+    symbols.assertHas(path.identifier.name, new IterableType(MapType()))
+  }
 }
 
-case class Extract(iterable:Value, id:String, expression:Value) extends Value {
+case class Extract(iterable: Value, id: String, expression: Value) extends Value {
   def apply(m: Map[String, Any]): Any = iterable(m) match {
-    case x:Iterable[Any] => x.map( iterValue => {
+    case x: Iterable[Any] => x.map(iterValue => {
       val innerMap = m + (id -> iterValue)
       expression(innerMap)
     })
     case _ => throw new IterableRequiredException(iterable)
   }
 
-  def identifier: Identifier = ArrayIdentifier("extract(" + id + " in " + iterable.identifier.name + " : " + expression.identifier.name + ")")
+  def identifier = Identifier("extract(" + id + " in " + iterable.identifier.name + " : " + expression.identifier.name + ")", new IterableType(expression.identifier.typ))
 
   def checkAvailable(symbols: SymbolTable) {
     iterable.checkAvailable(symbols)
   }
 
   def dependsOn: Set[String] = (iterable.dependsOn ++ expression.dependsOn) - id
+
+  // Extract depends on everything that the iterable and the expression depends on, except
+  // the new identifier inserted into the expression context, named with id
+  def dependencies: Seq[Identifier] = (iterable.dependencies ++ expression.dependencies).filterNot(_.name == id)
 }
 
 case class PathRelationshipsValue(path: Value) extends FunctionValue("RELATIONSHIPS", path) {
@@ -143,29 +185,41 @@ case class PathRelationshipsValue(path: Value) extends FunctionValue("RELATIONSH
     case p: Path => p.relationships().asScala.toSeq
     case x => throw new SyntaxException("Expected " + path.identifier.name + " to be a path.")
   }
+
+  def identifier = Identifier("RELATIONSHIPS(" + path.identifier.name + ")", new IterableType(RelationshipType()))
+
+
+  override def checkAvailable(symbols: SymbolTable) {
+    symbols.assertHas(path.identifier.name, new IterableType(MapType()))
+  }
 }
 
 case class EntityValue(entityName: String) extends Value {
   def apply(m: Map[String, Any]): Any = m.getOrElse(entityName, throw new NotFoundException)
 
-  def identifier: Identifier = Identifier(entityName)
+  def identifier: Identifier = Identifier(entityName, AnyType())
 
   def checkAvailable(symbols: SymbolTable) {
-    symbols.assertHas(Identifier(entityName))
+    symbols.assertHas(identifier)
   }
 
   def dependsOn: Set[String] = Set(entityName)
 
   override def toString(): String = entityName
+
+  def dependencies: Seq[Identifier] = Seq(Identifier(entityName, AnyType()))
 }
 
 case class ParameterValue(parameterName: String) extends Value {
   def apply(m: Map[String, Any]): Any = m.getOrElse(parameterName, throw new ParameterNotFoundException("Expected a parameter named " + parameterName))
 
-  def identifier: Identifier = Identifier(parameterName)
+  def identifier: Identifier = Identifier(parameterName, AnyType())
 
   def checkAvailable(symbols: SymbolTable) {}
 
   def dependsOn: Set[String] = Set(parameterName)
+
   override def toString(): String = "{" + parameterName + "}"
+
+  def dependencies: Seq[Identifier] = Seq()
 }

@@ -51,12 +51,14 @@ public class Args
     private final String[] args;
     private final Map<String, String> map = new HashMap<String, String>();
     private final List<String> orphans = new ArrayList<String>();
+//    private final Set<String> touchedParameters = new HashSet<String>();
+//    private final BitSet touchedOrphans = new BitSet();
     
     /**
      * Suitable for main( String[] args )
      * @param args the arguments to parse.
      */
-    public Args( String[] args )
+    public Args( String... args )
     {
         this.args = args;
         parseArgs( args );
@@ -178,5 +180,62 @@ public class Args
                 orphans.add( arg );
             }
         }
+    }
+
+/*    public void printUntouched( PrintStream out )
+    {
+        boolean first = true;
+        for ( Map.Entry<String, String> parameter : map.entrySet() )
+        {
+            if ( touchedParameters.contains( parameter ) ) continue;
+            if ( first )
+            {
+                first = false;
+                out.println( "Untouched parameters:" );
+            }
+            out.println( "  " + parameter.getKey() + ":" + parameter.getValue() );
+        }
+        
+        first = true;
+        for ( int i = 0; i < orphans.size(); i++ )
+        {
+            if ( touchedOrphans.get( i ) ) continue;
+            if ( first )
+            {
+                first = false;
+                out.println( "Untouched orphans:" );
+            }
+            out.println( "(" + i + "):" + orphans.get( i ) );
+        }
+    }
+
+    public Map<String, String> getUntouchedParameters()
+    {
+        return null;
+    }
+
+    public Iterable<String> getUntouchedOrphans()
+    {
+        return null;
+    }*/
+
+    public static String jarUsage( Class<?> main, String... params )
+    {
+        StringBuilder usage = new StringBuilder( "USAGE: java [-cp ...] " );
+        try
+        {
+            String jar = main.getProtectionDomain().getCodeSource().getLocation().getPath();
+            usage.append( "-jar " ).append( jar );
+        }
+        catch ( Exception ex )
+        {
+            // ignore
+        }
+        usage.append( main.getCanonicalName() );
+        for ( String param : params )
+        {
+            usage.append( ' ' ).append( param );
+        }
+        return usage.toString();
     }
 }

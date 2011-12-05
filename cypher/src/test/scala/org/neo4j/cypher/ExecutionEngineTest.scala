@@ -901,7 +901,7 @@ class ExecutionEngineTest extends ExecutionEngineHelper {
 
     val query = Query.
       start(NodeById("a", 1), NodeById("b", 2)).
-      namedPaths(NamedPath("p", ShortestPath("  UNNAMED1", "a", "b", None, Direction.BOTH, Some(15), false))).
+      namedPaths(NamedPath("p", ShortestPath("  UNNAMED1", "a", "b", None, Direction.BOTH, Some(15), false, true))).
       returns(ValueReturnItem(EntityValue("p")))
 
     val result = execute(query).toList.head("p").asInstanceOf[Path]
@@ -919,7 +919,7 @@ class ExecutionEngineTest extends ExecutionEngineHelper {
 
     val query = Query.
       start(NodeById("a", 1), NodeById("b", 2)).
-      namedPaths(NamedPath("p", ShortestPath("  UNNAMED1", "a", "b", None, Direction.BOTH, None, false))).
+      namedPaths(NamedPath("p", ShortestPath("  UNNAMED1", "a", "b", None, Direction.BOTH, None, false, true))).
       returns(ValueReturnItem(EntityValue("p")))
 
     //Checking that we don't get an exception
@@ -1239,6 +1239,28 @@ return a
     assert(List(a) === result.columnAs[Node]("a").toList)
   }
 
+  @Test def shouldSupportColumnRenaming() {
+    val a = createNode(Map("name" -> "Andreas"))
+
+    val result = parseAndExecute("""
+start a  = node(1)
+return a as OneLove
+""")
+
+    assert(List(a) === result.columnAs[Node]("OneLove").toList)
+  }
+
+  @Test def shouldSupportColumnRenamingForAggregatesAsWell() {
+    val a = createNode(Map("name" -> "Andreas"))
+
+    val result = parseAndExecute("""
+start a  = node(1)
+return count(*) as OneLove
+""")
+
+    assert(List(1) === result.columnAs[Node]("OneLove").toList)
+  }
+
   @Ignore("Should be supported, but doesn't work")
   @Test def shouldBeAbleToQueryNumericIndexes() {
     val a = createNode("x" -> 5)
@@ -1269,6 +1291,63 @@ order by a.age
 """)
 
     assert(List(a, b, c) === result.columnAs[Node]("a").toList)
+  }
+
+  @Test def shouldSupportOrderingByAPropertyAfterBeingDistinctified() {
+    val a = createNode("name" -> "A")
+    val b = createNode("name" -> "B")
+    val c = createNode("name" -> "C")
+
+    relate(a, b)
+    relate(a, c)
+
+    val result = parseAndExecute("""
+start a  = node(1)
+match a-->b
+return distinct b
+order by b.name
+""")
+
+    assert(List(b, c) === result.columnAs[Node]("b").toList)
+  }
+
+  @Test def shouldBeAbleToRunCoalesce() {
+    createNode("name" -> "A")
+
+    val result = parseAndExecute("""
+start a  = node(1)
+return coalesce(a.title?, a.name?)
+""")
+
+    assert(List(Map("COALESCE(a.title,a.name)" -> "A")) === result.toList)
+  }
+
+  @Test def shouldReturnAnInterableWithAllRelationshipsFromAVarLength() {
+    val a = createNode()
+    val b = createNode()
+    val c = createNode()
+    val r1 = relate(a, b)
+    val r2 = relate(b, c)
+
+    val result = parseAndExecute("""
+start a  = node(1)
+match a-[r*2]->c
+return r
+""")
+
+    assert(List(Map("r" -> List(r1, r2))) === result.toList)
+  }
+
+  @Test def shouldHandleAllShortestPaths() {
+    createDiamond()
+
+    val result = parseAndExecute("""
+start a  = node(1), d = node(4)
+match p = allShortestPaths( a-[*]->d )
+return p
+""")
+
+    assert(2 === result.toList.size)
   }
 
   @Test def shouldThrowNiceErrorMessageWhenPropertyIsMissing() {

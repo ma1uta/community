@@ -39,11 +39,10 @@ import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.core.RelationshipLoadingPosition;
 import org.neo4j.kernel.impl.core.TransactionEventsSyncHook;
 import org.neo4j.kernel.impl.core.TxEventSyncHookFactory;
+import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.nioneo.store.NodeState;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
-import org.neo4j.kernel.impl.nioneo.store.PropertyIndexData;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
-import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeData;
 import org.neo4j.kernel.impl.nioneo.xa.NioNeoDbPersistenceSource;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.util.ArrayMap;
@@ -94,7 +93,7 @@ public class PersistenceManager
         return getReadOnlyResourceIfPossible().loadIndex( id );
     }
 
-    public PropertyIndexData[] loadPropertyIndexes( int maxCount )
+    public NameData[] loadPropertyIndexes( int maxCount )
     {
         return getReadOnlyResourceIfPossible().loadPropertyIndexes( maxCount );
     }
@@ -128,7 +127,7 @@ public class PersistenceManager
         return getReadOnlyResourceIfPossible().relLoadLight( id );
     }
 
-    public RelationshipTypeData[] loadAllRelationshipTypes()
+    public NameData[] loadAllRelationshipTypes()
     {
         return getReadOnlyResourceIfPossible().loadRelationshipTypes();
     }

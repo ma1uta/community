@@ -29,6 +29,10 @@ To query the status of the service, run `bin\Neo4j.bat query`
 
 To start/stop the service from the command prompt, run `bin\Neo4j.bat +action+`
 
+NOTE: Some users have reported problems on Windows when using the ZoneAlarm firewall.
+If you are having problems getting large responses from the server, or if Webadmin does not work, try disabling ZoneAlarm.
+Contact ZoneAlarm support to get information on how to resolve this.
+
 == Linux Service ==
 
 Neo4j can participate in the normal system startup and shutdown process.
@@ -50,6 +54,8 @@ will start the server
 During installation you will be given the option to select the user Neo4j will run as. You will be asked to supply a username (defaulting to `neo4j`) and if that user is not present on the system it will be created as a system account and the `$NEO4J_HOME/data` directory will be `chown`'ed to that user.
 +
 You are encouraged to create a dedicated user for running the service and for that reason it is suggested that you unpack the distribution package under `/opt` or your site specific optional packages directory.
++
+After installation you may have to do some platform specific configuration and performance tuning. For that, refer to  <<configuration-linux-notes>>.
 +
 Finally, note that if you chose to create a new user account, on uninstall you will be prompted to remove it from the system.
 

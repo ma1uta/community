@@ -27,7 +27,7 @@ import org.neo4j.kernel.{Uniqueness, Traversal}
 class PatternRelationship(key: String,
                           val startNode: PatternNode,
                           val endNode: PatternNode,
-                          relType: Option[String],
+                          val relType: Option[String],
                           val dir: Direction,
                           val optional: Boolean)
   extends PatternElement(key) {
@@ -60,6 +60,7 @@ class PatternRelationship(key: String,
 class VariableLengthPatternRelationship(pathName: String,
                                         val start: PatternNode,
                                         val end: PatternNode,
+                                        val relIterable: Option[String],
                                         minHops: Option[Int],
                                         maxHops: Option[Int],
                                         relType: Option[String],

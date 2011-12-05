@@ -192,6 +192,12 @@ public class RelationshipGroupStore extends AbstractStore implements Store, Reco
             releaseWindow( window );
         }
     }
+    
+    @Override
+    public RelationshipGroupRecord forceGetRaw( long id )
+    {
+        return forceGetRecord( id );
+    }
 
     @Override
     public void forceUpdateRecord( RelationshipGroupRecord record )
