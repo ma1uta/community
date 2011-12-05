@@ -19,11 +19,7 @@
  */
 package org.neo4j.kernel.impl.core;
 
-import javax.transaction.TransactionManager;
-
 import org.neo4j.kernel.impl.nioneo.store.NameData;
-import org.neo4j.kernel.impl.persistence.EntityIdGenerator;
-import org.neo4j.kernel.impl.persistence.PersistenceManager;
 import org.neo4j.kernel.impl.util.ArrayMap;
 
 public class ReferenceNodeHolder
@@ -32,19 +28,7 @@ public class ReferenceNodeHolder
     private ArrayMap<Integer, String> idToName = new ArrayMap<Integer, String>( 5, true, true );
     private ArrayMap<Long, NameData<Long>> nodeIdToName = new ArrayMap<Long, NameData<Long>>( 5, true, true );
 
-    private final TransactionManager transactionManager;
-    private final PersistenceManager persistenceManager;
-    private final EntityIdGenerator idGenerator;
-
-    ReferenceNodeHolder( TransactionManager transactionManager,
-        PersistenceManager persistenceManager, EntityIdGenerator idGenerator )
-    {
-        this.transactionManager = transactionManager;
-        this.persistenceManager = persistenceManager;
-        this.idGenerator = idGenerator;
-    }
-
-    void addRaw( NameData<Long>... types )
+    void put( NameData<Long>... types )
     {
         for ( NameData<Long> type : types ) put( type );
     }
@@ -55,19 +39,6 @@ public class ReferenceNodeHolder
         idToName.put( type.getId(), type.getName() );
         nodeIdToName.put( type.getPayload(), type );
     }
-
-//    public Long add( String name, boolean create )
-//    {
-//        NameData<Long> id = nameToId.get( name );
-//        if ( id == null )
-//        {
-//            if ( !create ) return null;
-//            id = create( name );
-//            put( id );
-//            return id.getPayload();
-//        }
-//        return id.getPayload();
-//    }
     
     public NameData<Long> get( long nodeId )
     {
@@ -78,74 +49,6 @@ public class ReferenceNodeHolder
     {
         return nameToId.get( name );
     }
-
-//    public NameData<Long> getOrCreate( String name )
-//    {
-//        NameData<Long> id = nameToId.get( name );
-//        if ( id != null ) return id;
-//        id = create( name );
-//        put( id );
-//        return id;
-//    }
-
-//    private synchronized NameData<Long> create( final String name )
-//    {
-//        NameData<Long> result = nameToId.get( name );
-//        if ( result != null ) return result;
-//        
-//        ExecutorService executor = Executors.newSingleThreadExecutor();
-//        Future<NameData<Long>> future = executor.submit( new Callable<NameData<Long>>()
-//        {
-//            @Override
-//            public NameData<Long> call()
-//            {
-//                boolean success = false;
-//                try
-//                {
-//                    transactionManager.begin();
-//                    long nodeId = idGenerator.nextId( Node.class );
-//                    int nameId = (int) idGenerator.nextId( ReferenceNodeStore.class );
-//                    persistenceManager.createReferenceNode( name, nameId, nodeId );
-//                    transactionManager.commit();
-//                    success = true;
-//                    return new NameData<Long>( nameId, name, nodeId );
-//                }
-//                catch ( Throwable t )
-//                {
-//                    t.printStackTrace();
-//                    throw Exceptions.launderedException( t );
-//                }
-//                finally
-//                {
-//                    if ( !success )
-//                    {
-//                        try
-//                        {
-//                            transactionManager.rollback();
-//                        }
-//                        catch ( Throwable tt )
-//                        {
-//                            tt.printStackTrace();
-//                        }
-//                    }
-//                }
-//            }
-//        } );
-//        try
-//        {
-//            result = future.get();
-//            put( result );
-//            return result;
-//        }
-//        catch ( Exception e )
-//        {
-//            throw Exceptions.launderedException( e );
-//        }
-//        finally
-//        {
-//            executor.shutdown();
-//        }
-//    }
     
     public Iterable<String> getNames()
     {

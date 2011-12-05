@@ -737,7 +737,7 @@ public class LockReleaser
     {
         if ( nodeManager != null )
         {
-            nodeManager.addReferenceNode( type );
+            nodeManager.addReferenceNodes( type );
         }
     }
     

@@ -1994,9 +1994,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         if ( !record.inUse() ) throw new InvalidRecordException( "Reference node record " + id + " not in use" );
         record.setInUse( false );
         String name = neoStore.getReferenceNodeStore().getStringFor( record );
-        neoStore.getReferenceNodeStore().updateRecord( record );
-        refNodeRecords.put( id, record );
-        refNodeRecordsByName.remove( name );
+        addReferenceNodeRecord( name, record );
     }
     
     @Override
@@ -2005,7 +2003,8 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         // TODO We don't need to load it, just use this method as a checker for if it has been
         // created in this tx already.
         ReferenceNodeRecord record = refNodeRecordsByName.get( name );
-        return record != null ? new NameData<Long>( record.getId(), name, record.getNodeId() ) : null;
+        if ( record == null ) return null;
+        return new NameData<Long>( record.inUse() ? record.getId() : Record.NO_NEXT_BLOCK.intValue(), name, record.getNodeId() );
     }
     
     private static enum RecordAdded

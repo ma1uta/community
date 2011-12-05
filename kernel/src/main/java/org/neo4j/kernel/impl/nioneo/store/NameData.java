@@ -46,4 +46,10 @@ public class NameData<T>
     {
         return payload;
     }
+    
+    @Override
+    public String toString()
+    {
+        return "NameData[" + id + ", " + name + (getPayload() != null ? ", " + getPayload() : "") + "]";
+    }
 }

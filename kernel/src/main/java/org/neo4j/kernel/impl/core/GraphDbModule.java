@@ -125,7 +125,7 @@ public class GraphDbModule
             nodeManager.setHasAllpropertyIndexes( true );
         }
         
-        nodeManager.addRawReferenceNodes( persistenceManager.loadAllReferenceNodes() );
+        nodeManager.addReferenceNodes( persistenceManager.loadAllReferenceNodes() );
         
         nodeManager.start( params );
         startIsOk = false;

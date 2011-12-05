@@ -22,13 +22,16 @@ package org.neo4j.kernel.impl.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
+import org.junit.After;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotInTransactionException;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
+import org.neo4j.test.BatchTransaction;
 import org.neo4j.test.ImpermanentGraphDatabase;
 import org.neo4j.test.TargetDirectory;
 
@@ -40,11 +43,37 @@ public class TestReferenceNodes
         BOUGHT;
     }
     
+    private GraphDatabaseService db;
+    
+    protected GraphDatabaseService newDb()
+    {
+        return newDb( new ImpermanentGraphDatabase() );
+    }
+    
+    protected GraphDatabaseService newDb( GraphDatabaseService db )
+    {
+        this.db = db;
+        return db;
+    }
+    
+    @After
+    public void doAfter()
+    {
+        if ( db != null ) db.shutdown();
+    }
+    
+    @Test( expected = NotInTransactionException.class )
+    public void createReferenceNodeOutsideTx()
+    {
+        GraphDatabaseService db = newDb();
+        db.getReferenceNode( "something different" );
+    }
+    
     @Test
     public void multipleReferenceNodes() throws Exception
     {
         String path = TargetDirectory.forTest( getClass() ).directory( "refs", true ).getAbsolutePath();
-        GraphDatabaseService db = new EmbeddedGraphDatabase( path );
+        GraphDatabaseService db = newDb( new EmbeddedGraphDatabase( path ) );
         
         Transaction tx = db.beginTx();
         Node users = db.getReferenceNode( "users" );
@@ -64,24 +93,16 @@ public class TestReferenceNodes
         tx.finish();
         db.shutdown();
         
-        db = new EmbeddedGraphDatabase( path );
+        db = newDb( new EmbeddedGraphDatabase( path ) );
         assertEquals( users.getId(), db.getReferenceNode( "users" ).getId() );
         assertEquals( products.getId(), db.getReferenceNode( "products" ).getId() );
         assertEquals( product.getId(), db.getReferenceNode( "products" ).getSingleRelationship( Types.PRODUCT, Direction.OUTGOING ).getEndNode().getId() );
-        
-        tx = db.beginTx();
-        users = db.getReferenceNode( "users" );
-        users.delete();
-        assertFalse( users.getId() == db.getReferenceNode( "users" ).getId() );
-        tx.success();
-        tx.finish();
-        db.shutdown();
     }
     
     @Test
-    public void deleteIssue()
+    public void deleteAndCreateInSameTx()
     {
-        GraphDatabaseService db = new ImpermanentGraphDatabase();
+        GraphDatabaseService db = newDb();
         Transaction tx = db.beginTx();
         Node refNode = db.getReferenceNode( "yeah" );
         tx.success(); tx.finish();
@@ -93,5 +114,20 @@ public class TestReferenceNodes
         tx.success();
         tx.finish();
         db.shutdown();
+    }
+    
+    @Test
+    public void createMany()
+    {
+        GraphDatabaseService db = newDb();
+        BatchTransaction tx = BatchTransaction.beginBatchTx( db, 5 );
+        Node[] nodes = new Node[100];
+        for ( int i = 0; i < nodes.length; i++ )
+        {
+            nodes[i] = db.getReferenceNode( "ref node " + i );
+            tx.increment();
+        }
+        tx.finish();
+        for ( int i = 0; i < nodes.length; i++ ) assertEquals( nodes[i], db.getReferenceNode( "ref node " + i ) );
     }
 }

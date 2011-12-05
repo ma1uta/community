@@ -53,6 +53,7 @@ import org.neo4j.kernel.impl.cache.StrongReferenceCache;
 import org.neo4j.kernel.impl.cache.WeakLruCache;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
+import org.neo4j.kernel.impl.nioneo.store.Record;
 import org.neo4j.kernel.impl.nioneo.store.ReferenceNodeStore;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
 import org.neo4j.kernel.impl.persistence.EntityIdGenerator;
@@ -119,7 +120,7 @@ public class NodeManager
         this.idGenerator = idGenerator;
         this.relTypeHolder = new RelationshipTypeHolder( transactionManager,
             persistenceManager, idGenerator, relTypeCreator );
-        this.refNodeHolder = new ReferenceNodeHolder( transactionManager, persistenceManager, idGenerator );
+        this.refNodeHolder = new ReferenceNodeHolder();
 
         this.cacheType = cacheType;
         this.nodeCache = cacheType.node( cacheManager );
@@ -532,22 +533,32 @@ public class NodeManager
 
     public Node getReferenceNode( String name )
     {
-        // Does it already exist?
-        NameData<Long> reference = refNodeHolder.get( name );
-        if ( reference != null ) return getNodeById( reference.getPayload() );
+        // Has it been created/deleted in this tx?
+        NameData<Long> reference = persistenceManager.loadReferenceNode( name );
+        boolean isDeleted = reference != null && Record.NO_NEXT_BLOCK.value( reference.getId() );
+        if ( reference != null && !isDeleted ) return getNodeById( reference.getPayload() );
         
-        // No, create it (use the object representing the graph as lock)
+        // Does it already exist?
+        if ( reference == null )
+        {
+            reference = refNodeHolder.get( name );
+            if ( reference != null ) return getNodeById( reference.getPayload() );
+        }
+        
+        // Doesn't exist, create it (use the object representing the graph as lock)
         acquireLock( graphProperties, LockType.WRITE );
         try
         {
             // Double checked locking, check again when we got the lock if it
             // already exists
-            reference = refNodeHolder.get( name );
-            reference = reference != null ? reference : persistenceManager.loadReferenceNode( name );
-            if ( reference != null )
+            if ( !isDeleted )
             {
-                lockManager.releaseWriteLock( graphProperties, transactionManager.getTransaction() );
-                return getNodeById( reference.getPayload() );
+                reference = refNodeHolder.get( name );
+                if ( reference != null )
+                {
+                    lockManager.releaseWriteLock( graphProperties, transactionManager.getTransaction() );
+                    return getNodeById( reference.getPayload() );
+                }
             }
             
             // Still doesn't exist, create it
@@ -960,9 +971,9 @@ public class NodeManager
         relTypeHolder.addRawRelationshipTypes( relTypes );
     }
     
-    void addRawReferenceNodes( NameData<Long>[] refNodes )
+    void addReferenceNodes( NameData<Long>... refNodes )
     {
-        refNodeHolder.addRaw( refNodes );
+        refNodeHolder.put( refNodes );
     }
 
     public Iterable<RelationshipType> getRelationshipTypes()
@@ -1176,12 +1187,6 @@ public class NodeManager
         relTypeHolder.addRawRelationshipTypes( type );
     }
 
-    @SuppressWarnings( "unchecked" )
-    void addReferenceNode( NameData<Long> type )
-    {
-        refNodeHolder.addRaw( type );
-    }
-    
     @SuppressWarnings( "unchecked" )
     void addPropertyIndex( NameData<Void> index )
     {

@@ -288,6 +288,7 @@ public abstract class Command extends XaCommand
     private static final byte REL_TYPE_COMMAND = (byte) 4;
     private static final byte PROP_INDEX_COMMAND = (byte) 5;
     private static final byte NEOSTORE_COMMAND = (byte) 6;
+    private static final byte REF_NODE_COMMAND = (byte) 7;
 
     static class NodeCommand extends Command
     {
@@ -1130,7 +1131,7 @@ public abstract class Command extends XaCommand
         {
             byte inUse = record.inUse() ? Record.IN_USE.byteValue()
                 : Record.NOT_IN_USE.byteValue();
-            buffer.put( REL_TYPE_COMMAND );
+            buffer.put( REF_NODE_COMMAND );
             buffer.putInt( record.getId() ).put( inUse ).putLong( record.getNodeId() ).putInt( record.getNameId() );
 
             Collection<DynamicRecord> typeRecords = record.getNameRecords();
@@ -1221,6 +1222,8 @@ public abstract class Command extends XaCommand
                     byteChannel, buffer );
             case NEOSTORE_COMMAND:
                 return NeoStoreCommand.readCommand( neoStore, byteChannel, buffer );
+            case REF_NODE_COMMAND:
+                return ReferenceNodeCommand.readCommand( neoStore, byteChannel, buffer );
             case NONE: return null;
             default:
                 throw new IOException( "Unknown command type[" + commandType
