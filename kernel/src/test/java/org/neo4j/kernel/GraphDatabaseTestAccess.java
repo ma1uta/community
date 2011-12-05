@@ -29,11 +29,11 @@ import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
  * and {@link IdGeneratorFactory}. Otherwise its functionality is equivalent to
  * {@link EmbeddedGraphDatabase}.
  */
-public class HighlyConfigurableGraphDatabase extends AbstractGraphDatabaseWithDbImpl
+public class GraphDatabaseTestAccess extends AbstractGraphDatabaseWithDbImpl
 {
     protected final FileSystemAbstraction fileSystem;
 
-    public HighlyConfigurableGraphDatabase( String storeDir, Map<String, String> config,
+    public GraphDatabaseTestAccess( String storeDir, Map<String, String> config,
             IdGeneratorFactory idGenerators, FileSystemAbstraction fileSystem )
     {
         super( storeDir );
