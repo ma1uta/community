@@ -51,6 +51,7 @@ import org.neo4j.kernel.impl.nioneo.store.StoreId;
 import org.neo4j.kernel.impl.nioneo.store.WindowPoolStats;
 import org.neo4j.kernel.impl.persistence.IdGenerationFailedException;
 import org.neo4j.kernel.impl.transaction.LockManager;
+import org.neo4j.kernel.impl.transaction.xaframework.CommandExecutor;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBackedXaDataSource;
 import org.neo4j.kernel.impl.transaction.xaframework.TransactionInterceptor;
 import org.neo4j.kernel.impl.transaction.xaframework.TransactionInterceptorProvider;
@@ -96,6 +97,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
     private boolean logApplied = false;
 
     private final StringLogger msgLog;
+    private CommandExecutor commandExecutor;
 
     /**
      * Creates a <CODE>NeoStoreXaDataSource</CODE> using configuration from
@@ -124,6 +126,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         readOnly = Boolean.parseBoolean( (String) config.get( Config.READ_ONLY ) );
         this.lockManager = (LockManager) config.get( LockManager.class );
         this.lockReleaser = (LockReleaser) config.get( LockReleaser.class );
+        this.commandExecutor = (CommandExecutor) config.get( CommandExecutor.class );
         storeDir = (String) config.get( "store_dir" );
         msgLog = (StringLogger) config.get( StringLogger.class );
         String store = (String) config.get( "neo_store" );
@@ -344,11 +347,10 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         @Override
         public XaTransaction create( int identifier )
         {
-
             TransactionInterceptor first = TransactionInterceptorProvider.resolveChain(
                     providers, NeoStoreXaDataSource.this );
             return new InterceptingWriteTransaction( identifier,
-                    getLogicalLog(), neoStore, lockReleaser, lockManager, first );
+                    getLogicalLog(), neoStore, lockReleaser, lockManager, commandExecutor, first );
         }
     }
 
@@ -362,7 +364,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         public XaTransaction create( int identifier )
         {
             return new WriteTransaction( identifier, getLogicalLog(), neoStore,
-                lockReleaser, lockManager );
+                lockReleaser, lockManager, commandExecutor );
         }
 
         @Override

@@ -45,6 +45,7 @@ import org.neo4j.kernel.impl.persistence.PersistenceModule;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.TxHook;
 import org.neo4j.kernel.impl.transaction.TxModule;
+import org.neo4j.kernel.impl.transaction.xaframework.CommandExecutor;
 import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
 import org.neo4j.kernel.impl.util.StringLogger;
 
@@ -242,7 +243,6 @@ public class Config
     private final boolean ephemeral;
     private final boolean backupSlave;
     private final IdGeneratorFactory idGeneratorFactory;
-    private final TxIdGenerator txIdGenerator;
 
     Config( AbstractGraphDatabase graphDb, StoreId storeId,
             Map<String, String> inputParams, KernelPanicEventGenerator kpe,
@@ -251,7 +251,7 @@ public class Config
             TxEventSyncHookFactory txSyncHookFactory,
             RelationshipTypeCreator relTypeCreator, TxIdGenerator txIdGenerator,
             LastCommittedTxIdSetter lastCommittedTxIdSetter,
-            FileSystemAbstraction fileSystem )
+            FileSystemAbstraction fileSystem, CommandExecutor commandExecutor )
     {
         this.storeDir = graphDb.getStoreDir();
         this.inputParams = inputParams;
@@ -262,7 +262,6 @@ public class Config
 
         this.idGeneratorFactory = idGeneratorFactory;
         this.relTypeCreator = relTypeCreator;
-        this.txIdGenerator = txIdGenerator;
         this.txModule = txModule;
         this.lockManager = lockManager;
         this.lockReleaser = lockReleaser;
@@ -287,6 +286,7 @@ public class Config
         params.put( GraphDbModule.class, graphDbModule );
         params.put( TxHook.class, txModule.getTxHook() );
         params.put( StringLogger.class, graphDb.getMessageLog() );
+        params.put( CommandExecutor.class, commandExecutor );
     }
 
     public static Map<Object, Object> getDefaultParams()

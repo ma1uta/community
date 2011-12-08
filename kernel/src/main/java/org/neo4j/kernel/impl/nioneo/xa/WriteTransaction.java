@@ -65,6 +65,7 @@ import org.neo4j.kernel.impl.nioneo.xa.Command.PropertyCommand;
 import org.neo4j.kernel.impl.persistence.NeoStoreTransaction;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.LockType;
+import org.neo4j.kernel.impl.transaction.xaframework.CommandExecutor;
 import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
@@ -109,14 +110,16 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     private final LockReleaser lockReleaser;
     private final LockManager lockManager;
     private XaConnection xaConnection;
+    private final CommandExecutor commandExecutor;
 
     WriteTransaction( int identifier, XaLogicalLog log, NeoStore neoStore,
-            LockReleaser lockReleaser, LockManager lockManager )
+            LockReleaser lockReleaser, LockManager lockManager, CommandExecutor commandExecutor )
     {
         super( identifier, log );
         this.neoStore = neoStore;
         this.lockReleaser = lockReleaser;
         this.lockManager = lockManager;
+        this.commandExecutor = commandExecutor;
     }
 
     @Override
@@ -458,13 +461,13 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             java.util.Collections.sort( relTypeCommands, sorter );
             for ( Command.RelationshipTypeCommand command : relTypeCommands )
             {
-                command.execute();
+                executeCommand( command );
             }
             // property keys
             java.util.Collections.sort( propIndexCommands, sorter );
             for ( Command.PropertyIndexCommand command : propIndexCommands )
             {
-                command.execute();
+                executeCommand( command );
             }
 
             // primitives
@@ -473,7 +476,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             java.util.Collections.sort( propCommands, sorter );
             executeCreated( propCommands, relCommands, nodeCommands );
             executeModified( propCommands, relCommands, nodeCommands );
-            if ( neoStoreCommand != null ) neoStoreCommand.execute();
+            if ( neoStoreCommand != null ) executeCommand( neoStoreCommand );
             executeDeleted( propCommands, relCommands, nodeCommands );
             lockReleaser.commitCows();
             neoStore.setLastCommittedTx( getCommitTxId() );
@@ -496,38 +499,43 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         }
     }
 
-    private static void executeCreated(
+    private void executeCommand( XaCommand command )
+    {
+        commandExecutor.execute( command );
+    }
+
+    private void executeCreated(
             ArrayList<? extends Command>... commands )
     {
         for ( ArrayList<? extends Command> c : commands ) for ( Command command : c )
         {
             if ( command.isCreated() && !command.isDeleted() )
             {
-                command.execute();
+                executeCommand( command );
             }
         }
     }
 
-    private static void executeModified(
+    private void executeModified(
             ArrayList<? extends Command>... commands )
     {
         for ( ArrayList<? extends Command> c : commands ) for ( Command command : c )
         {
             if ( !command.isCreated() && !command.isDeleted() )
             {
-                command.execute();
+                executeCommand( command );
             }
         }
     }
 
-    private static void executeDeleted(
+    private void executeDeleted(
             ArrayList<? extends Command>... commands )
     {
         for ( ArrayList<? extends Command> c : commands ) for ( Command command : c )
         {
             if ( command.isDeleted() )
             {
-                command.execute();
+                executeCommand( command );
             }
         }
     }
@@ -542,28 +550,28 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             java.util.Collections.sort( propIndexCommands, sorter );
             for ( Command.PropertyIndexCommand command : propIndexCommands )
             {
-                command.execute();
+                executeCommand( command );
                 addPropertyIndexCommand( (int) command.getKey() );
             }
             // properties
             java.util.Collections.sort( propCommands, sorter );
             for ( Command.PropertyCommand command : propCommands )
             {
-                command.execute();
+                executeCommand( command );
                 removePropertyFromCache( command );
             }
             // reltypes
             java.util.Collections.sort( relTypeCommands, sorter );
             for ( Command.RelationshipTypeCommand command : relTypeCommands )
             {
-                command.execute();
+                executeCommand( command );
                 addRelationshipType( (int) command.getKey() );
             }
             // relationships
             java.util.Collections.sort( relCommands, sorter );
             for ( Command.RelationshipCommand command : relCommands )
             {
-                command.execute();
+                executeCommand( command );
                 removeRelationshipFromCache( command.getKey() );
                 if ( true /* doesn't work: command.isRemove(), the log doesn't contain the nodes */)
                 {
@@ -575,7 +583,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             java.util.Collections.sort( nodeCommands, sorter );
             for ( Command.NodeCommand command : nodeCommands )
             {
-                command.execute();
+                executeCommand( command );
                 removeNodeFromCache( command.getKey() );
             }
             neoStore.setRecoveredStatus( true );
@@ -583,7 +591,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             {
                 if ( neoStoreCommand != null )
                 {
-                    neoStoreCommand.execute();
+                    executeCommand( neoStoreCommand );
                     removeGraphPropertiesFromCache();
                 }
                 neoStore.setLastCommittedTx( getCommitTxId() );

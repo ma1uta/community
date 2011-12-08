@@ -40,10 +40,12 @@ import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.TxHook;
 import org.neo4j.kernel.impl.transaction.TxModule;
+import org.neo4j.kernel.impl.transaction.xaframework.CommandExecutor;
 import org.neo4j.kernel.impl.transaction.xaframework.DefaultLogBufferFactory;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBufferFactory;
 import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
 import org.neo4j.kernel.impl.transaction.xaframework.TxIdGeneratorFactory;
+import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
 import org.neo4j.kernel.impl.util.FileUtils;
 
 public class CommonFactories
@@ -203,5 +205,17 @@ public class CommonFactories
     public static LogBufferFactory defaultLogBufferFactory()
     {
         return new DefaultLogBufferFactory();
+    }
+    
+    public static CommandExecutor defaultCommandExecutor()
+    {
+        return new CommandExecutor()
+        {
+            @Override
+            public void execute( XaCommand command )
+            {
+                command.execute();
+            }
+        };
     }
 }

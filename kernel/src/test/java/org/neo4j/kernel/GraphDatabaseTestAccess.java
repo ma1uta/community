@@ -50,7 +50,8 @@ public class GraphDatabaseTestAccess extends AbstractGraphDatabase
                 idGenerators, CommonFactories.defaultRelationshipTypeCreator(),
                 CommonFactories.defaultTxIdGeneratorFactory(),
                 CommonFactories.defaultTxHook(),
-                CommonFactories.defaultLastCommittedTxIdSetter(), fileSystem );
+                CommonFactories.defaultLastCommittedTxIdSetter(), fileSystem,
+                CommonFactories.defaultCommandExecutor() );
         this.fileSystem = fileSystem;
     }
 
