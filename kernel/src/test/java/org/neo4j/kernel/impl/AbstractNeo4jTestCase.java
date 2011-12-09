@@ -167,7 +167,7 @@ public abstract class AbstractNeo4jTestCase
         this.tx = tx;
     }
 
-    public void newTransaction()
+    public Transaction newTransaction()
     {
         if ( tx != null )
         {
@@ -175,6 +175,7 @@ public abstract class AbstractNeo4jTestCase
             tx.finish();
         }
         tx = graphDb.beginTx();
+        return tx;
     }
 
     public void commit()

@@ -36,7 +36,7 @@ public class RelationshipTypeStore extends AbstractNameStore<RelationshipTypeRec
 {
     public static final String TYPE_DESCRIPTOR = "RelationshipTypeStore";
     static final String FILE_NAME = ".relationshiptypestore.db";
-    private static final int RECORD_SIZE = 1/*inUse*/ + 5/*nameId*/;
+    private static final int RECORD_SIZE = 1/*inUse*/ + 4/*nameId*/;
 
     public RelationshipTypeStore( String fileName, Map<?,?> config )
     {

@@ -36,7 +36,6 @@ import javax.ws.rs.core.Response.Status;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
@@ -83,20 +82,6 @@ public class IndexNodeFunctionalTest extends AbstractRestFunctionalTestBase
             tx.finish();
         }
         return node.getId();
-    }
-
-    /**
-     * List node indexes (empty result). This is an example covering the case
-     * where no node index exists.
-     */
-    @Documented
-    @Test
-    @Ignore( "Unreliable since the server is shared and if an auto-index is used before this point it will fail" )
-    public void shouldGetEmptyListOfNodeIndexesWhenNoneExist() throws PropertyValueException
-    {
-        gen.get()
-                .expectedStatus( 204 )
-                .get( functionalTestHelper.nodeIndexUri() );
     }
 
     /**
