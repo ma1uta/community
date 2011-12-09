@@ -69,7 +69,7 @@ public class BatchTransaction
     {
         txSize += count;
         total++;
-        if ( txSize >= MAX_SIZE )
+        if ( txSize >= maxSize )
         {
             if ( printProgress )
             {
