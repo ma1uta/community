@@ -24,7 +24,6 @@ import java.util.Map;
 
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.event.KernelEventHandler;
 import org.neo4j.graphdb.event.TransactionEventHandler;
 import org.neo4j.graphdb.index.IndexManager;
@@ -36,12 +35,12 @@ import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
  * and {@link IdGeneratorFactory}. Otherwise its functionality is equivalent to
  * {@link EmbeddedGraphDatabase}.
  */
-public class HighlyConfigurableGraphDatabase extends AbstractGraphDatabase
+public class GraphDatabaseTestAccess extends AbstractGraphDatabase
 {
     private final EmbeddedGraphDbImpl impl;
     protected final FileSystemAbstraction fileSystem;
 
-    public HighlyConfigurableGraphDatabase( String storeDir, Map<String, String> config,
+    public GraphDatabaseTestAccess( String storeDir, Map<String, String> config,
             IdGeneratorFactory idGenerators, FileSystemAbstraction fileSystem )
     {
         super( storeDir );
@@ -83,11 +82,11 @@ public class HighlyConfigurableGraphDatabase extends AbstractGraphDatabase
     {
         impl.shutdown();
     }
-
+    
     @Override
-    public Transaction beginTx()
+    public TransactionBuilder tx()
     {
-        return impl.beginTx();
+        return impl.tx();
     }
 
     @Override

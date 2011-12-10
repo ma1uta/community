@@ -33,16 +33,16 @@ class ExecutionEngineTest extends ExecutionEngineHelper {
 
   @Test def shouldGetReferenceNode() {
     val query = Query.
-      start(NodeById("node", Literal(0))).
-      returns(ValueReturnItem(EntityValue("node")))
+      start(NodeById("n", Literal(0))).
+      returns(ValueReturnItem(EntityValue("n")))
 
     val result = execute(query)
-    assertEquals(List(refNode), result.columnAs[Node]("node").toList)
+    assertEquals(List(refNode), result.columnAs[Node]("n").toList)
   }
 
   @Test def shouldGetRelationshipById() {
     val n = createNode()
-    val r = relate(n, refNode, "rel")
+    val r = relate(n, refNode, "KNOWS")
 
     val query = Query.
       start(RelationshipById("r", Literal(0))).
@@ -583,8 +583,10 @@ class ExecutionEngineTest extends ExecutionEngineHelper {
 
     val result = execute(query)
 
-    assertEquals(List("Sweden", "England", "Germany"), result.columnAs[String]("n.division").toList)
-    assertEquals(List(2, 1, 1), result.columnAs[Int]("count(*)").toList)
+    assertEquals(List(
+      Map("n.division" -> "Sweden", "count(*)" -> 2),
+      Map("n.division" -> "England", "count(*)" -> 1),
+      Map("n.division" -> "Germany", "count(*)" -> 1)), result.toList)
   }
 
   @Test def magicRelTypeWorksAsExpected() {
@@ -775,7 +777,7 @@ class ExecutionEngineTest extends ExecutionEngineHelper {
 
     val query = Query.start(NodeById("pA", a.getId), NodeById("pB", d.getId)).
       namedPaths(NamedPath("p", VarLengthRelatedTo("x", "pA", "pB", Some(1), Some(5), "rel", Direction.OUTGOING))).
-      where(AllInSeq(PathNodesValue(EntityValue("p")), "i", Equals(PropertyValue("i", "foo"), Literal("bar")))).
+      where(AllInIterable(PathNodesValue(EntityValue("p")), "i", Equals(PropertyValue("i", "foo"), Literal("bar")))).
       returns(ValueReturnItem(EntityValue("pB")))
 
     val result = execute(query)
@@ -1099,7 +1101,7 @@ where foafR is null
 return foaf, count(*)
 order by count(*)""")
 
-    assert(List(Map("foaf" -> d, "count(*)" -> 1), Map("foaf" -> e, "count(*)" -> 2)) === result.toList)
+    assert(Set(Map("foaf" -> d, "count(*)" -> 1), Map("foaf" -> e, "count(*)" -> 2)) === result.toSet)
   }
 
   @Test def shouldSplitOptionalMandatoryCleverly() {
@@ -1229,7 +1231,6 @@ return x, p
   @Test def shouldSupportMultipleRegexes() {
     val a = createNode(Map("name" -> "Andreas"))
 
-
     val result = parseAndExecute("""
 start a  = node(1)
 where a.name =~ /And.*/ AND a.name =~ /And.*/
@@ -1242,7 +1243,7 @@ return a
   @Test def shouldSupportColumnRenaming() {
     val a = createNode(Map("name" -> "Andreas"))
 
-    val result = parseAndExecute("""
+    val result: ExecutionResult = parseAndExecute("""
 start a  = node(1)
 return a as OneLove
 """)
@@ -1348,6 +1349,21 @@ return p
 """)
 
     assert(2 === result.toList.size)
+  }
+
+  @Test def shouldExcludeConnectedNodes() {
+    val a = createNode()
+    val b = createNode()
+    val c = createNode()
+    relate(a, b)
+
+    val result = parseAndExecute("""
+start a  = node(1), other = node(2,3)
+where not(a-->other)
+return other
+""")
+
+    assert(List(Map("other" -> c)) === result.toList)
   }
 
   @Test def shouldThrowNiceErrorMessageWhenPropertyIsMissing() {

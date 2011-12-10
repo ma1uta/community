@@ -37,9 +37,8 @@ import javax.transaction.TransactionManager;
 import org.neo4j.graphdb.NotInTransactionException;
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.graphdb.event.TransactionData;
+import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
-import org.neo4j.kernel.impl.nioneo.store.PropertyIndexData;
-import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeData;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.LockType;
 import org.neo4j.kernel.impl.util.ArrayMap;
@@ -115,15 +114,29 @@ public class LockReleaser
         this.propertyIndexManager = propertyIndexManager;
     }
 
-    private static class LockElement
+    public static class LockElement
     {
-        Object resource;
-        LockType lockType;
+        private final Object resource;
+        private final LockType lockType;
+        private boolean released;
 
         LockElement( Object resource, LockType type )
         {
             this.resource = resource;
             this.lockType = type;
+        }
+        
+        public boolean releaseIfAcquired( LockManager lockManager )
+        {
+            if ( released ) return false;
+            switch ( lockType )
+            {   // TODO Invert into LockType enum
+            case WRITE: lockManager.releaseWriteLock( resource, null ); break;
+            case READ: lockManager.releaseReadLock( resource, null ); break;
+            default: throw new RuntimeException( "Invalid lock type" );
+            }
+            released = true;
+            return true;
         }
     }
 
@@ -137,14 +150,16 @@ public class LockReleaser
      *            type of lock (READ or WRITE)
      * @throws NotInTransactionException
      */
-    public void addLockToTransaction( Object resource, LockType type )
+    public LockElement addLockToTransaction( Object resource, LockType type )
         throws NotInTransactionException
     {
         Transaction tx = getTransaction();
         List<LockElement> lockElements = lockMap.get( tx );
         if ( lockElements != null )
         {
-            lockElements.add( new LockElement( resource, type ) );
+            LockElement element = new LockElement( resource, type );
+            lockElements.add( element );
+            return element;
         }
         else
         {
@@ -159,11 +174,13 @@ public class LockReleaser
                 {
                     lockManager.releaseReadLock( resource, null );
                 }
-                return;
+                // TODO: huh, no transaction?
+                return null;
             }
             lockElements = new ArrayList<LockElement>();
             lockMap.put( tx, lockElements );
-            lockElements.add( new LockElement( resource, type ) );
+            LockElement element = new LockElement( resource, type );
+            lockElements.add( element );
             // we have to have a synchronization hook for read only transaction,
             // write locks can be taken in read only transactions (ex:
             // transactions that perform write operations that cancel each other
@@ -178,6 +195,7 @@ public class LockReleaser
                 throw new TransactionFailureException(
                     "Failed to register lock release synchronization hook", e );
             }
+            return element;
         }
     }
 
@@ -334,14 +352,7 @@ public class LockReleaser
             {
                 try
                 {
-                    if ( lockElement.lockType == LockType.READ )
-                    {
-                        lockManager.releaseReadLock( lockElement.resource, null );
-                    }
-                    else if ( lockElement.lockType == LockType.WRITE )
-                    {
-                        lockManager.releaseWriteLock( lockElement.resource, tx );
-                    }
+                    lockElement.releaseIfAcquired( lockManager );
                 }
                 catch ( Exception e )
                 {
@@ -726,7 +737,7 @@ public class LockReleaser
         }
     }
 
-    public void addRelationshipType( RelationshipTypeData type )
+    public void addRelationshipType( NameData type )
     {
         if ( nodeManager != null )
         {
@@ -734,7 +745,7 @@ public class LockReleaser
         }
     }
 
-    public void addPropertyIndex( PropertyIndexData index )
+    public void addPropertyIndex( NameData index )
     {
         if ( nodeManager != null )
         {

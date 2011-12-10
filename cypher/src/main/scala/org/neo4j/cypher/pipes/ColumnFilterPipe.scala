@@ -20,12 +20,13 @@
 package org.neo4j.cypher.pipes
 
 import org.neo4j.cypher.commands.ReturnItem
-import org.neo4j.cypher.ExecutionResult
 import java.lang.String
+import collection.Seq
 
-class ColumnFilterPipe(source: Pipe, returnItems: Seq[ReturnItem], val columns:List[String]) extends Pipe with ExecutionResult {
-  val returnItemNames = returnItems.map( _.columnName )
-  val symbols = source.symbols.filter(returnItemNames:_*)
+class ColumnFilterPipe(source: Pipe, val returnItems: Seq[ReturnItem])
+  extends PipeWithSource(source) {
+  val returnItemNames = returnItems.map(_.columnName)
+  val symbols = source.symbols.filter(returnItemNames: _*)
 
   def foreach[U](f: (Map[String, Any]) => U) {
     source.foreach(row => {
@@ -35,6 +36,8 @@ class ColumnFilterPipe(source: Pipe, returnItems: Seq[ReturnItem], val columns:L
   }
 
   override def executionPlan(): String = {
-    source.executionPlan() + "\r\n" + "ColumnFilter([" + source.symbols.keys + "] => [" + columns.mkString(",") + "])"
+    source.executionPlan() + "\r\n" + "ColumnFilter([" + source.symbols.keys + "] => [" + returnItemNames.mkString(",") + "])"
   }
+
+  def dependencies = Seq()
 }

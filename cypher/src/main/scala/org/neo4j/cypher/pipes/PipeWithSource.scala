@@ -17,26 +17,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.nioneo.store;
+package org.neo4j.cypher.pipes
 
-public class PropertyIndexData
-{
-    private final int keyId;
-    private final String value;
+import org.neo4j.cypher.symbols.Identifier
+import collection.Seq
 
-    public PropertyIndexData( int keyId, String value )
-    {
-        this.keyId = keyId;
-        this.value = value;
-    }
 
-    public int getKeyId()
-    {
-        return this.keyId;
-    }
+abstract class PipeWithSource(source: Pipe) extends Pipe with Dependant {
+  dependencies.foreach(source.symbols.assertHas(_))
+  def dependencies: Seq[Identifier]
+}
 
-    public String getValue()
-    {
-        return this.value;
-    }
+trait Dependant {
+  def dependencies: Seq[Identifier]
 }

@@ -20,12 +20,11 @@
 package org.neo4j.cypher.pipes
 
 import org.neo4j.graphalgo.GraphAlgoFactory
-import org.neo4j.cypher.commands.ShortestPath
 import java.lang.String
 import org.neo4j.graphdb.{Expander, Node}
+import org.neo4j.cypher.commands.ShortestPath
 
 class SingleShortestPathPipe(source: Pipe, ast: ShortestPath) extends ShortestPathPipe(source,ast) {
-
   override protected def findResult[U](expander: Expander, start: Node, end: Node, f: (Map[String, Any]) => U, depth: Int, m: Map[String, Any]) {
     val finder = GraphAlgoFactory.shortestPath(expander, depth)
     val findSinglePath = finder.findSinglePath(start, end)

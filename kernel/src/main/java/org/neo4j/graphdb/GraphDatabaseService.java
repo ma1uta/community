@@ -85,7 +85,7 @@ public interface GraphDatabaseService
      * @throws NotFoundException if unable to get the reference node
      */
     public Node getReferenceNode();
-
+    
     /**
      * Returns all nodes in the graph.
      * 

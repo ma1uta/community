@@ -17,38 +17,26 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.cypher.commands
+package org.neo4j.kernel.impl.nioneo.store;
 
-import org.scalatest.Assertions
-import org.junit.Test
-import org.neo4j.cypher.symbols.{SymbolTable, Identifier}
+public class NameData
+{
+    private final int id;
+    private final String name;
 
-class SplittingClauseTest extends Assertions {
+    public NameData( int id, String name )
+    {
+        this.id = id;
+        this.name = name;
+    }
 
-  @Test def cantDivideMore() {
-    val x = Equals(Literal("a"), Literal("a"))
-    assert(x.atoms === Seq(x))
-  }
+    public int getId()
+    {
+        return this.id;
+    }
 
-  @Test def andCanBeSplitInTwo() {
-    val x = And(True(), True())
-    assert(x.atoms === Seq(True(), True()))
-  }
-
-  @Test def or_cannot_be_split() {
-    val x = Or(True(), True())
-    assert(x.atoms === Seq(x))
-  }
-
-  @Test def more_complex_splitting() {
-    val x = And(
-      Equals(
-        Literal(1), Literal(2)),
-      Or(
-        True(), Not(True())
-      )
-    )
-
-    assert(x.atoms === Seq(Equals(Literal(1), Literal(2)), Or(True(), Not(True()))))
-  }
+    public String getName()
+    {
+        return this.name;
+    }
 }

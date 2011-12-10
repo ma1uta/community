@@ -28,6 +28,8 @@ class SymbolTable(val identifiers: Identifier*) {
     assertHas(Identifier(name, typ))
   }
 
+  def contains(identifier:Identifier) = identifiers.contains(identifier)
+
   def assertHas(expected: Identifier) {
     identifiers.find(_.name == expected.name) match {
       case None => throwMissingKey(expected.name)
@@ -37,10 +39,12 @@ class SymbolTable(val identifiers: Identifier*) {
     }
   }
 
+  def assertThat(id:Identifier):AnyType = actualIdentifier(id).typ
+
   def keys = identifiers.map(_.name)
 
   def throwMissingKey(key: String) {
-    throw new SyntaxException("Unknown identifier \"" + key + "\".")
+    throw new SyntaxException("Unknown identifier `" + key + "`.")
   }
 
   def filter(keys: String*): SymbolTable = {
@@ -66,12 +70,21 @@ class SymbolTable(val identifiers: Identifier*) {
     new SymbolTable(b.toSeq: _*)
   }
 
+  def actualIdentifier(newIdentifier:Identifier):Identifier = get(newIdentifier.name) match {
+    case None => newIdentifier
+    case Some(existing) => handleMatched(newIdentifier, existing)
+  }
+
   private def handleMatched(newIdentifier: Identifier, existingIdentifier: Identifier): Identifier = {
     newIdentifier match {
-      case _ => if (newIdentifier.typ.isAssignableFrom(existingIdentifier.typ)) {
-        existingIdentifier
-      } else {
-        throw new SyntaxException("Identifier " + existingIdentifier + " already defined with different type " + newIdentifier)
+      case _ => {
+        val a = existingIdentifier.typ
+        val b = newIdentifier.typ
+        if (b.isAssignableFrom(a)) {
+          existingIdentifier
+        } else {
+          throw new SyntaxException("Identifier " + existingIdentifier + " already defined with different type " + newIdentifier)
+        }
       }
     }
   }

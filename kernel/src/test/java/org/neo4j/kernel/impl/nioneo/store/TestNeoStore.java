@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
+import javax.transaction.TransactionManager;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
@@ -56,6 +57,7 @@ import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaConnection;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
 import org.neo4j.kernel.impl.transaction.LockManager;
+import org.neo4j.kernel.impl.transaction.PlaceboTm;
 import org.neo4j.kernel.impl.transaction.XidImpl;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBufferFactory;
 import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
@@ -161,6 +163,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
                     LogBufferFactory.class, CommonFactories.defaultLogBufferFactory(),
                     TxIdGenerator.class, TxIdGenerator.DEFAULT,
                     StringLogger.class, StringLogger.DEV_NULL,
+                    TransactionManager.class, new PlaceboTm(),
                     "store_dir", path(),
                     "neo_store", file( "neo" ),
                     "logical_log", file( "nioneo_logical.log" ) ) );
@@ -647,13 +650,13 @@ public class TestNeoStore extends AbstractNeo4jTestCase
     private void validateRelTypes( int relType1, int relType2 )
         throws IOException
     {
-        RelationshipTypeData data = rtStore.getRelationshipType( relType1 );
+        NameData data = rtStore.getName( relType1 );
         assertEquals( relType1, data.getId() );
         assertEquals( "relationshiptype1", data.getName() );
-        data = rtStore.getRelationshipType( relType2 );
+        data = rtStore.getName( relType2 );
         assertEquals( relType2, data.getId() );
         assertEquals( "relationshiptype2", data.getName() );
-        RelationshipTypeData allData[] = rtStore.getRelationshipTypes();
+        NameData allData[] = rtStore.getNames( Integer.MAX_VALUE );
         assertEquals( 2, allData.length );
         for ( int i = 0; i < 2; i++ )
         {

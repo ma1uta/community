@@ -77,8 +77,6 @@ include::update-node-properties.txt[]
 
 include::get-properties-for-node.txt[]
 
-include::get-properties-for-node-(empty-result).txt[]
-
 include::property-values-can-not-be-null.txt[]
 
 include::property-values-can-not-be-nested.txt[]
@@ -123,8 +121,6 @@ include::create-node-index-with-configuration.txt[]
 include::delete-node-index.txt[]
 
 include::list-node-indexes.txt[]
-
-include::list-node-indexes-(empty-result).txt[]
 
 include::add-node-to-index.txt[]
 
@@ -202,6 +198,24 @@ include::paging-through-the-results-of-a-paged-traverser.txt[]
 include::paged-traverser-page-size.txt[]
 
 include::paged-traverser-timeout.txt[]
+
+
+[[rest-api-cypher]]
+== Cypher queries ==
+
+The Neo4j REST API allows querying with the <<cypher-query-lang>>.
+The results are returned as a list of string headers (+columns+), and a +data+ part,
+consisting of a list of all rows, every row consisting of a list of REST representations
+of the field value - +Node+, +Relationship+, +Path+ or any simple value like +String+.
+
+include::send-a-query.txt[]
+
+include::return-paths.txt[]
+
+include::send-queries-with-parameters.txt[]
+
+include::server-errors.txt[]
+
 
 [[rest-api-graph-algos]]
 == Built-in Graph Algorithms ==

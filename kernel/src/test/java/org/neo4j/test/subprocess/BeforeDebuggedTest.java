@@ -17,26 +17,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.nioneo.store;
+package org.neo4j.test.subprocess;
 
-public class RelationshipTypeData
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface BeforeDebuggedTest
 {
-    private final String name;
-    private final int id;
-
-    public RelationshipTypeData( int id, String name )
-    {
-        this.id = id;
-        this.name = name;
-    }
-
-    public int getId()
-    {
-        return this.id;
-    }
-
-    public String getName()
-    {
-        return this.name;
-    }
 }
