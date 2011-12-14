@@ -358,7 +358,7 @@ public class LockReleaser
     
     public ArrayMap<String, SetAndDirectionCounter> getCowRelationshipRemoveMap( NodeImpl node )
     {
-        PrimitiveElement primitiveElement = getPrimitiveElement( false );
+        PrimitiveElement primitiveElement = cowMap.get( getTransaction() );
         if ( primitiveElement == null ) return null;
         CowNodeElement element = primitiveElement.nodeElement( node.getId(), false );
         if ( element == null ) return null;
@@ -367,7 +367,7 @@ public class LockReleaser
     
     public SetAndDirectionCounter getCowRelationshipRemoveMap( NodeImpl node, String type )
     {
-        PrimitiveElement primitiveElement = getPrimitiveElement( false );
+        PrimitiveElement primitiveElement = cowMap.get( getTransaction() );
         if ( primitiveElement == null ) return null;
         CowNodeElement element = primitiveElement.nodeElement( node.getId(), false );
         if ( element == null ) return null;

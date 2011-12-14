@@ -99,11 +99,6 @@ public class PersistenceManager
         return getReadOnlyResourceIfPossible().loadPropertyIndexes( maxCount );
     }
 
-//    public RelationshipLoadingPosition getRelationshipChainPosition( long nodeId )
-//    {
-//        return getReadOnlyResourceIfPossible().getRelationshipChainPosition( nodeId );
-//    }
-
     public Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships(
             long nodeId, RelationshipLoadingPosition position, DirectionWrapper direction, RelationshipType[] types )
     {

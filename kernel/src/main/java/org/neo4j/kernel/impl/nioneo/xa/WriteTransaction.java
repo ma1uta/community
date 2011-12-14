@@ -1040,48 +1040,16 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     public ArrayMap<Integer,PropertyData> relLoadProperties( long relId,
             boolean light )
     {
-        RelationshipRecord relRecord = getCachedRelationshipRecord( relId );
+        RelationshipRecord relRecord = getRelationshipRecord( relId, true );
         if ( relRecord != null && relRecord.isCreated() ) return null;
-        if ( relRecord != null )
-        {
-            if ( !relRecord.inUse() && !light )
-            {
-                throw new IllegalStateException( "Relationship[" + relId +
-                        "] has been deleted in this tx" );
-            }
-        }
-        relRecord = getRelationshipStore().getRecord( relId );
-        if ( !relRecord.inUse() )
-        {
-            throw new InvalidRecordException( "Relationship[" + relId +
-                "] not in use" );
-        }
         return ReadTransaction.loadProperties( getPropertyStore(), relRecord.getNextProp() );
     }
 
     @Override
     public ArrayMap<Integer,PropertyData> nodeLoadProperties( long nodeId, boolean light )
     {
-        NodeRecord nodeRecord = getCachedNodeRecord( nodeId );
-        if ( nodeRecord != null && nodeRecord.isCreated() )
-        {
-            return null;
-        }
-        if ( nodeRecord != null )
-        {
-            if ( !nodeRecord.inUse() && !light )
-            {
-                throw new IllegalStateException( "Node[" + nodeId +
-                        "] has been deleted in this tx" );
-            }
-        }
-//        nodeRecord = getNodeStore().getRecord( nodeId );
-//        if ( !nodeRecord.inUse() )
-//        {
-//            throw new InvalidRecordException( "Node[" + nodeId +
-//                "] not in use" );
-//        }
-        return ReadTransaction.loadProperties( getPropertyStore(), nodeRecord.getCommittedNextProp() );
+        NodeRecord nodeRecord = getNodeRecord( nodeId, light );
+        return ReadTransaction.loadProperties( getPropertyStore(), nodeRecord.getNextProp() );
     }
 
     public Object propertyGetValueOrNull( PropertyBlock block )
@@ -1539,7 +1507,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             cacheRelationshipGroupRecord( groupId, record );
         }
         if ( checkInUse && !record.inUse() ) throw new IllegalStateException( "RelationshipGroup[" + groupId +
-                " is deleted" );
+                "] is deleted" );
         return record;
     }
 

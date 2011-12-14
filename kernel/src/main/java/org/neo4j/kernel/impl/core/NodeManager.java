@@ -406,28 +406,8 @@ public class NodeManager
 
     private Node getNodeByIdOrNull( long nodeId )
     {
-        NodeImpl node = nodeCache.get( nodeId );
-        if ( node != null )
-        {
-            return new NodeProxy( nodeId, this );
-        }
-        ReentrantLock loadLock = lockId( nodeId );
-        try
-        {
-            if ( nodeCache.get( nodeId ) != null )
-            {
-                return new NodeProxy( nodeId, this );
-            }
-            NodeRecord record = persistenceManager.loadLightNode( nodeId );
-            if ( record == null ) return null;
-            node = new NodeImpl( nodeId, record.getCommittedNextRel(), record.getCommittedNextProp() );
-            nodeCache.put( nodeId, node );
-            return new NodeProxy( nodeId, this );
-        }
-        finally
-        {
-            loadLock.unlock();
-        }
+        NodeImpl node = getLightNode( nodeId );
+        return node != null ? (Node)node.asProxy( this ) : null;
     }
     
     public Node getNodeById( long nodeId ) throws NotFoundException
@@ -472,8 +452,34 @@ public class NodeManager
 
     NodeImpl getLightNode( long nodeId )
     {
-        return getNodeForProxy( nodeId );
-    }
+        NodeImpl node = nodeCache.get( nodeId );
+        if ( node != null )
+        {
+            return node;
+        }
+        ReentrantLock loadLock = lockId( nodeId );
+        try
+        {
+            node = nodeCache.get( nodeId );
+            if ( node != null )
+            {
+                return node;
+            }
+            NodeRecord record = persistenceManager.loadLightNode( nodeId );
+            if ( record == null ) return null;
+            long nextRel = record.getCommittedNextRel();
+            long nextProp = record.getCommittedNextProp();
+            node = record.isSuperNode() ?
+                    new SuperNodeImpl( nodeId, nextRel, nextProp ) :
+                    new NodeImpl( nodeId, nextRel, nextProp );
+            nodeCache.put( nodeId, node );
+            return node;
+        }
+        finally
+        {
+            loadLock.unlock();
+        }
+   }
 
     NodeImpl getNodeForProxy( long nodeId )
     {
@@ -635,11 +641,6 @@ public class NodeManager
     {
         return persistenceManager.loadPropertyValue( property );
     }
-
-//    RelationshipLoadingPosition getRelationshipChainPosition( NodeImpl node )
-//    {
-//        return persistenceManager.getRelationshipChainPosition( node.getId() );
-//    }
 
     Pair<ArrayMap<String,RelIdArray>,Map<Long,RelationshipImpl>> getMoreRelationships( NodeImpl node,
             DirectionWrapper direction, RelationshipType[] types )
