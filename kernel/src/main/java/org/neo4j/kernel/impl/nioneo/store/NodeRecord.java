@@ -21,13 +21,15 @@ package org.neo4j.kernel.impl.nioneo.store;
 
 public class NodeRecord extends PrimitiveRecord
 {
-    private long nextRel = Record.NO_NEXT_RELATIONSHIP.intValue();
+    private long committedNextRel;
+    private long nextRel;
     private boolean superNode;
-
-    public NodeRecord( long id, boolean superNode )
+    
+    public NodeRecord( long id, boolean superNode, long nextRel, long nextProp )
     {
-        super( id );
+        super( id, nextProp );
         this.superNode = superNode;
+        this.committedNextRel = this.nextRel = nextRel;
     }
 
     public long getNextRel()
@@ -38,6 +40,11 @@ public class NodeRecord extends PrimitiveRecord
     public void setNextRel( long nextRel )
     {
         this.nextRel = nextRel;
+    }
+    
+    public long getCommittedNextRel()
+    {
+        return isCreated() ? nextRel : committedNextRel;
     }
 
     @Override

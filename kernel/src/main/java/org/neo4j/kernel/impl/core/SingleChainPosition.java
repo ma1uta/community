@@ -33,6 +33,13 @@ public class SingleChainPosition implements RelationshipLoadingPosition
     }
     
     @Override
+    public void updateFirst( long first )
+    {
+        // TODO assert that it's the first position in the chain
+        this.position = first;
+    }
+    
+    @Override
     public long position( DirectionWrapper direction, RelationshipType[] types )
     {
         return this.position;
@@ -49,10 +56,5 @@ public class SingleChainPosition implements RelationshipLoadingPosition
     public boolean hasMore( DirectionWrapper direction, RelationshipType[] types )
     {
         return position != Record.NO_NEXT_RELATIONSHIP.intValue();
-    }
-    
-    @Override
-    public void resolveRawTypes( NodeManager nodeManager )
-    {
     }
 }

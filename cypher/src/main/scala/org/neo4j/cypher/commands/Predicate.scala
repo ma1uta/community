@@ -20,11 +20,11 @@
 package org.neo4j.cypher.commands
 
 import java.lang.String
-import org.neo4j.cypher.pipes.Dependant
 import collection.Seq
 import org.neo4j.cypher.symbols._
 import scala.collection.JavaConverters._
 import org.neo4j.graphdb.{DynamicRelationshipType, Node, Direction, PropertyContainer}
+import org.neo4j.cypher.internal.pipes.Dependant
 
 abstract class Predicate extends Dependant {
   def ++(other: Predicate): Predicate = And(this, other)
@@ -74,7 +74,7 @@ case class Not(a: Predicate) extends Predicate {
   def containsIsNull: Boolean = a.containsIsNull
 }
 
-case class HasRelationship(from: Value, to: Value, dir: Direction, relType: Option[String]) extends Predicate {
+case class HasRelationshipTo(from: Expression, to: Expression, dir: Direction, relType: Option[String]) extends Predicate {
   def isMatch(m: Map[String, Any]): Boolean = {
     val fromNode = from(m).asInstanceOf[Node]
     val toNode = to(m).asInstanceOf[Node]
@@ -91,7 +91,23 @@ case class HasRelationship(from: Value, to: Value, dir: Direction, relType: Opti
   def dependencies: Seq[Identifier] = from.dependencies(NodeType()) ++ to.dependencies(NodeType())
 }
 
-case class IsNull(value: Value) extends Predicate {
+case class HasRelationship(from: Expression, dir: Direction, relType: Option[String]) extends Predicate {
+  def isMatch(m: Map[String, Any]): Boolean = {
+    val fromNode = from(m).asInstanceOf[Node]
+    relType match {
+      case None => fromNode.getRelationships(dir).iterator().hasNext
+      case Some(typ) => fromNode.getRelationships(dir, DynamicRelationshipType.withName(typ)).iterator().hasNext
+    }
+  }
+
+  def atoms: Seq[Predicate] = Seq(this)
+
+  def containsIsNull: Boolean = false
+
+  def dependencies: Seq[Identifier] = from.dependencies(NodeType())
+}
+
+case class IsNull(value: Expression) extends Predicate {
   def isMatch(m: Map[String, Any]): Boolean = value(m) == null
 
   def dependencies: Seq[Identifier] = value.dependencies(AnyType())
@@ -115,11 +131,11 @@ case class True() extends Predicate {
   def containsIsNull: Boolean = false
 }
 
-case class Has(property: PropertyValue) extends Predicate {
+case class Has(property: Property) extends Predicate {
   def isMatch(m: Map[String, Any]): Boolean = property match {
-    case PropertyValue(identifier, propertyName) => {
+    case Property(identifier, propertyName) => {
       val propContainer = m(identifier).asInstanceOf[PropertyContainer]
-      propContainer.hasProperty(propertyName)
+      propContainer != null && propContainer.hasProperty(propertyName)
     }
   }
 
@@ -132,7 +148,7 @@ case class Has(property: PropertyValue) extends Predicate {
   def containsIsNull: Boolean = false
 }
 
-case class RegularExpression(a: Value, regex: Value) extends Predicate {
+case class RegularExpression(a: Expression, regex: Expression) extends Predicate {
   def isMatch(m: Map[String, Any]): Boolean = {
     val value = a.apply(m).asInstanceOf[String]
     regex(m).toString.r.pattern.matcher(value).matches()

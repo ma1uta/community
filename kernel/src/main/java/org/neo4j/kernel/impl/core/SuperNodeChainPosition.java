@@ -31,28 +31,20 @@ import org.neo4j.kernel.impl.util.DirectionWrapper;
 public class SuperNodeChainPosition implements RelationshipLoadingPosition
 {
     private final Map<String, RelationshipLoadingPosition> positions = new HashMap<String, RelationshipLoadingPosition>();
-    private final Map<Integer, RelationshipGroupRecord> rawGroups;
-    private Map<String, RelationshipGroupRecord> groups;
-    private RelationshipType[] types;
+    private final Map<String, RelationshipGroupRecord> groups;
+    private final RelationshipType[] types;
     private RelationshipLoadingPosition currentPosition;
     
-    public SuperNodeChainPosition( Map<Integer, RelationshipGroupRecord> groups )
+    public SuperNodeChainPosition( RelationshipType[] types, Map<String, RelationshipGroupRecord> groups )
     {
-        this.rawGroups = groups;
+        this.types = types;
+        this.groups = groups;
     }
     
     @Override
-    public void resolveRawTypes( NodeManager nodeManager )
+    public void updateFirst( long first )
     {
-        groups = new HashMap<String, RelationshipGroupRecord>();
-        types = new RelationshipType[rawGroups.size()];
-        int i = 0;
-        for ( Map.Entry<Integer, RelationshipGroupRecord> entry : rawGroups.entrySet() )
-        {
-            RelationshipType type = nodeManager.getRelationshipTypeById( entry.getKey() );
-            groups.put( type.name(), entry.getValue() );
-            types[i++] = type;
-        }
+        // TODO here we need relationship groups for any new
     }
     
     @Override
@@ -77,7 +69,7 @@ public class SuperNodeChainPosition implements RelationshipLoadingPosition
         if ( position == null )
         {
             RelationshipGroupRecord record = groups.get( type.name() );
-            position = record != null ? new TypePosition( record ) : EMPTY_POSITION;
+            position = record != null ? new TypePosition( record ) : RelationshipLoadingPosition.EMPTY;
             positions.put( type.name(), position );
         }
         return position;
@@ -103,33 +95,6 @@ public class SuperNodeChainPosition implements RelationshipLoadingPosition
         return false;
     }
     
-    private static final RelationshipLoadingPosition EMPTY_POSITION = new RelationshipLoadingPosition()
-    {
-        @Override
-        public void resolveRawTypes( NodeManager nodeManager )
-        {
-            throw new UnsupportedOperationException();
-        }
-        
-        @Override
-        public long position( DirectionWrapper direction, RelationshipType[] types )
-        {
-            return Record.NO_NEXT_RELATIONSHIP.intValue();
-        }
-        
-        @Override
-        public long nextPosition( long position, DirectionWrapper direction, RelationshipType[] types )
-        {
-            return Record.NO_NEXT_RELATIONSHIP.intValue();
-        }
-        
-        @Override
-        public boolean hasMore( DirectionWrapper direction, RelationshipType[] types )
-        {
-            return false;
-        }
-    };
-    
     private static class TypePosition implements RelationshipLoadingPosition
     {
         private final EnumMap<DirectionWrapper, RelationshipLoadingPosition> directions =
@@ -145,11 +110,11 @@ public class SuperNodeChainPosition implements RelationshipLoadingPosition
         }
         
         @Override
-        public void resolveRawTypes( NodeManager nodeManager )
+        public void updateFirst( long first )
         {
             throw new UnsupportedOperationException();
         }
-
+        
         @Override
         public long position( DirectionWrapper direction, RelationshipType[] types )
         {

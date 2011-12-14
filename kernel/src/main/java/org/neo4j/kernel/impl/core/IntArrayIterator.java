@@ -123,7 +123,7 @@ class IntArrayIterator extends PrefetchingIterator<Relationship> implements Iter
                             {
                                 SetAndDirectionCounter remove = nodeManager.getCowRelationshipRemoveMap( fromNode, type );
                                 itr = remove == null ? ids.iterator( direction ) : new CombinedRelIdIterator( type,
-                                        direction, ids, null, remove != null ? remove.relationshipRemoveMap : null );
+                                        direction, ids, null, remove != null ? remove.set : null );
                                 newRels.put( type, itr );
                             }
                             else

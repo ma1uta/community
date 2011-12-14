@@ -20,15 +20,41 @@
 package org.neo4j.kernel.impl.core;
 
 import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.kernel.impl.nioneo.store.Record;
 import org.neo4j.kernel.impl.util.DirectionWrapper;
 
 public interface RelationshipLoadingPosition
 {
+    void updateFirst( long first );
+    
     long position( DirectionWrapper direction, RelationshipType[] types );
     
     long nextPosition( long position, DirectionWrapper direction, RelationshipType[] types );
     
     boolean hasMore( DirectionWrapper direction, RelationshipType[] types );
-    
-    void resolveRawTypes( NodeManager nodeManager );
+
+    public static final RelationshipLoadingPosition EMPTY = new RelationshipLoadingPosition()
+    {
+        public void updateFirst( long first )
+        {
+        }
+        
+        @Override
+        public long position( DirectionWrapper direction, RelationshipType[] types )
+        {
+            return Record.NO_NEXT_RELATIONSHIP.intValue();
+        }
+        
+        @Override
+        public long nextPosition( long position, DirectionWrapper direction, RelationshipType[] types )
+        {
+            return Record.NO_NEXT_RELATIONSHIP.intValue();
+        }
+        
+        @Override
+        public boolean hasMore( DirectionWrapper direction, RelationshipType[] types )
+        {
+            return false;
+        }
+    };
 }

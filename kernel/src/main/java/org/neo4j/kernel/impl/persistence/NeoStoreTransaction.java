@@ -27,8 +27,9 @@ import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.core.RelationshipLoadingPosition;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
-import org.neo4j.kernel.impl.nioneo.store.NodeState;
+import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
+import org.neo4j.kernel.impl.nioneo.store.RelationshipGroupRecord;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.util.ArrayMap;
@@ -168,7 +169,7 @@ public interface NeoStoreTransaction
      * @param id The id of the node to load.
      * @return True iff the node record can be found.
      */
-    public NodeState nodeLoadLight( long id );
+    public NodeRecord nodeLoadLight( long id );
 
     /**
      * Attempts to load the value off the store forthe given PropertyData
@@ -293,7 +294,7 @@ public interface NeoStoreTransaction
      */
     public void createRelationshipType( int id, String name );
 
-    public RelationshipLoadingPosition getRelationshipChainPosition( long nodeId );
+    public Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( long node, long firstGroup );
 
     /*
      * List<Iterable<RelationshipRecord>> is a list with three items:

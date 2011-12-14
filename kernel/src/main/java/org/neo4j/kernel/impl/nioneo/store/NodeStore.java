@@ -84,7 +84,8 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         FileSystemAbstraction fileSystem = (FileSystemAbstraction) config.get( FileSystemAbstraction.class );
         createEmptyStore( fileName, buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR ), idGeneratorFactory, fileSystem );
         NodeStore store = new NodeStore( fileName, config );
-        NodeRecord nodeRecord = new NodeRecord( store.nextId(), false );
+        NodeRecord nodeRecord = new NodeRecord( store.nextId(), false,
+                Record.NO_NEXT_RELATIONSHIP.intValue(), Record.NO_NEXT_PROPERTY.intValue() );
         nodeRecord.setInUse( true );
         store.updateRecord( nodeRecord );
         store.close();
@@ -113,7 +114,8 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         }
         catch ( InvalidRecordException e )
         {
-            return new NodeRecord( id, false ); // inUse=false by default
+            return new NodeRecord( id, false,
+                    Record.NO_NEXT_RELATIONSHIP.intValue(), Record.NO_NEXT_PROPERTY.intValue() ); // inUse=false by default
         }
         
         try
@@ -175,8 +177,8 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
             releaseWindow( window );
         }
     }
-    
-    public NodeState loadLightNode( long id )
+
+    public NodeRecord loadLightNode( long id )
     {
         PersistenceWindow window = null;
         try
@@ -186,17 +188,12 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         catch ( InvalidRecordException e )
         {
             // OK, id too high
-            return NodeState.NON_EXISTENT;
+            return null;
         }
 
         try
         {
-            NodeRecord record = getRecord( id, window, RecordLoad.CHECK );
-            if ( record == null )
-            {
-                return NodeState.NON_EXISTENT;
-            }
-            return record.isSuperNode() ? NodeState.SUPER : NodeState.NORMAL;
+            return getRecord( id, window, RecordLoad.CHECK );
         }
         finally
         {
@@ -235,10 +232,9 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         // [    ,   x] is super node
         byte extra = buffer.get();
 
-        NodeRecord nodeRecord = new NodeRecord( id, (extra & 0x1) > 0 );
+        NodeRecord nodeRecord = new NodeRecord( id, (extra & 0x1) > 0,
+                longFromIntAndMod( nextRel, relModifier ), longFromIntAndMod( nextProp, propModifier ) );
         nodeRecord.setInUse( inUse );
-        nodeRecord.setNextRel( longFromIntAndMod( nextRel, relModifier ) );
-        nodeRecord.setNextProp( longFromIntAndMod( nextProp, propModifier ) );
         return nodeRecord;
     }
 

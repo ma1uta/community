@@ -32,13 +32,10 @@ import javax.transaction.xa.XAResource;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.core.RelationshipLoadingPosition;
-import org.neo4j.kernel.impl.core.SingleChainPosition;
-import org.neo4j.kernel.impl.core.SuperNodeChainPosition;
 import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
-import org.neo4j.kernel.impl.nioneo.store.NodeState;
 import org.neo4j.kernel.impl.nioneo.store.NodeStore;
 import org.neo4j.kernel.impl.nioneo.store.PropertyBlock;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
@@ -92,7 +89,7 @@ class ReadTransaction implements NeoStoreTransaction
     }
 
     @Override
-    public NodeState nodeLoadLight( long nodeId )
+    public NodeRecord nodeLoadLight( long nodeId )
     {
         return getNodeStore().loadLightNode( nodeId );
     }
@@ -103,37 +100,46 @@ class ReadTransaction implements NeoStoreTransaction
         return getRelationshipStore().getLightRel( id );
     }
 
-    @Override
-    public RelationshipLoadingPosition getRelationshipChainPosition( long nodeId )
-    {
-        return getRelationshipChainPosition( nodeId, neoStore );
-    }
+//    @Override
+//    public RelationshipLoadingPosition getRelationshipChainPosition( long nodeId )
+//    {
+//        return getRelationshipChainPosition( nodeId, neoStore );
+//    }
+//    
+//    static RelationshipLoadingPosition getRelationshipChainPosition( long nodeId, long firstRel, NeoStore neoStore )
+//    {
+//        NodeRecord node = neoStore.getNodeStore().getRecord( nodeId );
+//        if ( node.isSuperNode() )
+//        {
+//            return new SuperNodeChainPosition( loadRelationshipGroups( node, neoStore.getRelationshipGroupStore() ) );
+//        }
+//        else
+//        {
+//            return new SingleChainPosition( node.getNextRel() );
+//        }
+//    }
     
-    static RelationshipLoadingPosition getRelationshipChainPosition( long nodeId, NeoStore neoStore )
+    @Override
+    public Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( long node, long firstGroup )
     {
-        NodeRecord node = neoStore.getNodeStore().getRecord( nodeId );
-        if ( node.isSuperNode() )
-        {
-            return new SuperNodeChainPosition( loadRelationshipGroups( node, neoStore.getRelationshipGroupStore() ) );
-        }
-        else
-        {
-            return new SingleChainPosition( node.getNextRel() );
-        }
-    }
-
-    static Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( NodeRecord node, RelationshipGroupStore groupStore )
-    {
-        assert node.isSuperNode();
-        long groupId = node.getNextRel();
+        long groupId = firstGroup;
+        long previousGroupId = Record.NO_NEXT_RELATIONSHIP.intValue();
         Map<Integer, RelationshipGroupRecord> result = new HashMap<Integer, RelationshipGroupRecord>();
         while ( groupId != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
-            RelationshipGroupRecord record = groupStore.getRecord( groupId );
+            RelationshipGroupRecord record = getRelationshipGroupStore().getRecord( groupId );
+            record.setPrev( previousGroupId );
             result.put( record.getType(), record );
+            previousGroupId = groupId;
             groupId = record.getNext();
         }
         return result;
+    }
+
+    private Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( NodeRecord node )
+    {
+        assert node.isSuperNode();
+        return loadRelationshipGroups( node.getId(), node.getNextRel() );
     }
     
     @Override
@@ -278,7 +284,7 @@ class ReadTransaction implements NeoStoreTransaction
     @Override
     public ArrayMap<Integer,PropertyData> nodeLoadProperties( long nodeId, boolean light )
     {
-        return loadProperties( getPropertyStore(), getNodeStore().getRecord( nodeId ).getNextProp() );
+        return loadProperties( getPropertyStore(), getNodeStore().getRecord( nodeId ).getCommittedNextProp() );
     }
     
     @Override
@@ -509,7 +515,7 @@ class ReadTransaction implements NeoStoreTransaction
         }
         else
         {
-            Map<Integer, RelationshipGroupRecord> groups = loadRelationshipGroups( node, getRelationshipGroupStore() );
+            Map<Integer, RelationshipGroupRecord> groups = loadRelationshipGroups( node );
             if ( type == -1 && direction == DirectionWrapper.BOTH )
             {   // Count for all types/directions
                 int count = 0;
@@ -574,7 +580,7 @@ class ReadTransaction implements NeoStoreTransaction
     @Override
     public Integer[] getRelationshipTypes( long id )
     {
-        Map<Integer, RelationshipGroupRecord> groups = loadRelationshipGroups( getNodeStore().getRecord( id ), getRelationshipGroupStore() );
+        Map<Integer, RelationshipGroupRecord> groups = loadRelationshipGroups( getNodeStore().getRecord( id ) );
         Integer[] types = new Integer[groups.size()];
         int i = 0;
         for ( Integer type : groups.keySet() ) types[i++] = type;

@@ -27,20 +27,22 @@ import java.util.Map;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.helpers.Pair;
+import org.neo4j.kernel.impl.nioneo.store.Record;
+import org.neo4j.kernel.impl.nioneo.store.RelationshipGroupRecord;
 import org.neo4j.kernel.impl.util.ArrayMap;
 import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
 
 public class SuperNodeImpl extends NodeImpl
 {
-    SuperNodeImpl( long id, boolean newNode )
+    SuperNodeImpl( long id, long firstRel, long firstProp, boolean newNode )
     {
-        super( id, newNode );
+        super( id, firstRel, firstProp, newNode );
     }
 
-    SuperNodeImpl( long id )
+    SuperNodeImpl( long id, long firstRel, long firstProp )
     {
-        super( id );
+        super( id, firstRel, firstProp );
     }
 
     protected Pair<ArrayMap<String,RelIdArray>,Map<Long,RelationshipImpl>> getInitialRelationships(
@@ -77,5 +79,15 @@ public class SuperNodeImpl extends NodeImpl
     public Iterable<RelationshipType> getRelationshipTypes( NodeManager nm )
     {
         return hasMoreRelationshipsToLoad() ? nm.getRelationshipTypes( this ) : super.getRelationshipTypes( nm );
+    }
+    
+    @Override
+    protected RelationshipLoadingPosition initializeRelChainPosition( NodeManager nm,
+            RelationshipLoadingPosition cachedPosition )
+    {
+        long firstRel = cachedPosition.position( DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES );
+        if ( firstRel == Record.NO_NEXT_RELATIONSHIP.intValue() ) return cachedPosition;
+        Pair<RelationshipType[], Map<String, RelationshipGroupRecord>> groups = nm.loadRelationshipGroups( getId(), firstRel );
+        return new SuperNodeChainPosition( groups.first(), groups.other() );
     }
 }

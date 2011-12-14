@@ -395,8 +395,13 @@ public class BatchInserterImpl implements BatchInserter
 
     public long createNode( Map<String,Object> properties )
     {
-        long nodeId = getNodeStore().nextId();
-        NodeRecord nodeRecord = new NodeRecord( nodeId, false );
+        return internalCreateNode( getNodeStore().nextId(), properties );
+    }
+
+    private long internalCreateNode( long nodeId, Map<String, Object> properties )
+    {
+        NodeRecord nodeRecord = new NodeRecord( nodeId, false,
+                Record.NO_NEXT_RELATIONSHIP.intValue(), Record.NO_NEXT_PROPERTY.intValue() );
         nodeRecord.setInUse( true );
         nodeRecord.setCreated();
         nodeRecord.setNextProp( createPropertyChain( properties ) );
@@ -422,11 +427,7 @@ public class BatchInserterImpl implements BatchInserter
         {
             nodeStore.setHighId( nodeId + 1 );
         }
-        NodeRecord nodeRecord = new NodeRecord( nodeId, false );
-        nodeRecord.setInUse( true );
-        nodeRecord.setCreated();
-        nodeRecord.setNextProp( createPropertyChain( properties ) );
-        getNodeStore().updateRecord( nodeRecord );
+        internalCreateNode( nodeId, properties );
     }
 
     public long createRelationship( long node1, long node2, RelationshipType
@@ -530,7 +531,7 @@ public class BatchInserterImpl implements BatchInserter
 
     public boolean nodeExists( long nodeId )
     {
-        return neoStore.getNodeStore().loadLightNode( nodeId ).exists();
+        return neoStore.getNodeStore().loadLightNode( nodeId ) != null;
     }
 
     public Map<String,Object> getNodeProperties( long nodeId )

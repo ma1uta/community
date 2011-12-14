@@ -390,11 +390,9 @@ public abstract class Command extends XaCommand
                 long nextRel = buffer.getLong();
                 long nextProp = buffer.getLong();
                 boolean isSuperNode = buffer.get() == 1;
-                record = new NodeRecord( id, isSuperNode );
-                record.setNextRel( nextRel );
-                record.setNextProp( nextProp );
+                record = new NodeRecord( id, isSuperNode, nextRel, nextProp );
             }
-            else record = new NodeRecord( id, false );
+            else record = new NodeRecord( id, false, Record.NO_NEXT_RELATIONSHIP.intValue(), Record.NO_NEXT_PROPERTY.intValue() );
             record.setInUse( inUse );
             return new NodeCommand( neoStore == null ? null : neoStore.getNodeStore(), record );
         }

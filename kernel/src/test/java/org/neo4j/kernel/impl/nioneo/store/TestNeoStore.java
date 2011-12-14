@@ -20,6 +20,7 @@
 package org.neo4j.kernel.impl.nioneo.store;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -313,8 +314,8 @@ public class TestNeoStore extends AbstractNeo4jTestCase
 
         initializeStores();
         startTx();
-        assertEquals( false, xaCon.getWriteTransaction().nodeLoadLight( node1 ).exists() );
-        assertEquals( false, xaCon.getWriteTransaction().nodeLoadLight( node2 ).exists() );
+        assertNull( xaCon.getWriteTransaction().nodeLoadLight( node1 ) );
+        assertNull( xaCon.getWriteTransaction().nodeLoadLight( node2 ) );
         testGetRels( new long[] { rel1, rel2 } );
         // testGetProps( neoStore, new int[] {
         // n1prop1, n1prop2, n1prop3, n2prop1, n2prop2, n2prop3,
@@ -347,11 +348,24 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         ds.close();
     }
 
-    private RelationshipLoadingPosition getPosition( NeoStoreXaConnection xaCon, long node )
+    private RelationshipLoadingPosition getPosition( NeoStoreXaConnection xaCon, long nodeId )
     {
-        RelationshipLoadingPosition pos = xaCon.getWriteTransaction().getRelationshipChainPosition( node );
+//        RelationshipLoadingPosition pos = xaCon.getWriteTransaction().getRelationshipChainPosition( node );
+//        return pos;
         
-        return pos;
+//        NodeRecord node = xaCon.getWriteTransaction().nodeLoadLight( nodeId );
+//        Map<Integer, RelationshipGroupRecord> rawGroups = xaCon.getWriteTransaction().loadRelationshipGroups( nodeId, node.getNextRel() );
+//        Map<String, RelationshipGroupRecord> groups = new HashMap<String, RelationshipGroupRecord>();
+//        RelationshipType[] types = new RelationshipType[rawGroups.size()];
+//        int i = 0;
+//        for ( Map.Entry<Integer, RelationshipGroupRecord> entry : rawGroups.entrySet() )
+//        {
+//            RelationshipType type = getRelationshipTypeById( entry.getKey() );
+//            groups.put( type.name(), entry.getValue() );
+//            types[i++] = type;
+//        }
+//        return Pair.of( types, groups );
+        throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings( "unchecked" )
@@ -384,9 +398,8 @@ public class TestNeoStore extends AbstractNeo4jTestCase
             PropertyData prop2, PropertyData prop3, long rel1, long rel2,
             int relType1, int relType2 ) throws IOException
     {
-        assertTrue( xaCon.getWriteTransaction().nodeLoadLight( node ).exists() );
-        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node,
-                false );
+        assertNull( xaCon.getWriteTransaction().nodeLoadLight( node ) );
+        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node, false );
         int count = 0;
         for ( int keyId : props.keySet() )
         {
@@ -457,7 +470,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
             PropertyData prop2, PropertyData prop3,
         long rel1, long rel2, int relType1, int relType2 ) throws IOException
     {
-        assertTrue( xaCon.getWriteTransaction().nodeLoadLight( node ).exists() );
+        assertNull( xaCon.getWriteTransaction().nodeLoadLight( node ) );
         ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node,
                 false );
         int count = 0;
@@ -763,8 +776,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
             PropertyData prop2, PropertyData prop3 )
         throws IOException
     {
-        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node,
-                false );
+        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node, false );
         int count = 0;
         for ( int keyId : props.keySet() )
         {
@@ -809,8 +821,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
             PropertyData prop2, PropertyData prop3 )
         throws IOException
     {
-        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node,
-                false );
+        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node, false );
         int count = 0;
         for ( int keyId : props.keySet() )
         {

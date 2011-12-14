@@ -40,8 +40,9 @@ import org.neo4j.kernel.impl.core.RelationshipLoadingPosition;
 import org.neo4j.kernel.impl.core.TransactionEventsSyncHook;
 import org.neo4j.kernel.impl.core.TxEventSyncHookFactory;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
-import org.neo4j.kernel.impl.nioneo.store.NodeState;
+import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
+import org.neo4j.kernel.impl.nioneo.store.RelationshipGroupRecord;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
 import org.neo4j.kernel.impl.nioneo.xa.NioNeoDbPersistenceSource;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
@@ -78,7 +79,7 @@ public class PersistenceManager
         return persistenceSource;
     }
 
-    public NodeState loadLightNode( long id )
+    public NodeRecord loadLightNode( long id )
     {
         return getReadOnlyResourceIfPossible().nodeLoadLight( id );
     }
@@ -98,10 +99,10 @@ public class PersistenceManager
         return getReadOnlyResourceIfPossible().loadPropertyIndexes( maxCount );
     }
 
-    public RelationshipLoadingPosition getRelationshipChainPosition( long nodeId )
-    {
-        return getReadOnlyResourceIfPossible().getRelationshipChainPosition( nodeId );
-    }
+//    public RelationshipLoadingPosition getRelationshipChainPosition( long nodeId )
+//    {
+//        return getReadOnlyResourceIfPossible().getRelationshipChainPosition( nodeId );
+//    }
 
     public Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships(
             long nodeId, RelationshipLoadingPosition position, DirectionWrapper direction, RelationshipType[] types )
@@ -109,11 +110,9 @@ public class PersistenceManager
         return getReadOnlyResource().getMoreRelationships( nodeId, position, direction, types );
     }
 
-    public ArrayMap<Integer,PropertyData> loadNodeProperties( long nodeId,
-            boolean light )
+    public ArrayMap<Integer,PropertyData> loadNodeProperties( long nodeId, boolean light )
     {
-        return getReadOnlyResourceIfPossible().nodeLoadProperties( nodeId,
-                light );
+        return getReadOnlyResourceIfPossible().nodeLoadProperties( nodeId, light );
     }
 
     public ArrayMap<Integer,PropertyData> loadRelProperties( long relId,
@@ -429,5 +428,10 @@ public class PersistenceManager
     public Integer[] getRelationshipTypes( long id )
     {
         return getReadOnlyResourceIfPossible().getRelationshipTypes( id );
+    }
+
+    public Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( long id, long firstRel )
+    {
+        return getReadOnlyResourceIfPossible().loadRelationshipGroups( id, firstRel );
     }
 }
