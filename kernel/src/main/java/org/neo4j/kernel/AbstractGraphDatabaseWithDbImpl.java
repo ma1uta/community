@@ -72,11 +72,17 @@ public class AbstractGraphDatabaseWithDbImpl extends AbstractGraphDatabase
     {
         return graphDbImpl.getReferenceNode( name );
     }
+    
+    @Override
+    public TransactionBuilder tx()
+    {
+        return graphDbImpl.tx();
+    }
 
     @Override
     public Transaction beginTx()
     {
-        return graphDbImpl.beginTx();
+        return tx().begin();
     }
 
     @Override

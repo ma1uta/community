@@ -77,8 +77,6 @@ include::update-node-properties.txt[]
 
 include::get-properties-for-node.txt[]
 
-include::get-properties-for-node-(empty-result).txt[]
-
 include::property-values-can-not-be-null.txt[]
 
 include::property-values-can-not-be-nested.txt[]
@@ -123,8 +121,6 @@ include::create-node-index-with-configuration.txt[]
 include::delete-node-index.txt[]
 
 include::list-node-indexes.txt[]
-
-include::list-node-indexes-(empty-result).txt[]
 
 include::add-node-to-index.txt[]
 
@@ -217,6 +213,8 @@ include::send-a-query.txt[]
 include::return-paths.txt[]
 
 include::send-queries-with-parameters.txt[]
+
+include::nested-results.txt[]
 
 include::server-errors.txt[]
 

@@ -22,7 +22,6 @@ package org.neo4j.cypher
 import commands._
 import org.junit.Assert._
 import org.junit.Test
-import parser.CypherParser
 
 class SematicErrorTest extends ExecutionEngineHelper {
   @Test def returnNodeThatsNotThere() {
@@ -58,6 +57,11 @@ class SematicErrorTest extends ExecutionEngineHelper {
   @Test def cantReUseRelationshipIdentifier() {
     expectedError("start a=node(0) match a-[r]->b-[r]->a return r",
       "Can't re-use pattern relationship 'r' with different start/end nodes.")
+  }
+
+  @Test def shouldKnowNotToCompareStringsAndNumbers() {
+    expectedError("start a=node(0) where a.age =~ 13 return a",
+      "13.0 expected to be of type StringType but it is of type NumberType")
   }
 
   @Test def shortestPathNeedsBothEndNodes() {

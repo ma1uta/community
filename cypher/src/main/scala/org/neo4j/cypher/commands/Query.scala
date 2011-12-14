@@ -24,9 +24,35 @@ object Query {
   def start(startItems: StartItem*) = new QueryBuilder(startItems)
 }
 
-case class Query(returns: Return, start: Start, matching: Option[Match], where: Option[Clause],
+case class Query(returns: Return,
+                 start: Start,
+                 matching: Option[Match],
+                 where: Option[Predicate],
                  aggregation: Option[Aggregation],
-                 sort: Option[Sort], slice: Option[Slice], namedPaths: Option[NamedPaths])
+                 sort: Option[Sort],
+                 slice: Option[Slice],
+                 namedPaths: Option[NamedPaths],
+                 queryString: String = "") {
+  override def equals(p1: Any): Boolean =
+    if (p1 == null)
+      false
+    else if (!p1.isInstanceOf[Query])
+      false
+    else {
+      val other = p1.asInstanceOf[Query]
+      returns == other.returns &&
+        start == other.start &&
+        matching == other.matching &&
+        where == other.where &&
+        aggregation == other.aggregation &&
+        sort == other.sort &&
+        slice == other.slice &&
+        namedPaths == other.namedPaths
+    }
+
+//  override def hashCode() = Seq(returns, start, matching, where, aggregation, sort, slice, namedPaths, queryString).
+//    reduceLeft((code:Int, elem) => code * 41 + elem.hashCode())
+}
 
 case class Return(columns: List[String], returnItems: ReturnItem*)
 
@@ -44,4 +70,4 @@ case class Aggregation(aggregationItems: AggregationItem*)
 
 case class Sort(sortItems: SortItem*)
 
-case class Slice(from: Option[Value], limit: Option[Value])
+case class Slice(from: Option[Expression], limit: Option[Expression])
