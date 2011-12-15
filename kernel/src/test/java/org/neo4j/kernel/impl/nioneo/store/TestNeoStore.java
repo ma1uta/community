@@ -42,6 +42,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
@@ -54,8 +55,11 @@ import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.core.RelationshipLoadingPosition;
+import org.neo4j.kernel.impl.core.SingleChainPosition;
+import org.neo4j.kernel.impl.core.SuperNodeChainPosition;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaConnection;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
+import org.neo4j.kernel.impl.persistence.NeoStoreTransaction;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.PlaceboTm;
 import org.neo4j.kernel.impl.transaction.XidImpl;
@@ -266,8 +270,10 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         xaCon.getWriteTransaction().createRelationshipType( relType2, "relationshiptype2" );
         long rel1 = ds.nextId( Relationship.class );
         xaCon.getWriteTransaction().relationshipCreate( rel1, relType1, node1, node2 );
+        System.out.println( "Created outgoing rel " + rel1 + " for " + node1 );
         long rel2 = ds.nextId( Relationship.class );
         xaCon.getWriteTransaction().relationshipCreate( rel2, relType2, node2, node1 );
+        System.out.println( "Created incoming rel " + rel2 + " for " + node1 );
 
         PropertyData r1prop1 = xaCon.getWriteTransaction().relAddProperty(
                 rel1, index( "prop1" ), "string1" );
@@ -350,22 +356,29 @@ public class TestNeoStore extends AbstractNeo4jTestCase
 
     private RelationshipLoadingPosition getPosition( NeoStoreXaConnection xaCon, long nodeId )
     {
-//        RelationshipLoadingPosition pos = xaCon.getWriteTransaction().getRelationshipChainPosition( node );
-//        return pos;
+        NodeRecord node = xaCon.getWriteTransaction().nodeLoadLight( nodeId );
+        if ( !node.isSuperNode() ) return new SingleChainPosition( node.getNextRel() );
         
-//        NodeRecord node = xaCon.getWriteTransaction().nodeLoadLight( nodeId );
-//        Map<Integer, RelationshipGroupRecord> rawGroups = xaCon.getWriteTransaction().loadRelationshipGroups( nodeId, node.getNextRel() );
-//        Map<String, RelationshipGroupRecord> groups = new HashMap<String, RelationshipGroupRecord>();
-//        RelationshipType[] types = new RelationshipType[rawGroups.size()];
-//        int i = 0;
-//        for ( Map.Entry<Integer, RelationshipGroupRecord> entry : rawGroups.entrySet() )
-//        {
-//            RelationshipType type = getRelationshipTypeById( entry.getKey() );
-//            groups.put( type.name(), entry.getValue() );
-//            types[i++] = type;
-//        }
-//        return Pair.of( types, groups );
-        throw new UnsupportedOperationException();
+        Map<Integer, RelationshipGroupRecord> rawGroups = xaCon.getWriteTransaction().loadRelationshipGroups( nodeId, node.getNextRel() );
+        Map<String, RelationshipGroupRecord> groups = new HashMap<String, RelationshipGroupRecord>();
+        RelationshipType[] types = new RelationshipType[rawGroups.size()];
+        int i = 0;
+        Map<Integer, RelationshipType> allTypes = loadTypes( xaCon.getWriteTransaction() );
+        for ( Map.Entry<Integer, RelationshipGroupRecord> entry : rawGroups.entrySet() )
+        {
+            RelationshipType type = allTypes.get( entry.getKey() );
+            groups.put( type.name(), entry.getValue() );
+            types[i++] = type;
+        }
+        return new SuperNodeChainPosition( types, groups );
+    }
+
+    private Map<Integer, RelationshipType> loadTypes( NeoStoreTransaction tx )
+    {
+        NameData[] data = tx.loadRelationshipTypes();
+        Map<Integer, RelationshipType> result = new HashMap<Integer, RelationshipType>();
+        for ( NameData d : data ) result.put( d.getId(), DynamicRelationshipType.withName( d.getName() ) );
+        return result;
     }
 
     @SuppressWarnings( "unchecked" )
@@ -398,7 +411,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
             PropertyData prop2, PropertyData prop3, long rel1, long rel2,
             int relType1, int relType2 ) throws IOException
     {
-        assertNull( xaCon.getWriteTransaction().nodeLoadLight( node ) );
+        assertTrue( xaCon.getWriteTransaction().nodeLoadLight( node ).inUse() );
         ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node, false );
         int count = 0;
         for ( int keyId : props.keySet() )
@@ -470,7 +483,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
             PropertyData prop2, PropertyData prop3,
         long rel1, long rel2, int relType1, int relType2 ) throws IOException
     {
-        assertNull( xaCon.getWriteTransaction().nodeLoadLight( node ) );
+        assertTrue( xaCon.getWriteTransaction().nodeLoadLight( node ).inUse() );
         ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node,
                 false );
         int count = 0;
