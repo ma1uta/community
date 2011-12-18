@@ -1049,6 +1049,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     public ArrayMap<Integer,PropertyData> nodeLoadProperties( long nodeId, boolean light )
     {
         NodeRecord nodeRecord = getNodeRecord( nodeId, light );
+        if ( nodeRecord.isCreated() ) return null;
         return ReadTransaction.loadProperties( getPropertyStore(), nodeRecord.getNextProp() );
     }
 
