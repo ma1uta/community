@@ -44,7 +44,7 @@ public class NodeRecord extends PrimitiveRecord
     
     public long getCommittedNextRel()
     {
-        return isCreated() ? nextRel : committedNextRel;
+        return isCreated() ? Record.NO_NEXT_RELATIONSHIP.intValue() : committedNextRel;
     }
 
     @Override

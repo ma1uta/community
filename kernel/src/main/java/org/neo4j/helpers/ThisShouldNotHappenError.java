@@ -17,9 +17,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.cypher
+package org.neo4j.helpers;
 
-trait ExecutionPlan {
-  def execute(params: Map[String,Any]): ExecutionResult
-//  def execute(params: (String, Any)*): ExecutionResult = execute(params.toMap)
+public class ThisShouldNotHappenError extends Error
+{
+    public ThisShouldNotHappenError(String developer, String message) {
+        super("Developer: " + developer + " claims that: " + message);
+    }
 }

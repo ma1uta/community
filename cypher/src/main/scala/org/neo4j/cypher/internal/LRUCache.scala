@@ -17,9 +17,21 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.cypher
+package org.neo4j.cypher.internal
 
-trait ExecutionPlan {
-  def execute(params: Map[String,Any]): ExecutionResult
-//  def execute(params: (String, Any)*): ExecutionResult = execute(params.toMap)
+import java.util.LinkedHashMap
+import scala.math._
+import java.util.Map.Entry
+
+class LRUCache[K, V](cacheSize: Int) extends LinkedHashMap[K, V](ceil(cacheSize / 0.75f).asInstanceOf[Int] + 1, 0.75f, true) {
+  def getOrElseUpdate(key: K, f: => V) = if (containsKey(key)) {
+    get(key)
+  }
+  else {
+    val value = f
+    put(key, value)
+    value
+  }
+
+  override def removeEldestEntry(p1: Entry[K, V]): Boolean = size > cacheSize
 }
