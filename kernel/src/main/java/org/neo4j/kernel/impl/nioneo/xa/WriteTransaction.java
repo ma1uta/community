@@ -1464,14 +1464,14 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         Map<Integer, RelationshipGroupRecord> result = relGroupCache.get( node.getId() );
         if ( result == null )
         {
-            result = loadRelationshipGroups( node );
+            assert node.isSuperNode();
+            result = loadBlaRelationshipGroups( node.getId(), node.getNextRel() );
             relGroupCache.put( node.getId(), result );
         }
         return result;
     }
     
-    @Override
-    public Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( long node, long firstGroup )
+    private Map<Integer, RelationshipGroupRecord> loadBlaRelationshipGroups( long id, long firstGroup )
     {
         long groupId = firstGroup;
         long previousGroupId = Record.NO_NEXT_RELATIONSHIP.intValue();
@@ -1487,10 +1487,10 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         return result;
     }
 
-    private Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( NodeRecord node )
+    @Override
+    public Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( long node, long firstGroup )
     {
-        assert node.isSuperNode();
-        return loadRelationshipGroups( node.getId(), node.getNextRel() );
+        return ReadTransaction.loadRelationshipGroups( node, firstGroup, getRelationshipGroupStore() );
     }
 
     private RelationshipGroupRecord getCachedRelationshipGroupRecord( long groupId )

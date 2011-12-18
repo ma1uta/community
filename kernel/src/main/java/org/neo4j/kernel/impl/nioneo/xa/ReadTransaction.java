@@ -100,34 +100,21 @@ class ReadTransaction implements NeoStoreTransaction
         return getRelationshipStore().getLightRel( id );
     }
 
-//    @Override
-//    public RelationshipLoadingPosition getRelationshipChainPosition( long nodeId )
-//    {
-//        return getRelationshipChainPosition( nodeId, neoStore );
-//    }
-//    
-//    static RelationshipLoadingPosition getRelationshipChainPosition( long nodeId, long firstRel, NeoStore neoStore )
-//    {
-//        NodeRecord node = neoStore.getNodeStore().getRecord( nodeId );
-//        if ( node.isSuperNode() )
-//        {
-//            return new SuperNodeChainPosition( loadRelationshipGroups( node, neoStore.getRelationshipGroupStore() ) );
-//        }
-//        else
-//        {
-//            return new SingleChainPosition( node.getNextRel() );
-//        }
-//    }
-    
     @Override
     public Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( long node, long firstGroup )
+    {
+        return loadRelationshipGroups( node, firstGroup, getRelationshipGroupStore() );
+    }
+
+    static Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( long node, long firstGroup,
+            RelationshipGroupStore store )
     {
         long groupId = firstGroup;
         long previousGroupId = Record.NO_NEXT_RELATIONSHIP.intValue();
         Map<Integer, RelationshipGroupRecord> result = new HashMap<Integer, RelationshipGroupRecord>();
         while ( groupId != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
-            RelationshipGroupRecord record = getRelationshipGroupStore().getRecord( groupId );
+            RelationshipGroupRecord record = store.getRecord( groupId );
             record.setPrev( previousGroupId );
             result.put( record.getType(), record );
             previousGroupId = groupId;
@@ -135,7 +122,7 @@ class ReadTransaction implements NeoStoreTransaction
         }
         return result;
     }
-
+    
     private Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( NodeRecord node )
     {
         assert node.isSuperNode();
