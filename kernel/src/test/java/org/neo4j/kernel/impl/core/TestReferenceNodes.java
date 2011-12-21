@@ -21,7 +21,7 @@ package org.neo4j.kernel.impl.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
 
 import org.junit.After;
 import org.junit.Test;
@@ -66,8 +66,10 @@ public class TestReferenceNodes
     public void createReferenceNodeOutsideTx()
     {
         GraphDatabaseService db = newDb();
-        Node node = db.getReferenceNode( "something different" );
-        assertEquals( node, db.getReferenceNode( "something different" ) );
+        String name = "something different";
+        assertNull( db.getReferenceNodeIfExists( name ) ); 
+        Node node = db.getReferenceNode( name );
+        assertEquals( node, db.getReferenceNode( name ) );
     }
     
     @Test
@@ -77,7 +79,9 @@ public class TestReferenceNodes
         GraphDatabaseService db = newDb( new EmbeddedGraphDatabase( path ) );
         
         Transaction tx = db.beginTx();
+        assertNull( db.getReferenceNodeIfExists( "users" ) );
         Node users = db.getReferenceNode( "users" );
+        assertNull( db.getReferenceNodeIfExists( "products" ) );
         Node products = db.getReferenceNode( "products" );
         assertEquals( users, db.getReferenceNode( "users" ) );
         assertEquals( products, db.getReferenceNode( "products" ) );
@@ -110,15 +114,16 @@ public class TestReferenceNodes
         tx.success(); tx.finish();
         
         tx = db.beginTx();
+        assertEquals( refNode, db.getReferenceNodeIfExists( name ) );
         refNode.delete();
-        Node newRefNode = db.getReferenceNode( name );
-        assertTrue( refNode.equals( newRefNode ) );
+        assertEquals( refNode, db.getReferenceNodeIfExists( name ) );
+        assertEquals( refNode, db.getReferenceNode( name ) );
         tx.success();
         tx.finish();
         
-        Node newNewRefNode = db.getReferenceNode( name );
-        assertFalse( newNewRefNode.equals( newRefNode ) );
-        db.shutdown();
+        assertNull( db.getReferenceNodeIfExists( name ) );
+        Node newRefNode = db.getReferenceNode( name );
+        assertFalse( newRefNode.equals( refNode ) );
     }
     
     @Test
