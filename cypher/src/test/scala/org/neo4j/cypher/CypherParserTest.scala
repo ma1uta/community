@@ -504,7 +504,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       "start a = NODE(1) return a.name?",
       Query.
         start(NodeById("a", 1)).
-        returns(ExpressionReturnItem(NullableProperty("a", "name"))))
+        returns(ExpressionReturnItem(Nullable(Property("a", "name")))))
   }
 
   @Test def nestedBooleanOperatorsAndParentesis() {
@@ -924,7 +924,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       """start a=node(0), b=node(1) match p = shortestPath( a-->b ) return p""",
       Query.
         start(NodeById("a", 0), NodeById("b", 1)).
-        namedPaths(NamedPath("p", ShortestPath("  UNNAMED2", "a", "b", None, Direction.OUTGOING, Some(1), false, true))).
+        matches(ShortestPath("p", "a", "b", None, Direction.OUTGOING, Some(1), false, true, None))
         returns(ExpressionReturnItem(Entity("p"))))
   }
 
@@ -933,7 +933,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       """start a=node(0), b=node(1) match p = shortestPath( a-[*..6]->b ) return p""",
       Query.
         start(NodeById("a", 0), NodeById("b", 1)).
-        namedPaths(NamedPath("p", ShortestPath("  UNNAMED2", "a", "b", None, Direction.OUTGOING, Some(6), false, true))).
+        matches(ShortestPath("p", "a", "b", None, Direction.OUTGOING, Some(6), false, true, None)).
         returns(ExpressionReturnItem(Entity("p"))))
   }
 
@@ -942,7 +942,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       """start a=node(0), b=node(1) match p = shortestPath( a-[:KNOWS*..6]->b ) return p""",
       Query.
         start(NodeById("a", 0), NodeById("b", 1)).
-        namedPaths(NamedPath("p", ShortestPath("  UNNAMED2", "a", "b", Some("KNOWS"), Direction.OUTGOING, Some(6), false, true))).
+        matches(ShortestPath("p", "a", "b", Some("KNOWS"), Direction.OUTGOING, Some(6), false, true, None)).
         returns(ExpressionReturnItem(Entity("p"))))
   }
 
@@ -951,7 +951,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       """start a=node(0), b=node(1) match p = shortestPath( a-[*..6]-b ) return p""",
       Query.
         start(NodeById("a", 0), NodeById("b", 1)).
-        namedPaths(NamedPath("p", ShortestPath("  UNNAMED2", "a", "b", None, Direction.BOTH, Some(6), false, true))).
+        matches(ShortestPath("p", "a", "b", None, Direction.BOTH, Some(6), false, true, None)).
         returns(ExpressionReturnItem(Entity("p"))))
   }
 
@@ -960,7 +960,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       """start a=node(0), b=node(1) match p = shortestPath( a-[?*..6]-b ) return p""",
       Query.
         start(NodeById("a", 0), NodeById("b", 1)).
-        namedPaths(NamedPath("p", ShortestPath("  UNNAMED2", "a", "b", None, Direction.BOTH, Some(6), true, true))).
+        matches(ShortestPath("p", "a", "b", None, Direction.BOTH, Some(6), true, true, None)).
         returns(ExpressionReturnItem(Entity("p"))))
   }
 
@@ -969,7 +969,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       """start a=node(0), b=node(1) match p = allShortestPaths( a-[*]->b ) return p""",
       Query.
         start(NodeById("a", 0), NodeById("b", 1)).
-        namedPaths(NamedPath("p", ShortestPath("  UNNAMED2", "a", "b", None, Direction.OUTGOING, None, false, false))).
+        matches(ShortestPath("p", "a", "b", None, Direction.OUTGOING, None, false, false, None)).
         returns(ExpressionReturnItem(Entity("p"))))
   }
 
@@ -1009,7 +1009,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
     assertEquals(
       Query.
         start(NodeById("a", 1)).
-        returns(ExpressionReturnItem(NullableProperty("a", "name"))),
+        returns(ExpressionReturnItem(Nullable(Property("a", "name")))),
       executionTree)
   }
 
@@ -1062,17 +1062,8 @@ class CypherParserTest extends JUnitSuite with Assertions {
   def testQuery(query: String, expectedQuery: Query) {
     val parser = new CypherParser()
 
-    try {
       val ast = parser.parse(query)
 
       assert(expectedQuery === ast)
-    } catch {
-      case x => {
-        println(x)
-        throw new Exception(query + "\n\n" + x.getMessage)
-      }
-    }
   }
-
-
 }
