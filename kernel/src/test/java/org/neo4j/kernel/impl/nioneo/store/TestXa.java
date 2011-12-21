@@ -243,6 +243,26 @@ public class TestXa extends AbstractNeo4jTestCase
         {
             assertTrue( file.delete() );
         }
+        file = new File( file( "neo.referencenodestore.db" ) );
+        if ( file.exists() )
+        {
+            assertTrue( file.delete() );
+        }
+        file = new File( file( "neo.referencenodestore.db.id" ) );
+        if ( file.exists() )
+        {
+            assertTrue( file.delete() );
+        }
+        file = new File( file( "neo.referencenodestore.db.names" ) );
+        if ( file.exists() )
+        {
+            assertTrue( file.delete() );
+        }
+        file = new File( file( "neo.referencenodestore.db.names.id" ) );
+        if ( file.exists() )
+        {
+            assertTrue( file.delete() );
+        }
         file = new File( path() );
         for ( File nioFile : file.listFiles() )
         {

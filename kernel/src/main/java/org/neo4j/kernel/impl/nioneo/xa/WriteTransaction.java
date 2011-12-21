@@ -465,14 +465,14 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         lockReleaser.addRelationshipType( type );
     }
 
-    private void addReferenceNode( int id )
-    {
-        setRecovered();
-        NameData<Long> type = isRecovered() ?
-                neoStore.getReferenceNodeStore().getName( id, true ) :
-                neoStore.getReferenceNodeStore().getName( id );
-        lockReleaser.addReferenceNode( type );
-    }
+//    private void addReferenceNode( int id )
+//    {
+//        setRecovered();
+//        NameData<Long> type = isRecovered() ?
+//                neoStore.getReferenceNodeStore().getName( id, true ) :
+//                neoStore.getReferenceNodeStore().getName( id );
+//        lockReleaser.addReferenceNode( type );
+//    }
     
     private void addPropertyIndexCommand( int id )
     {
@@ -538,7 +538,6 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             {
                 command.execute();
                 if ( command.isDeleted() ) removeReferenceNodeFromCache( (int)command.getKey() );
-                else if ( command.isCreated() ) addReferenceNode( (int)command.getKey() );
             }
             
             updateFirstRelationships();
@@ -650,7 +649,6 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             for ( Command.ReferenceNodeCommand command : refNodeCommands )
             {
                 command.execute();
-                addReferenceNode( (int) command.getKey() );
             }
             neoStore.setRecoveredStatus( true );
             try

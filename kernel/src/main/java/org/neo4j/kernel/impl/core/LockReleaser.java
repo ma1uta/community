@@ -569,13 +569,13 @@ public class LockReleaser
         }
     }
 
-    public void addReferenceNode( NameData<Long> type )
-    {
-        if ( nodeManager != null )
-        {
-            nodeManager.addReferenceNodes( type );
-        }
-    }
+//    public void addReferenceNode( NameData<Long> type )
+//    {
+//        if ( nodeManager != null )
+//        {
+//            nodeManager.addReferenceNodes( type );
+//        }
+//    }
     
     public void addPropertyIndex( NameData<Void> index )
     {
