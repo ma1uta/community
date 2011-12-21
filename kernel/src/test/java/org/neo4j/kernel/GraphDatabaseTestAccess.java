@@ -41,6 +41,7 @@ public class GraphDatabaseTestAccess extends AbstractGraphDatabaseWithDbImpl
         setGraphDbImplAtConstruction( new EmbeddedGraphDbImpl( getStoreDir(), null, config, this,
                 CommonFactories.defaultLockManagerFactory(),
                 idGenerators, CommonFactories.defaultRelationshipTypeCreator(),
+                CommonFactories.defaultReferenceNodeCreator(),
                 CommonFactories.defaultTxIdGeneratorFactory(),
                 CommonFactories.defaultTxHook(),
                 CommonFactories.defaultLastCommittedTxIdSetter(), fileSystem ) );

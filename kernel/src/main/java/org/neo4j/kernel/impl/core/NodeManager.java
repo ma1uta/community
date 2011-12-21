@@ -50,6 +50,7 @@ import org.neo4j.kernel.impl.cache.NoCache;
 import org.neo4j.kernel.impl.cache.SoftLruCache;
 import org.neo4j.kernel.impl.cache.StrongReferenceCache;
 import org.neo4j.kernel.impl.cache.WeakLruCache;
+import org.neo4j.kernel.impl.core.ReferenceNodeHolder.ReferenceNodeCreator;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
@@ -104,7 +105,8 @@ public class NodeManager
             AdaptiveCacheManager cacheManager, LockManager lockManager,
             LockReleaser lockReleaser, TransactionManager transactionManager,
             PersistenceManager persistenceManager, EntityIdGenerator idGenerator,
-            RelationshipTypeCreator relTypeCreator, CacheType cacheType )
+            RelationshipTypeCreator relTypeCreator, ReferenceNodeCreator refNodeCreator,
+            CacheType cacheType )
     {
         this.graphDbService = graphDb;
         this.cacheManager = cacheManager;
@@ -119,7 +121,8 @@ public class NodeManager
         this.idGenerator = idGenerator;
         this.relTypeHolder = new RelationshipTypeHolder( transactionManager,
             persistenceManager, idGenerator, relTypeCreator );
-        this.refNodeHolder = new ReferenceNodeHolder( transactionManager, persistenceManager, idGenerator );
+        this.refNodeHolder = new ReferenceNodeHolder( transactionManager, persistenceManager, idGenerator,
+                refNodeCreator );
 
         this.cacheType = cacheType;
         this.nodeCache = cacheType.node( cacheManager );
@@ -1152,6 +1155,11 @@ public class NodeManager
         return this.relTypeHolder;
     }
 
+    public ReferenceNodeHolder getReferenceNodeHolder()
+    {
+        return this.refNodeHolder;
+    }
+    
     public static enum CacheType
     {
         weak( false, "weak reference cache" )

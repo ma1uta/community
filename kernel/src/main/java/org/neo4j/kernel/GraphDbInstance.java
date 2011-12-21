@@ -158,7 +158,7 @@ class GraphDbInstance
         config.getIdGeneratorModule().start();
         config.getGraphDbModule().start( config.getLockReleaser(),
                 config.getPersistenceModule().getPersistenceManager(),
-                config.getRelationshipTypeCreator(), params );
+                config.getRelationshipTypeCreator(), config.getReferenceNodeCreator(), params );
 
         started = true;
 

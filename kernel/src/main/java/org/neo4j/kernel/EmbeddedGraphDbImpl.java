@@ -52,6 +52,7 @@ import org.neo4j.kernel.impl.core.NodeManager;
 import org.neo4j.kernel.impl.core.RelationshipTypeCreator;
 import org.neo4j.kernel.impl.core.TransactionEventsSyncHook;
 import org.neo4j.kernel.impl.core.TxEventSyncHookFactory;
+import org.neo4j.kernel.impl.core.ReferenceNodeHolder.ReferenceNodeCreator;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.nioneo.store.StoreId;
@@ -104,7 +105,7 @@ class EmbeddedGraphDbImpl
     public EmbeddedGraphDbImpl( String storeDir, StoreId storeId, Map<String, String> inputParams,
             AbstractGraphDatabase graphDbService, LockManagerFactory lockManagerFactory,
             IdGeneratorFactory idGeneratorFactory, RelationshipTypeCreator relTypeCreator,
-            TxIdGeneratorFactory txIdFactory, TxHook txHook,
+            ReferenceNodeCreator refNodeCreator, TxIdGeneratorFactory txIdFactory, TxHook txHook,
             LastCommittedTxIdSetter lastCommittedTxIdSetter, FileSystemAbstraction fileSystem )
     {
         this.storeDir = storeDir;
@@ -113,7 +114,7 @@ class EmbeddedGraphDbImpl
         lockReleaser = new LockReleaser( lockManager, txModule.getTxManager() );
         final Config config = new Config( graphDbService, storeId, inputParams,
                 kernelPanicEventGenerator, txModule, lockManager, lockReleaser, idGeneratorFactory,
-                new SyncHookFactory(), relTypeCreator, txIdFactory.create( txModule.getTxManager() ),
+                new SyncHookFactory(), relTypeCreator, refNodeCreator, txIdFactory.create( txModule.getTxManager() ),
                 lastCommittedTxIdSetter, fileSystem );
         /*
          *  LogBufferFactory needs access to the parameters so it has to be added after the default and

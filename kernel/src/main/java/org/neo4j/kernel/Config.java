@@ -33,9 +33,11 @@ import org.neo4j.kernel.impl.core.GraphDbModule;
 import org.neo4j.kernel.impl.core.KernelPanicEventGenerator;
 import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
 import org.neo4j.kernel.impl.core.LockReleaser;
+import org.neo4j.kernel.impl.core.ReferenceNodeHolder;
 import org.neo4j.kernel.impl.core.RelationshipTypeCreator;
 import org.neo4j.kernel.impl.core.RelationshipTypeHolder;
 import org.neo4j.kernel.impl.core.TxEventSyncHookFactory;
+import org.neo4j.kernel.impl.core.ReferenceNodeHolder.ReferenceNodeCreator;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.nioneo.store.StoreId;
@@ -243,16 +245,18 @@ public class Config
     private final boolean backupSlave;
     private final IdGeneratorFactory idGeneratorFactory;
     private final TxIdGenerator txIdGenerator;
+    private final ReferenceNodeCreator refNodeCreator;
 
     Config( AbstractGraphDatabase graphDb, StoreId storeId,
             Map<String, String> inputParams, KernelPanicEventGenerator kpe,
             TxModule txModule, LockManager lockManager,
             LockReleaser lockReleaser, IdGeneratorFactory idGeneratorFactory,
             TxEventSyncHookFactory txSyncHookFactory,
-            RelationshipTypeCreator relTypeCreator, TxIdGenerator txIdGenerator,
-            LastCommittedTxIdSetter lastCommittedTxIdSetter,
+            RelationshipTypeCreator relTypeCreator, ReferenceNodeCreator refNodeCreator,
+            TxIdGenerator txIdGenerator, LastCommittedTxIdSetter lastCommittedTxIdSetter,
             FileSystemAbstraction fileSystem )
     {
+        this.refNodeCreator = refNodeCreator;
         this.storeDir = graphDb.getStoreDir();
         this.inputParams = inputParams;
         this.ephemeral = graphDb.isEphemeral();
@@ -412,6 +416,11 @@ public class Config
         return relTypeCreator;
     }
 
+    public ReferenceNodeCreator getReferenceNodeCreator()
+    {
+        return refNodeCreator;
+    }
+    
     public IdGeneratorFactory getIdGeneratorFactory()
     {
         return idGeneratorFactory;
@@ -422,6 +431,11 @@ public class Config
         return graphDbModule.getNodeManager().getRelationshipTypeHolder();
     }
 
+    public ReferenceNodeHolder getReferenceNodeHolder()
+    {
+        return graphDbModule.getNodeManager().getReferenceNodeHolder();
+    }
+    
     public static void dumpConfiguration( Map<?, ?> config )
     {
         for ( Object key : config.keySet() )

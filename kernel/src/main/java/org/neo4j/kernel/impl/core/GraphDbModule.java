@@ -36,6 +36,7 @@ import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.kernel.Config;
 import org.neo4j.kernel.impl.cache.AdaptiveCacheManager;
 import org.neo4j.kernel.impl.core.NodeManager.CacheType;
+import org.neo4j.kernel.impl.core.ReferenceNodeHolder.ReferenceNodeCreator;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.persistence.EntityIdGenerator;
 import org.neo4j.kernel.impl.persistence.PersistenceManager;
@@ -79,7 +80,7 @@ public class GraphDbModule
 
     public void start( LockReleaser lockReleaser, 
         PersistenceManager persistenceManager, RelationshipTypeCreator relTypeCreator,
-        Map<Object,Object> params )
+        ReferenceNodeCreator refNodeCreator, Map<Object,Object> params )
     {
         if ( !startIsOk )
         {
@@ -103,7 +104,7 @@ public class GraphDbModule
         {
             nodeManager = new NodeManager( graphDbService, cacheManager,
                     lockManager, lockReleaser, transactionManager,
-                    persistenceManager, idGenerator, relTypeCreator, cacheType );
+                    persistenceManager, idGenerator, relTypeCreator, refNodeCreator, cacheType );
         }
         else
         {

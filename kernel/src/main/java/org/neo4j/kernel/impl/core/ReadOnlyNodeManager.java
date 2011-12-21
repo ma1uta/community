@@ -41,7 +41,7 @@ class ReadOnlyNodeManager extends NodeManager
             CacheType cacheType )
     {
         super( graphDbService, cacheManager, lockManager, lockReleaser,
-                transactionManager, persistenceManager, idGenerator, null, cacheType );
+                transactionManager, persistenceManager, idGenerator, null, null, cacheType );
     }
 
     @Override

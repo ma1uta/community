@@ -71,6 +71,7 @@ public final class EmbeddedReadOnlyGraphDatabase extends AbstractGraphDatabaseWi
                 CommonFactories.defaultLockManagerFactory(),
                 CommonFactories.defaultIdGeneratorFactory(),
                 CommonFactories.defaultRelationshipTypeCreator(),
+                CommonFactories.defaultReferenceNodeCreator(),
                 CommonFactories.defaultTxIdGeneratorFactory(),
                 CommonFactories.defaultTxHook(),
                 CommonFactories.defaultLastCommittedTxIdSetter(),

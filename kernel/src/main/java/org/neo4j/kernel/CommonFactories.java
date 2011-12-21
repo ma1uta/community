@@ -31,7 +31,9 @@ import javax.transaction.TransactionManager;
 
 import org.neo4j.kernel.impl.core.DefaultRelationshipTypeCreator;
 import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
+import org.neo4j.kernel.impl.core.ReferenceNodeHolder;
 import org.neo4j.kernel.impl.core.RelationshipTypeCreator;
+import org.neo4j.kernel.impl.core.ReferenceNodeHolder.ReferenceNodeCreator;
 import org.neo4j.kernel.impl.nioneo.store.FileLock;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.nioneo.store.IdGenerator;
@@ -203,5 +205,10 @@ public class CommonFactories
     public static LogBufferFactory defaultLogBufferFactory()
     {
         return new DefaultLogBufferFactory();
+    }
+    
+    public static ReferenceNodeCreator defaultReferenceNodeCreator()
+    {
+        return new ReferenceNodeHolder.DefaultReferenceNodeCreator();
     }
 }

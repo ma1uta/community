@@ -43,13 +43,16 @@ public class ReferenceNodeHolder
     private final TransactionManager transactionManager;
     private final PersistenceManager persistenceManager;
     private final EntityIdGenerator idGenerator;
+    private final ReferenceNodeCreator creator;
 
     ReferenceNodeHolder( TransactionManager transactionManager,
-        PersistenceManager persistenceManager, EntityIdGenerator idGenerator )
+        PersistenceManager persistenceManager, EntityIdGenerator idGenerator,
+        ReferenceNodeCreator creator )
     {
         this.transactionManager = transactionManager;
         this.persistenceManager = persistenceManager;
         this.idGenerator = idGenerator;
+        this.creator = creator;
     }
 
     void addRaw( NameData<Long>... types )
@@ -96,65 +99,6 @@ public class ReferenceNodeHolder
         return id;
     }
 
-    private synchronized NameData<Long> create( final String name )
-    {
-        NameData<Long> result = nameToId.get( name );
-        if ( result != null ) return result;
-        
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        Future<NameData<Long>> future = executor.submit( new Callable<NameData<Long>>()
-        {
-            @Override
-            public NameData<Long> call()
-            {
-                boolean success = false;
-                try
-                {
-                    transactionManager.begin();
-                    long nodeId = idGenerator.nextId( Node.class );
-                    int nameId = (int) idGenerator.nextId( ReferenceNodeStore.class );
-                    persistenceManager.createReferenceNode( name, nameId, nodeId );
-                    transactionManager.commit();
-                    success = true;
-                    return new NameData<Long>( nameId, name, nodeId );
-                }
-                catch ( Throwable t )
-                {
-                    t.printStackTrace();
-                    throw Exceptions.launderedException( t );
-                }
-                finally
-                {
-                    if ( !success )
-                    {
-                        try
-                        {
-                            transactionManager.rollback();
-                        }
-                        catch ( Throwable tt )
-                        {
-                            tt.printStackTrace();
-                        }
-                    }
-                }
-            }
-        } );
-        try
-        {
-            result = future.get();
-            put( result );
-            return result;
-        }
-        catch ( Exception e )
-        {
-            throw Exceptions.launderedException( e );
-        }
-        finally
-        {
-            executor.shutdown();
-        }
-    }
-    
     public Iterable<String> getNames()
     {
         return nameToId.keySet();
@@ -164,5 +108,80 @@ public class ReferenceNodeHolder
     {
         String name = idToName.remove( id );
         if ( name != null ) nameToId.remove( name );
+    }
+    
+    public synchronized NameData<Long> create( String name )
+    {
+        NameData<Long> result = nameToId.get( name );
+        if ( result != null ) return result;
+        
+        result = creator.getOrCreate( transactionManager, idGenerator, persistenceManager, this, name );
+        put( result );
+        return result;
+    }
+    
+    public static interface ReferenceNodeCreator
+    {
+        NameData<Long> getOrCreate( TransactionManager txManager, EntityIdGenerator idGenerator,
+                PersistenceManager persistence, ReferenceNodeHolder holder, String name );
+    }
+    
+    public static class DefaultReferenceNodeCreator implements ReferenceNodeCreator
+    {
+        @Override
+        public NameData<Long> getOrCreate( final TransactionManager txManager, final EntityIdGenerator idGenerator,
+                final PersistenceManager persistenceManager, final ReferenceNodeHolder holder, final String name )
+        {
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            Future<NameData<Long>> future = executor.submit( new Callable<NameData<Long>>()
+            {
+                @Override
+                public NameData<Long> call()
+                {
+                    boolean success = false;
+                    try
+                    {
+                        txManager.begin();
+                        long nodeId = idGenerator.nextId( Node.class );
+                        int nameId = (int) idGenerator.nextId( ReferenceNodeStore.class );
+                        persistenceManager.createReferenceNode( name, nameId, nodeId );
+                        txManager.commit();
+                        success = true;
+                        return new NameData<Long>( nameId, name, nodeId );
+                    }
+                    catch ( Throwable t )
+                    {
+                        t.printStackTrace();
+                        throw Exceptions.launderedException( t );
+                    }
+                    finally
+                    {
+                        if ( !success )
+                        {
+                            try
+                            {
+                                txManager.rollback();
+                            }
+                            catch ( Throwable tt )
+                            {
+                                tt.printStackTrace();
+                            }
+                        }
+                    }
+                }
+            } );
+            try
+            {
+                return future.get();
+            }
+            catch ( Exception e )
+            {
+                throw Exceptions.launderedException( e );
+            }
+            finally
+            {
+                executor.shutdown();
+            }
+        }
     }
 }

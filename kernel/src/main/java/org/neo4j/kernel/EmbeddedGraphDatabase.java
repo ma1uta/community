@@ -70,6 +70,7 @@ public final class EmbeddedGraphDatabase extends AbstractGraphDatabaseWithDbImpl
                 CommonFactories.defaultLockManagerFactory(),
                 CommonFactories.defaultIdGeneratorFactory(),
                 CommonFactories.defaultRelationshipTypeCreator(),
+                CommonFactories.defaultReferenceNodeCreator(),
                 CommonFactories.defaultTxIdGeneratorFactory(),
                 CommonFactories.defaultTxHook(),
                 CommonFactories.defaultLastCommittedTxIdSetter(),
