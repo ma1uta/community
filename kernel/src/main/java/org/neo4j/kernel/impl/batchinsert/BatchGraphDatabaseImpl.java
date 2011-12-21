@@ -142,9 +142,14 @@ class BatchGraphDatabaseImpl implements GraphDatabaseService
     
     public Node getReferenceNode( String name )
     {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException( "Implement" );
     }
 
+    public Node getReferenceNodeIfExists( String name )
+    {
+        throw new UnsupportedOperationException( "Implement" );
+    }
+    
     public Relationship getRelationshipById( long id )
     {
         RelationshipBatchImpl rel = rels.get( id );

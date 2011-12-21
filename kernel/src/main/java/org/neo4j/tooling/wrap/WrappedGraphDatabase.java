@@ -262,6 +262,12 @@ public abstract class WrappedGraphDatabase extends AbstractGraphDatabase
     }
 
     @Override
+    public Node getReferenceNodeIfExists( String name )
+    {
+        return node( graphdb.getReferenceNodeIfExists( name ), false );
+    }
+    
+    @Override
     public final Iterable<Node> getAllNodes()
     {
         return nodes( graphdb.getAllNodes() );

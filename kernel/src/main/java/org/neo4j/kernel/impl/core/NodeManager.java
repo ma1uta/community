@@ -547,6 +547,12 @@ public class NodeManager
 //            releaseLock( (PropertyContainer)graphProperties, LockType.WRITE );
 //        }
     }
+    
+    public Node getReferenceNodeIfExists( String name )
+    {
+        NameData<Long> reference = refNodeHolder.get( name );
+        return reference == null ? null : getNodeById( reference.getPayload() );
+    }
 
     private Relationship getRelationshipByIdOrNull( long relId )
     {

@@ -37,8 +37,8 @@ import org.neo4j.kernel.impl.util.ArrayMap;
 public class ReferenceNodeHolder
 {
     private ArrayMap<String,NameData<Long>> nameToId = new ArrayMap<String,NameData<Long>>( 5, true, true );
-    private ArrayMap<Integer, String> idToName = new ArrayMap<Integer, String>( 5, true, true );
-    private ArrayMap<Long, NameData<Long>> nodeIdToName = new ArrayMap<Long, NameData<Long>>( 5, true, true );
+    private ArrayMap<Integer,String> idToName = new ArrayMap<Integer,String>( 5, true, true );
+    private ArrayMap<Long,NameData<Long>> nodeIdToName = new ArrayMap<Long,NameData<Long>>( 5, true, true );
 
     private final TransactionManager transactionManager;
     private final PersistenceManager persistenceManager;
@@ -80,6 +80,11 @@ public class ReferenceNodeHolder
     public NameData<Long> get( long nodeId )
     {
         return nodeIdToName.get( nodeId );
+    }
+    
+    public NameData<Long> get( String name )
+    {
+        return nameToId.get( name );
     }
 
     public NameData<Long> getOrCreate( String name )

@@ -74,6 +74,12 @@ public class AbstractGraphDatabaseWithDbImpl extends AbstractGraphDatabase
     }
     
     @Override
+    public Node getReferenceNodeIfExists( String name )
+    {
+        return graphDbImpl.getReferenceNodeIfExists( name );
+    }
+    
+    @Override
     public TransactionBuilder tx()
     {
         return graphDbImpl.tx();

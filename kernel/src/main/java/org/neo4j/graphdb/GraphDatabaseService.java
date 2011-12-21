@@ -98,6 +98,8 @@ public interface GraphDatabaseService
      */
     public Node getReferenceNode( String name );
     
+    public Node getReferenceNodeIfExists( String name );
+    
     /**
      * Returns all nodes in the graph.
      * 

@@ -21,13 +21,13 @@ package org.neo4j.kernel.impl.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.After;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.NotInTransactionException;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
@@ -62,11 +62,12 @@ public class TestReferenceNodes
         if ( db != null ) db.shutdown();
     }
     
-    @Test( expected = NotInTransactionException.class )
+    @Test
     public void createReferenceNodeOutsideTx()
     {
         GraphDatabaseService db = newDb();
-        db.getReferenceNode( "something different" );
+        Node node = db.getReferenceNode( "something different" );
+        assertEquals( node, db.getReferenceNode( "something different" ) );
     }
     
     @Test
@@ -100,19 +101,23 @@ public class TestReferenceNodes
     }
     
     @Test
-    public void deleteAndCreateInSameTx()
+    public void deleteThenGetRefNodeShouldReturnSameInThatTx()
     {
         GraphDatabaseService db = newDb();
         Transaction tx = db.beginTx();
-        Node refNode = db.getReferenceNode( "yeah" );
+        String name = "yeah";
+        Node refNode = db.getReferenceNode( name );
         tx.success(); tx.finish();
         
         tx = db.beginTx();
         refNode.delete();
-        Node newRefNode = db.getReferenceNode( "yeah" );
-        assertFalse( refNode.equals( newRefNode ) );
+        Node newRefNode = db.getReferenceNode( name );
+        assertTrue( refNode.equals( newRefNode ) );
         tx.success();
         tx.finish();
+        
+        Node newNewRefNode = db.getReferenceNode( name );
+        assertFalse( newNewRefNode.equals( newRefNode ) );
         db.shutdown();
     }
     
