@@ -25,10 +25,10 @@ import javax.transaction.xa.XAResource;
 
 import org.neo4j.helpers.Pair;
 import org.neo4j.kernel.impl.core.PropertyIndex;
+import org.neo4j.kernel.impl.nioneo.store.NameData;
+import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
-import org.neo4j.kernel.impl.nioneo.store.PropertyIndexData;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
-import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeData;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.util.ArrayMap;
 import org.neo4j.kernel.impl.util.RelIdArray;
@@ -167,7 +167,7 @@ public interface NeoStoreTransaction
      * @param id The id of the node to load.
      * @return True iff the node record can be found.
      */
-    public boolean nodeLoadLight( long id );
+    public NodeRecord nodeLoadLight( long id );
 
     /**
      * Attempts to load the value off the store forthe given PropertyData
@@ -233,7 +233,7 @@ public interface NeoStoreTransaction
      * @return An array of the PropertyIndexData that were loaded - can be less
      *         than the number requested.
      */
-    public PropertyIndexData[] loadPropertyIndexes( int maxCount );
+    public NameData[] loadPropertyIndexes( int maxCount );
 
     /**
      * Loads the complete property chain for the given node and returns it as a
@@ -244,7 +244,7 @@ public interface NeoStoreTransaction
      * @return The properties loaded, as a map from property index id to
      *         property data.
      */
-    public ArrayMap<Integer,PropertyData> nodeLoadProperties( long nodeId,
+    public ArrayMap<Integer,PropertyData> nodeLoadProperties( long nodeId, long firstProp,
             boolean light );
 
     /**
@@ -273,7 +273,7 @@ public interface NeoStoreTransaction
      *
      * @return All the stored RelationshipTypes, as a RelationshipTypeData array
      */
-    public RelationshipTypeData[] loadRelationshipTypes();
+    public NameData[] loadRelationshipTypes();
 
     /**
      * Creates a property index entry out of the given id and string.

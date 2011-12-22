@@ -20,10 +20,15 @@
 package org.neo4j.server.configuration;
 
 import java.io.File;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.configuration.Configuration;
+import org.neo4j.helpers.collection.PrefetchingIterator;
+import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.info.DiagnosticsExtractor;
+import org.neo4j.kernel.info.DiagnosticsPhase;
 
 public interface Configurator
 {
@@ -40,6 +45,7 @@ public interface Configurator
     String DEFAULT_WEBSERVER_ADDRESS = "localhost";
     String WEBSERVER_ADDRESS_PROPERTY_KEY = "org.neo4j.server.webserver.address";
     String WEBSERVER_MAX_THREADS_PROPERTY_KEY = "org.neo4j.server.webserver.maxthreads";
+    String WEBSERVER_LIMIT_EXECUTION_TIME_PROPERTY_KEY = "org.neo4j.server.webserver.limit.executiontime";
 
     String REST_API_PATH_PROPERTY_KEY = "org.neo4j.server.webadmin.data.uri";
     String REST_API_PACKAGE = "org.neo4j.server.rest.web";
@@ -62,4 +68,37 @@ public interface Configurator
     Map<String, String> getDatabaseTuningProperties();
 
     Set<ThirdPartyJaxRsPackage> getThirdpartyJaxRsClasses();
+
+    DiagnosticsExtractor<Configurator> DIAGNOSTICS = new DiagnosticsExtractor<Configurator>()
+    {
+        @Override
+        public void dumpDiagnostics( final Configurator source, DiagnosticsPhase phase, StringLogger log )
+        {
+            if ( phase.isInitialization() || phase.isExplicitlyRequested() )
+            {
+                final Configuration config = source.configuration();
+                log.logLongMessage( "Server configuration:", new PrefetchingIterator<String>()
+                {
+                    final Iterator<?> keys = config.getKeys();
+
+                    @Override
+                    protected String fetchNextOrNull()
+                    {
+                        while ( keys.hasNext() )
+                        {
+                            Object key = keys.next();
+                            if ( key instanceof String ) return key + " = " + config.getProperty( (String) key );
+                        }
+                        return null;
+                    }
+                }, true );
+            }
+        }
+        
+        @Override
+        public String toString()
+        {
+            return Configurator.class.getName();
+        }
+    };
 }

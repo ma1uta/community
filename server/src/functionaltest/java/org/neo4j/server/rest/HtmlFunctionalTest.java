@@ -31,15 +31,13 @@ import javax.ws.rs.core.Response.Status;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.server.database.DatabaseBlockedException;
 import org.neo4j.server.helpers.FunctionalTestHelper;
 import org.neo4j.server.rest.domain.GraphDbHelper;
 import org.neo4j.server.rest.domain.RelationshipDirection;
-import org.neo4j.test.server.SharedServerTestBase;
 
-public class HtmlFunctionalTest extends SharedServerTestBase
+public class HtmlFunctionalTest extends AbstractRestFunctionalTestBase
 {
     private long thomasAnderson;
     private long trinity;
@@ -93,7 +91,6 @@ public class HtmlFunctionalTest extends SharedServerTestBase
         return id;
     }
 
-    @Ignore
     @Test
     public void shouldGetRoot() {
         JaxRsResponse response = RestRequest.req().get(functionalTestHelper.dataUri(), MediaType.TEXT_HTML_TYPE);
@@ -103,7 +100,6 @@ public class HtmlFunctionalTest extends SharedServerTestBase
     }
 
     @Test
-    @Ignore
     public void shouldGetNodeIndexRoot() {
         JaxRsResponse response = RestRequest.req().get(functionalTestHelper.nodeIndexUri(), MediaType.TEXT_HTML_TYPE);
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -112,7 +108,6 @@ public class HtmlFunctionalTest extends SharedServerTestBase
     }
 
     @Test
-    @Ignore
     public void shouldGetRelationshipIndexRoot() {
         JaxRsResponse response = RestRequest.req().get(functionalTestHelper.relationshipIndexUri(), MediaType.TEXT_HTML_TYPE);
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -121,7 +116,6 @@ public class HtmlFunctionalTest extends SharedServerTestBase
     }
 
     @Test
-    @Ignore
     public void shouldGetTrinityWhenSearchingForHer() {
         JaxRsResponse response = RestRequest.req().get(functionalTestHelper.indexNodeUri("node", "name", "Trinity"), MediaType.TEXT_HTML_TYPE);
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -142,7 +136,6 @@ public class HtmlFunctionalTest extends SharedServerTestBase
     }
 
     @Test
-    @Ignore
     public void shouldGetSomeRelationships() {
         final RestRequest request = RestRequest.req();
         JaxRsResponse response = request.get(functionalTestHelper.relationshipsUri(thomasAnderson, RelationshipDirection.all.name(), "KNOWS"), MediaType.TEXT_HTML_TYPE);
@@ -173,7 +166,6 @@ public class HtmlFunctionalTest extends SharedServerTestBase
     }
 
     @Test
-    @Ignore
     public void shouldGetThomasAndersonLovesTrinityRelationship() {
         JaxRsResponse response = RestRequest.req().get(functionalTestHelper.relationshipUri(thomasAndersonLovesTrinity), MediaType.TEXT_HTML_TYPE);
         assertEquals(Status.OK.getStatusCode(), response.getStatus());

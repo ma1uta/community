@@ -131,6 +131,12 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
         }
     }
 
+    @Override
+    public RelationshipRecord forceGetRaw( long id )
+    {
+        return forceGetRecord( id );
+    }
+
     public RelationshipRecord getLightRel( long id )
     {
         PersistenceWindow window = null;
@@ -367,7 +373,7 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
     }
 
     @Override
-    public void logIdUsage( StringLogger logger )
+    public void logIdUsage( StringLogger.LineLogger logger )
     {
         NeoStore.logIdUsage( logger, this );
     }
