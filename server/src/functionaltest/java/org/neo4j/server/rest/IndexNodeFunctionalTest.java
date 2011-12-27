@@ -202,10 +202,32 @@ public class IndexNodeFunctionalTest extends AbstractRestFunctionalTestBase
         Collection<?> hits = (Collection<?>) JsonHelper.jsonToSingleValue( entity );
         assertEquals( 1, hits.size() );
     }
-
-    private Object generateNodeIndexCreationPayload( String key, String value, String nodeUri )
+    
+    @Test
+    public void addingIntegersToIndex() throws Exception
     {
-        Map<String, String> results = new HashMap<String, String>();
+        final String indexName = "favorites";
+        final String key = "some-key";
+        final int value = 123;
+        long nodeId = createNode();
+        // implicitly create the index
+        String result = gen.get()
+                .expectedStatus( 201 )
+                .payload(
+                        JsonHelper.createJsonFrom( generateNodeIndexCreationPayload( key, value,
+                                functionalTestHelper.nodeUri( nodeId ) ) ) )
+                .post( functionalTestHelper.indexNodeUri( indexName ) ).entity();
+        // look if we get one entry back
+        JaxRsResponse response = RestRequest.req()
+                .get( functionalTestHelper.indexNodeUri( indexName, key, value ) );
+        String entity = response.getEntity( String.class );
+        Collection<?> hits = (Collection<?>) JsonHelper.jsonToSingleValue( entity );
+        assertEquals( 1, hits.size() );
+    }
+
+    private Object generateNodeIndexCreationPayload( String key, Object value, String nodeUri )
+    {
+        Map<String, Object> results = new HashMap<String, Object>();
         results.put( "key", key );
         results.put( "value", value );
         results.put( "uri", nodeUri );
