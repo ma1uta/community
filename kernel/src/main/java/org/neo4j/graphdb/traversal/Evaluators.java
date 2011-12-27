@@ -210,7 +210,7 @@ public abstract class Evaluators
      * @return an {@link Evaluator} which compares the type of the last relationship
      * in a {@link Path} to a given set of relationship types.
      */
-    public static Evaluator returnWhereLastRelationshipTypeIs( RelationshipType type,
+    public static Evaluator includeWhereLastRelationshipTypeIs( RelationshipType type,
             RelationshipType... orAnyOfTheseTypes )
     {
         return lastRelationshipTypeIs( Evaluation.INCLUDE_AND_CONTINUE, Evaluation.EXCLUDE_AND_CONTINUE,

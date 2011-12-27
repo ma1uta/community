@@ -186,7 +186,7 @@ public class MatrixNewTravTest
                 .relationships( RelTypes.CODED_BY, Direction.OUTGOING )
                 .relationships( RelTypes.KNOWS, Direction.OUTGOING )
                 .evaluator(
-                        Evaluators.returnWhereLastRelationshipTypeIs( RelTypes.CODED_BY ) );
+                        Evaluators.includeWhereLastRelationshipTypeIs( RelTypes.CODED_BY ) );
         return td.traverse( startNode );
     }
     // END SNIPPET: find-hackers

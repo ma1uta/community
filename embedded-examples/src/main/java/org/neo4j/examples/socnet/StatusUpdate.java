@@ -60,7 +60,7 @@ public class StatusUpdate
                 depthFirst().
                 relationships( NEXT, Direction.INCOMING ).
                 relationships( STATUS, Direction.INCOMING ).
-                evaluator( Evaluators.returnWhereLastRelationshipTypeIs( STATUS ) );
+                evaluator( Evaluators.includeWhereLastRelationshipTypeIs( STATUS ) );
 
         Traverser traverser = traversalDescription.traverse( getUnderlyingNode() );
 

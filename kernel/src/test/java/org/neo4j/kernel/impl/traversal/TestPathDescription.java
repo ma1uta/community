@@ -21,7 +21,7 @@ package org.neo4j.kernel.impl.traversal;
 
 import static org.neo4j.graphdb.DynamicRelationshipType.withName;
 import static org.neo4j.graphdb.traversal.Evaluators.atDepth;
-import static org.neo4j.graphdb.traversal.Evaluators.returnWhereLastRelationshipTypeIs;
+import static org.neo4j.graphdb.traversal.Evaluators.includeWhereLastRelationshipTypeIs;
 import static org.neo4j.kernel.Traversal.traversal;
 import static org.neo4j.kernel.Uniqueness.RELATIONSHIP_PATH;
 
@@ -41,7 +41,7 @@ public class TestPathDescription extends AbstractTestBase
         Node a = getNodeWithName( "a" );
         RelationshipType marriedTo = withName( "MARRIED_TO" );
         for ( Path path : traversal().uniqueness( RELATIONSHIP_PATH )
-                .evaluator( returnWhereLastRelationshipTypeIs( marriedTo ) )
+                .evaluator( includeWhereLastRelationshipTypeIs( marriedTo ) )
                 .evaluator( atDepth( 3 ) ).traverse( a ) )
         {
             System.out.println( path );
