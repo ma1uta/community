@@ -33,7 +33,6 @@ import org.neo4j.graphdb.traversal.PathCollisionDetector;
 import org.neo4j.graphdb.traversal.SelectorOrderingPolicy;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalDescription;
-import org.neo4j.helpers.Predicate;
 import org.neo4j.kernel.impl.traversal.FinalTraversalBranch;
 import org.neo4j.kernel.impl.traversal.TraversalDescriptionImpl;
 
@@ -425,38 +424,6 @@ public class Traversal
                 return relationship.getStartNode().equals( from ) ? "-->" : "<--";
             }
         } );
-    }
-
-    public static Predicate<Path> returnWhereLastRelationshipTypeIs(
-            final RelationshipType firstRelationshipType,
-            final RelationshipType... relationshipTypes )
-    {
-        return new Predicate<Path>()
-        {
-            public boolean accept( Path p )
-            {
-                Relationship lastRel = p.lastRelationship();
-                if ( lastRel == null )
-                {
-                    return false;
-                }
-
-                if ( lastRel.isType( firstRelationshipType ) )
-                {
-                    return true;
-                }
-
-                for ( RelationshipType currentType : relationshipTypes )
-                {
-                    if ( lastRel.isType( currentType ) )
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-        };
     }
     
     public static PathDescription path()

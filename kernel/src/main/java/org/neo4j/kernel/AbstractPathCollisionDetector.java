@@ -40,7 +40,7 @@ public class AbstractPathCollisionDetector implements PathCollisionDetector
     {
         // [0] for paths from start, [1] for paths from end
         Collection<TraversalBranch>[] pathsHere = paths.get( branch.endNode() );
-        int index = direction == Direction.OUTGOING ? 0 : 1;
+        int index = direction.ordinal();
         if ( pathsHere == null )
         {
             pathsHere = new Collection[]
@@ -77,7 +77,7 @@ public class AbstractPathCollisionDetector implements PathCollisionDetector
         return null;
     }
 
-    protected boolean includePath( BidirectionalTraversalBranchPath path )
+    protected boolean includePath( Path path )
     {
         return true;
     }

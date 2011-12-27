@@ -171,12 +171,26 @@ public abstract class Evaluators
      * in a {@link Path} to a given set of relationship types.
      */
     public static Evaluator lastRelationshipTypeIs( final Evaluation evaluationIfMatch,
-            final Evaluation evaluationIfNoMatch, RelationshipType type,
-            RelationshipType... orAnyOfTheseTypes )
+            final Evaluation evaluationIfNoMatch, RelationshipType... anyOfTheseTypes )
     {
+        if ( anyOfTheseTypes.length == 1 )
+        {
+            final RelationshipType type = anyOfTheseTypes[0];
+            
+            return new Evaluator()
+            {
+                @Override
+                public Evaluation evaluate( Path path )
+                {
+                    Relationship rel = path.lastRelationship();
+                    if ( rel == null ) return evaluationIfNoMatch;
+                    return rel.isType( type ) ? evaluationIfMatch : evaluationIfNoMatch;
+                }
+            };
+        }
+        
         final Set<String> expectedTypes = new HashSet<String>();
-        expectedTypes.add( type.name() );
-        for ( RelationshipType otherType : orAnyOfTheseTypes )
+        for ( RelationshipType otherType : anyOfTheseTypes )
         {
             expectedTypes.add( otherType.name() );
         }
@@ -203,18 +217,15 @@ public abstract class Evaluators
      * Uses {@link Evaluation#INCLUDE_AND_CONTINUE} for {@code evaluationIfMatch}
      * and {@link Evaluation#EXCLUDE_AND_CONTINUE} for {@code evaluationIfNoMatch}.
      * 
-     * @param type the (first) type (of possibly many) to match the last relationship
-     * in paths with.
-     * @param orAnyOfTheseTypes additional types to match the last relationship in
-     * paths with.
+     * @param anyOfTheseTypes types to match the last relationship in paths with. If any matches
+     * it's considered a match.
      * @return an {@link Evaluator} which compares the type of the last relationship
      * in a {@link Path} to a given set of relationship types.
      */
-    public static Evaluator includeWhereLastRelationshipTypeIs( RelationshipType type,
-            RelationshipType... orAnyOfTheseTypes )
+    public static Evaluator includeWhereLastRelationshipTypeIs( RelationshipType... anyOfTheseTypes )
     {
         return lastRelationshipTypeIs( Evaluation.INCLUDE_AND_CONTINUE, Evaluation.EXCLUDE_AND_CONTINUE,
-                type, orAnyOfTheseTypes );
+                anyOfTheseTypes );
     }
     
     /**
@@ -222,18 +233,15 @@ public abstract class Evaluators
      * Uses {@link Evaluation#INCLUDE_AND_PRUNE} for {@code evaluationIfMatch}
      * and {@link Evaluation#INCLUDE_AND_CONTINUE} for {@code evaluationIfNoMatch}.
      * 
-     * @param type the (first) type (of possibly many) to match the last relationship
-     * in paths with.
-     * @param orAnyOfTheseTypes additional types to match the last relationship in
-     * paths with.
+     * @param anyOfTheseTypes types to match the last relationship in paths with. If any matches
+     * it's considered a match.
      * @return an {@link Evaluator} which compares the type of the last relationship
      * in a {@link Path} to a given set of relationship types.
      */
-    public static Evaluator pruneWhereLastRelationshipTypeIs( RelationshipType type,
-            RelationshipType... orAnyOfTheseTypes )
+    public static Evaluator pruneWhereLastRelationshipTypeIs( RelationshipType... anyOfTheseTypes )
     {
         return lastRelationshipTypeIs( Evaluation.INCLUDE_AND_PRUNE, Evaluation.EXCLUDE_AND_CONTINUE,
-                type, orAnyOfTheseTypes );
+                anyOfTheseTypes );
     }
     
     /**

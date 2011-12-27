@@ -147,7 +147,6 @@ class TraverserImpl implements Traverser
         @Override
         public void relationshipTraversed()
         {
-            System.out.println( "+ on " + hashCode() );
             numberOfRelationshipsTraversed++;
         }
         

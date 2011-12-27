@@ -19,12 +19,14 @@
  */
 package org.neo4j.kernel;
 
+import org.neo4j.graphdb.Path;
+
 public class ShortestPathsCollisionDetector extends AbstractPathCollisionDetector
 {
     private int depth = -1;
     
     @Override
-    protected boolean includePath( BidirectionalTraversalBranchPath path )
+    protected boolean includePath( Path path )
     {
         if ( depth == -1 )
         {

@@ -19,19 +19,20 @@
  */
 package org.neo4j.kernel.impl.traversal;
 
-import static org.neo4j.graphdb.DynamicRelationshipType.withName;
-import static org.neo4j.graphdb.traversal.Evaluators.atDepth;
-import static org.neo4j.graphdb.traversal.Evaluators.includeWhereLastRelationshipTypeIs;
 import static org.neo4j.kernel.Traversal.traversal;
-import static org.neo4j.kernel.Uniqueness.RELATIONSHIP_PATH;
 
 import org.junit.Test;
+import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.traversal.Evaluators;
 
 public class TestPathDescription extends AbstractTestBase
 {
+    private static final RelationshipType KNOWS = DynamicRelationshipType.withName( "KNOWS" );
+    private static final RelationshipType MARRIED_TO = DynamicRelationshipType.withName( "MARRIED_TO" );
+    
     @Test
     public void foaf() throws Exception
     {
@@ -39,10 +40,8 @@ public class TestPathDescription extends AbstractTestBase
                 "e KNOWS f", "f KNOWS c", "f MARRIED_TO g", "b MARRIED_TO d" );
         
         Node a = getNodeWithName( "a" );
-        RelationshipType marriedTo = withName( "MARRIED_TO" );
-        for ( Path path : traversal().uniqueness( RELATIONSHIP_PATH )
-                .evaluator( includeWhereLastRelationshipTypeIs( marriedTo ) )
-                .evaluator( atDepth( 3 ) ).traverse( a ) )
+        for ( Path path : traversal().relationships( KNOWS ).relationships( MARRIED_TO )
+                .evaluator( Evaluators.includeWhereLastRelationshipTypeIs( MARRIED_TO ) ).traverse( a ) )
         {
             System.out.println( path );
         }
