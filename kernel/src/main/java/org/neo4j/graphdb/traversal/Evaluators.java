@@ -249,19 +249,38 @@ public abstract class Evaluators
      * else {@code evaluationIfNoMatch}.
      */
     public static Evaluator endNodeIs( final Evaluation evaluationIfMatch,
-            final Evaluation evaluationIfNoMatch, Node... nodes )
+            final Evaluation evaluationIfNoMatch, Node... possibleEndNodes )
     {
-        final Set<Node> nodeSet = new HashSet<Node>( asList( nodes ) );
+        if ( possibleEndNodes.length == 1 )
+        {
+            final Node target = possibleEndNodes[0];
+            return new Evaluator()
+            {
+                @Override
+                public Evaluation evaluate( Path path )
+                {
+                    return target.equals( path.endNode() ) ? evaluationIfMatch : evaluationIfNoMatch;
+                }
+            };
+        }
+        
+        final Set<Node> endNodes = new HashSet<Node>( asList( possibleEndNodes ) );
         return new Evaluator()
         {
             @Override
             public Evaluation evaluate( Path path )
             {
-                return nodeSet.contains( path.endNode() ) ? evaluationIfMatch : evaluationIfNoMatch;
+                return endNodes.contains( path.endNode() ) ? evaluationIfMatch : evaluationIfNoMatch;
             }
         };
     }
     
+    /**
+     * @see #endNodeIs(Evaluation, Evaluation, Node...),
+     * uses {@link Evaluation#INCLUDE_AND_CONTINUE} for {@code evaluationIfMatch}
+     * and {@link Evaluation#EXCLUDE_AND_CONTINUE} for {@code evaluationIfNoMatch}.
+     * @param possibleEndNodes end nodes for paths to be included in the result.
+     */
     public static Evaluator includeWhereEndNodeIs( Node... nodes )
     {
         return endNodeIs( Evaluation.INCLUDE_AND_CONTINUE, Evaluation.EXCLUDE_AND_CONTINUE, nodes );

@@ -24,24 +24,43 @@ object Query {
   def start(startItems: StartItem*) = new QueryBuilder(startItems)
 }
 
-case class Query(returns: Return, start: Start, matching: Option[ Match ], where: Option[ Clause ],
-                 aggregation: Option[ Aggregation ],
-                 sort: Option[ Sort ], slice: Option[ Slice ], namedPaths: Option[ NamedPaths ])
+case class Query(returns: Return,
+                 start: Start,
+                 matching: Option[Match],
+                 where: Option[Predicate],
+                 aggregation: Option[Aggregation],
+                 sort: Option[Sort],
+                 slice: Option[Slice],
+                 namedPaths: Option[NamedPaths],
+                 queryString: String = "") {
+  override def equals(p1: Any): Boolean =
+    if (p1 == null)
+      false
+    else if (!p1.isInstanceOf[Query])
+      false
+    else {
+      val other = p1.asInstanceOf[Query]
+      returns == other.returns &&
+        start == other.start &&
+        matching == other.matching &&
+        where == other.where &&
+        aggregation == other.aggregation &&
+        sort == other.sort &&
+        slice == other.slice &&
+        namedPaths == other.namedPaths
+    }
+}
 
-case class Return(columns: List[ String ], returnItems: ReturnItem*)
+case class Return(columns: List[String], returnItems: ReturnItem*)
 
 case class Start(startItems: StartItem*)
 
 case class Match(patterns: Pattern*)
 
-case class NamedPaths(paths: NamedPath*) extends Traversable[ Pattern ] {
-  def foreach[ U ](f: ( Pattern ) => U) {
-    paths.flatten.foreach(f)
-  }
-}
+case class NamedPaths(paths: NamedPath*)
 
 case class Aggregation(aggregationItems: AggregationItem*)
 
 case class Sort(sortItems: SortItem*)
 
-case class Slice(from: Option[ Value ], limit: Option[ Value ])
+case class Slice(from: Option[Expression], limit: Option[Expression])

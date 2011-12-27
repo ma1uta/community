@@ -21,7 +21,6 @@ package org.neo4j.cypher
 
 import commands.Query
 import org.junit.Before
-import parser.CypherParser
 
 
 trait ExecutionEngineHelper extends GraphDatabaseTestBase {
@@ -40,8 +39,8 @@ trait ExecutionEngineHelper extends GraphDatabaseTestBase {
 
 
   def parseAndExecute(q: String, params: (String, Any)*): ExecutionResult = {
-    val query = new CypherParser().parse(q)
-    execute(query, params: _*)
+    val plan = engine.prepare(q)
+    plan.execute(params.toMap)
   }
 
 }

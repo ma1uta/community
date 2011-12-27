@@ -471,6 +471,12 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
             releaseWindow( window );
         }
     }
+    
+    @Override
+    public DynamicRecord forceGetRaw( long id )
+    {
+        return forceGetRecord( id );
+    }
 
     public Collection<DynamicRecord> getRecords( long startBlockId )
     {
@@ -641,7 +647,7 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
     }
 
     @Override
-    public void logIdUsage( StringLogger logger )
+    public void logIdUsage( StringLogger.LineLogger logger )
     {
         NeoStore.logIdUsage( logger, this );
     }

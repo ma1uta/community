@@ -42,7 +42,7 @@ import org.neo4j.shell.impl.SameJvmClient;
 import org.neo4j.shell.kernel.GraphDatabaseShellServer;
 import org.neo4j.test.ImpermanentGraphDatabase;
 
-@Ignore
+@Ignore( "Not a unit test" )
 public abstract class AbstractShellTest
 {
     protected static ImpermanentGraphDatabase db;
@@ -89,6 +89,7 @@ public abstract class AbstractShellTest
         assert tx != null;
         if ( success ) tx.success();
         tx.finish();
+        tx = null;
     }
 
     @AfterClass

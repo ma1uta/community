@@ -25,8 +25,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -483,13 +483,18 @@ public class RESTDocsGenerator extends AsciiDocGenerator
     protected void document( final DocumentationData data )
     {
         data.description = replaceSnippets( data.description );
-        FileWriter fw = null;
+        Writer fw = null;
         try
         {
             fw = getFW("target" + File.separator + "docs"+ File.separator + section , data.title);
             String name = title.replace( " ", "-" )
                     .toLowerCase();
-            line( fw, "[["+section.replaceAll( "\\(|\\)", "" )+"-" + name.replaceAll( "\\(|\\)", "" ) + "]]" );
+            String longSection = section.replaceAll( "\\(|\\)", "" )+"-" + name.replaceAll( "\\(|\\)", "" );
+            if(longSection.indexOf( "/" )>0)
+            {
+                longSection = longSection.substring( longSection.indexOf( "/" )+1 );
+            }
+            line( fw, "[[" + longSection + "]]" );
             //make first Character uppercase
             String firstChar = data.title.substring(  0, 1 ).toUpperCase();
             line( fw, "=== " + firstChar + data.title.substring( 1 ) + " ===" );
@@ -551,7 +556,8 @@ public class RESTDocsGenerator extends AsciiDocGenerator
         }
     }
 
-    public void writeEntity( final FileWriter fw, final String entity ) throws IOException
+    public void writeEntity( final Writer fw, final String entity )
+            throws IOException
     {
         if ( entity != null )
         {

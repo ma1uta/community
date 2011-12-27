@@ -19,15 +19,13 @@
  */
 package org.neo4j.cypher
 
-import commands._
 import org.junit.Assert._
 import org.junit.Test
-import parser.CypherParser
 
 class SematicErrorTest extends ExecutionEngineHelper {
   @Test def returnNodeThatsNotThere() {
     expectedError("start x=node(0) return bar",
-      """Unknown identifier "bar".""")
+      """Unknown identifier `bar`.""")
   }
 
   @Test def throwOnDisconnectedPattern() {
@@ -47,12 +45,12 @@ class SematicErrorTest extends ExecutionEngineHelper {
 
   @Test def cantUseTYPEOnNodes() {
     expectedError("start r=node(0) return type(r)",
-      "Expected `r` to be a RelationshipIdentifier but it was NodeIdentifier")
+      "Expected `r` to be a RelationshipType but it was NodeType")
   }
 
   @Test def cantUseLENGTHOnNodes() {
     expectedError("start n=node(0) return length(n)",
-      "Expected n to be an iterable, but it is not.")
+      "Expected `n` to be a IterableType<AnyType> but it was NodeType")
   }
 
   @Test def cantReUseRelationshipIdentifier() {
@@ -60,18 +58,25 @@ class SematicErrorTest extends ExecutionEngineHelper {
       "Can't re-use pattern relationship 'r' with different start/end nodes.")
   }
 
-  @Test def shortestPathNeedsBothEndNodes() {
-    expectedError("start n=node(0) match p=shortestPath(n-->b) return p",
-      "Shortest path needs both ends of the path to be provided. Couldn't find b")
+  @Test def shouldKnowNotToCompareStringsAndNumbers() {
+    expectedError("start a=node(0) where a.age =~ 13 return a",
+      "13.0 expected to be of type StringType but it is of type NumberType")
   }
 
-  def parse(txt:String):Query = new CypherParser().parse(txt)
+  @Test def shouldComplainAboutUnknownIdentifier() {
+    expectedError("start s = node(1) where s.name = Name and s.age = 10 return s",
+      "Unknown identifier `Name`.")
+  }
 
-  def expectedError(query: String, message: String) { expectedError(parse(query), message) }
+  @Test def shortestPathNeedsBothEndNodes() {
+    expectedError("start n=node(0) match p=shortestPath(n-->b) return p",
+      "To find a shortest path, both ends of the path need to be provided. Couldn't find `b`")
+  }
 
-  def expectedError(query: Query, message: String) {
+  def expectedError(query: String, message: String) {
     try {
-      execute(query).toList
+      val result = parseAndExecute(query)
+      result.toList
       fail("Did not get the expected syntax error, expected: " + message)
     } catch {
       case x: CypherException => assertEquals(message, x.getMessage)

@@ -19,58 +19,60 @@
  */
 package org.neo4j.cypher.commands
 
-import org.neo4j.cypher.pipes.Pipe
 import org.neo4j.cypher.pipes.aggregation._
+import org.neo4j.cypher.internal.pipes.Dependant
+import collection.Seq
+import org.neo4j.cypher.symbols.{AnyType, IntegerType, Identifier}
 
-abstract sealed class ReturnItem(val identifier: Identifier) extends (Map[String, Any] => Any) {
-  def assertDependencies(source: Pipe)
-
-  def columnName = identifier match {
-    case UnboundIdentifier(name, None) => name;
-    case UnboundIdentifier(name, id) => id.get.name;
-    case identifier: Identifier => identifier.name;
-  }
+abstract sealed class ReturnItem(val identifier: Identifier) extends (Map[String, Any] => Any) with Dependant {
+  def columnName = identifier.name
 
   def concreteReturnItem = this
+
+  override def toString() = identifier.name
 }
 
-case class ValueReturnItem(value: Value) extends ReturnItem(value.identifier) {
-  def apply(m: Map[String, Any]): Any = value(m) // Map(columnName -> value(m))
-
-  def assertDependencies(source: Pipe) {
-    value.checkAvailable(source.symbols)
+case class ExpressionReturnItem(value: Expression) extends ReturnItem(value.identifier) {
+  def apply(m: Map[String, Any]): Any = m.get(value.identifier.name) match {
+    case None => value(m)
+    case Some(x) => x
   }
+
+  def dependencies: Seq[Identifier] = value.dependencies(AnyType())
+}
+
+case class AliasReturnItem(inner: ReturnItem, newName: String) extends ReturnItem(Identifier(newName, inner.identifier.typ)) {
+  def apply(m: Map[String, Any]): Any = inner.apply(m)
+
+  def dependencies: Seq[Identifier] = inner.dependencies
+
+  override def toString() = inner.toString() + " AS " + newName
 }
 
 
-case class ValueAggregationItem(value: AggregationValue) extends AggregationItem(value.identifier.name) {
+case class ValueAggregationItem(value: AggregationExpression) extends AggregationItem(value.identifier) {
+  def dependencies: Seq[Identifier] = value.dependencies(AnyType())
 
-  def assertDependencies(source: Pipe) {
-    value.checkAvailable(source.symbols)
-  }
-   def createAggregationFunction: AggregationFunction = value.createAggregationFunction
+  def createAggregationFunction = value.createAggregationFunction
 }
 
-abstract sealed class AggregationItem(name: String) extends ReturnItem(AggregationIdentifier(name)) {
+abstract sealed class AggregationItem(identifier: Identifier) extends ReturnItem(identifier) {
   def apply(m: Map[String, Any]): Map[String, Any] = m
 
   def createAggregationFunction: AggregationFunction
-  override def toString() = name
+
+  override def toString() = identifier.name
+}
+
+case class AliasAggregationItem(inner: AggregationItem, newName: String) extends AggregationItem(Identifier(newName, inner.identifier.typ)) {
+  def createAggregationFunction = inner.createAggregationFunction
+
+  def dependencies: Seq[Identifier] = inner.dependencies
 }
 
 
-case class CountStar() extends AggregationItem("count(*)") {
-  def createAggregationFunction: AggregationFunction = new CountStarFunction
+case class CountStar() extends AggregationItem(Identifier("count(*)", IntegerType())) {
+  def createAggregationFunction = new CountStarFunction
 
-  def assertDependencies(source: Pipe) {}
-}
-
-trait InnerReturnItem extends AggregationItem {
-  def inner: ReturnItem
-
-  def assertDependencies(source: Pipe) {
-    inner.assertDependencies(source)
-  }
-
-  override def concreteReturnItem = inner
+  def dependencies: Seq[Identifier] = Seq()
 }

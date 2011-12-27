@@ -36,7 +36,6 @@ import javax.ws.rs.core.Response.Status;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
@@ -50,15 +49,11 @@ import org.neo4j.server.rest.domain.JsonHelper;
 import org.neo4j.server.rest.domain.JsonParseException;
 import org.neo4j.server.rest.domain.URIHelper;
 import org.neo4j.server.rest.web.PropertyValueException;
-import org.neo4j.test.TestData;
-import org.neo4j.test.server.SharedServerTestBase;
 
-public class IndexNodeFunctionalTest extends SharedServerTestBase
+public class IndexNodeFunctionalTest extends AbstractRestFunctionalTestBase
 {
     private static FunctionalTestHelper functionalTestHelper;
     private static GraphDbHelper helper;
-    public @Rule
-    TestData<RESTDocsGenerator> gen = TestData.producedThrough( RESTDocsGenerator.PRODUCER );
 
     @BeforeClass
     public static void setupServer() throws IOException
@@ -90,19 +85,6 @@ public class IndexNodeFunctionalTest extends SharedServerTestBase
     }
 
     /**
-     * List node indexes (empty result). This is an example covering the case
-     * where no node index exists.
-     */
-    @Documented
-    @Test
-    public void shouldGetEmptyListOfNodeIndexesWhenNoneExist() throws PropertyValueException
-    {
-        gen.get()
-                .expectedStatus( 204 )
-                .get( functionalTestHelper.nodeIndexUri() );
-    }
-
-    /**
      * List node indexes.
      */
     @Documented
@@ -118,7 +100,7 @@ public class IndexNodeFunctionalTest extends SharedServerTestBase
         Map<String, Object> map = JsonHelper.jsonToMap( entity );
         assertNotNull( map.get( indexName ) );
 
-        assertEquals( 1, map.size() );
+        assertEquals( "Was: " + map + ", no-auto-index:" + functionalTestHelper.removeAnyAutoIndex( map ), 1, functionalTestHelper.removeAnyAutoIndex( map ).size() );
     }
 
     /**
@@ -175,13 +157,14 @@ public class IndexNodeFunctionalTest extends SharedServerTestBase
     @Test
     public void shouldCreateANamedNodeIndexWithConfiguration() throws Exception
     {
+        int expectedIndexes = helper.getNodeIndexes().length+1;
         gen.get()
                 .payload( "{\"name\":\"fulltext\", \"config\":{\"type\":\"fulltext\",\"provider\":\"lucene\"}}" )
                 .expectedStatus( 201 )
                 .expectedHeader( "Location" )
                 .post( functionalTestHelper.nodeIndexUri() );
 
-        assertEquals( 1, helper.getNodeIndexes().length );
+        assertEquals( expectedIndexes, helper.getNodeIndexes().length );
         assertThat( helper.getNodeIndexes(), FunctionalTestHelper.arrayContains( "fulltext" ) );
     }
 

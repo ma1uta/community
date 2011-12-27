@@ -21,7 +21,6 @@ package org.neo4j.cypher
  */
 
 import org.scalatest.junit.JUnitSuite
-import parser.CypherParser
 import org.junit.Assert._
 import org.junit.{Ignore, Test}
 
@@ -64,12 +63,6 @@ class SyntaxExceptionTest extends JUnitSuite {
     expectError(
       "start s = node(1,2,) return s order by s",
       "Last element of list must be a value")
-  }
-
-  @Test def shouldComplainAboutNonQuotedStrings() {
-    expectError(
-      "start s = node(1) where s.name = Name and s.age = 10 return s",
-      "Probably missing quotes around a string")
   }
 
   @Test def shouldWarnAboutMissingStart() {

@@ -118,7 +118,6 @@ public class TestLuceneIndex extends AbstractLuceneIndexTest
         assertTrue( index.isWriteable() );
     }
 
-    @Ignore
     @Test
     public void testStartupInExistingDirectory() {
         AbstractGraphDatabase graphDatabase = new ImpermanentGraphDatabase();
@@ -1277,13 +1276,22 @@ public class TestLuceneIndex extends AbstractLuceneIndexTest
     }
 
     @Test
-    public void notAbleToIndexWithNullKey() throws Exception
+    public void notAbleToIndexWithForbiddenKey() throws Exception
     {
         Index<Node> index = graphDb.index().forNodes( "check-for-null" );
         Node node = graphDb.createNode();
         try
         {
             index.add( node, null, "not allowed" );
+            fail( "Shouldn't be able to index something with null key" );
+        }
+        catch ( IllegalArgumentException e )
+        { // OK
+        }
+
+        try
+        {
+            index.add( node, "_id_", "not allowed" );
             fail( "Shouldn't be able to index something with null key" );
         }
         catch ( IllegalArgumentException e )
@@ -1337,7 +1345,7 @@ public class TestLuceneIndex extends AbstractLuceneIndexTest
         assertNull( index.query( "key", "*" ).getSingle() );
     }
 
-    @Ignore( "TODO Exposes a bug" )
+    @Ignore( "TODO Exposes a bug. Fixed in Lucene 3.4.0" )
     @Test
     public void updateIndex() throws Exception {
         String TEXT = "text";
@@ -1374,5 +1382,30 @@ public class TestLuceneIndex extends AbstractLuceneIndexTest
         assertContains( index.query( "name", "\"maTTias perSson\"" ), node );
         restartTx();
         assertContains( index.query( "name", "\"maTTias perSson\"" ), node );
+    }
+    
+    @Test
+    public void notAbleToRemoveWithForbiddenKey() throws Exception
+    {
+        Index<Node> index = nodeIndex( "broken", LuceneIndexImplementation.EXACT_CONFIG );
+        Node node = graphDb.createNode();
+        index.add( node, "name", "Mattias" );
+        restartTx();
+        try
+        {
+            index.remove( node, null );
+            fail( "Shouldn't be able to" );
+        }
+        catch ( IllegalArgumentException e )
+        {   // OK
+        }
+        try
+        {
+            index.remove( node, "_id_" );
+            fail( "Shouldn't be able to" );
+        }
+        catch ( IllegalArgumentException e )
+        {   // OK
+        }
     }
 }
