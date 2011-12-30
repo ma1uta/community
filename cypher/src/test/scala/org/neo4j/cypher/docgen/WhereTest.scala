@@ -19,9 +19,11 @@
  */
 package org.neo4j.cypher.docgen
 
+import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.junit.Assert._
-import org.neo4j.graphdb.{Relationship, Node}
+import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.Relationship
+import org.junit.Ignore
 
 class WhereTest extends DocumentingTestBase {
   def graphDescription = List("Andres KNOWS Tobias", "Andres KNOWS Peter")
@@ -29,7 +31,7 @@ class WhereTest extends DocumentingTestBase {
   override val properties = Map(
     "Andres" -> Map("age" -> 36l, "belt" -> "white"),
     "Tobias" -> Map("age" -> 25l),
-    "Peter" -> Map("age" -> 34l)
+    "Peter" -> Map("age" -> 34l, "belt" -> false)
   )
 
   def section = "Where"
@@ -96,6 +98,16 @@ class WhereTest extends DocumentingTestBase {
       queryText = """start n=node(%Andres%, %Tobias%) where n.belt? = 'white' return n""",
       returns = "All nodes, even those without the belt property",
       assertions = (p) => assertEquals(List(node("Andres"), node("Tobias")), p.columnAs[Node]("n").toList))
+  }
+  
+   @Test @Ignore def compare_if_property_exists_with_different_types() {
+    testQuery(
+      title = "Compare if property exists",
+      text = "If you want to compare a property on a graph element, but only if it exists, use the nullable property syntax. It is the property" +
+        " with the dot notation, followed by a question mark",
+      queryText = """start n=node(%Andres%, %Tobias%, %Peter%) where n.belt? = 'white' OR n.belt? = false return n""",
+      returns = "All nodes, even those without the belt property",
+      assertions = (p) => assertEquals(List(node("Andres"), node("Peter")), p.columnAs[Node]("n").toList))
   }
 
   @Test def filter_on_relationship_type() {
