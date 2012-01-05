@@ -394,7 +394,7 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
     }
 
     @Override
-    public void logIdUsage( StringLogger logger )
+    public void logIdUsage( StringLogger.LineLogger logger )
     {
         NeoStore.logIdUsage( logger, this );
     }

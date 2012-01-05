@@ -3,7 +3,7 @@
     <parent>
         <groupId>org.neo4j.build</groupId>
         <artifactId>parent-pom</artifactId>
-        <version>25</version>
+        <version>29</version>
         <relativePath />
     </parent>
 
@@ -21,6 +21,7 @@
         <bundle.namespace>org.neo4j.server</bundle.namespace>
         <short-name>server</short-name>
         <license-text.header>GPL-3-header.txt</license-text.header>
+        <docs.url>http://docs.neo4j.org/chunked/${project.version}/server.html</docs.url>
 
         <neo4j-server.mainClass>org.neo4j.server.Bootstrapper</neo4j-server.mainClass>
         <neo-server.home>target/generated-resources/appassembler/jsw</neo-server.home>
@@ -39,10 +40,11 @@
         <testWithExternalServer>false</testWithExternalServer>
 
         <webdriver.version>2.5.0</webdriver.version>
-        <webdriver.impl.class>org.openqa.selenium.firefox.FirefoxDriver</webdriver.impl.class>
+        <webdriver.implementation>Firefox</webdriver.implementation>
 
         <!-- Default location for chrome controller binary, used by webdriver for running tests in Chrome. Available from (http://code.google.com/p/chromium/downloads/list) see README.txt for details on this. -->
-        <webdriver.chrome.driver>/usr/bin/chromedriver</webdriver.chrome.driver>
+        <webdriver.chrome.driver>webdriver-binaries/chromedriver</webdriver.chrome.driver>
+        <webdriver.chrome.driver.download.url>http://chromium.googlecode.com/files/chromedriver_mac_18.0.995.0.zip</webdriver.chrome.driver.download.url>
     </properties>
 
     <scm>
@@ -75,12 +77,6 @@
             <artifactId>neo4j</artifactId>
             <version>1.6-SNAPSHOT</version>
             <type>pom</type>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.neo4j</groupId>
-                    <artifactId>neo4j-index</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <dependency>
@@ -165,19 +161,17 @@
         </dependency>
 
         <dependency>
-            <groupId>org.codehaus.jackson</groupId>
-            <artifactId>jackson-jaxrs</artifactId>
-            <version>1.8.3</version>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-jaxrs</artifactId>
+          <version>1.8.3</version>
         </dependency>
+
         <dependency>
             <groupId>com.tinkerpop.gremlin</groupId>
             <artifactId>gremlin-groovy</artifactId>
             <version>${gremlin.version}</version>
             <type>jar</type>
             <exclusions>
-                <exclusion>
-                    <groupId>org.neo4j</groupId>
-                </exclusion>
                 <!-- Sail support not needed -->
                 <exclusion>
                     <groupId>com.tinkerpop.blueprints</groupId>
@@ -211,6 +205,10 @@
                 <exclusion>
                     <groupId>org.neo4j</groupId>
                     <artifactId>neo4j-management</artifactId>
+                </exclusion>
+                <exclusion>
+                  <artifactId>jackson-jaxrs</artifactId>
+                  <groupId>org.codehaus.jackson</groupId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -467,7 +465,9 @@
                 <configuration>
                     <systemPropertyVariables>
                         <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
-                        <webdriver.impl.class>${webdriver.impl.class}</webdriver.impl.class>
+                        <webdriver.implementation>${webdriver.implementation}</webdriver.implementation>
+                        <webdriver.chrome.driver>${webdriver.chrome.driver}</webdriver.chrome.driver>
+                        <webdriver.chrome.driver.download.url>${webdriver.chrome.driver.download.url}</webdriver.chrome.driver.download.url>
                     </systemPropertyVariables>
                     <argLine>-Xmx1024m</argLine>
                     <forkMode>once</forkMode>
@@ -511,7 +511,11 @@
                 <artifactId>maven-source-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>attach-source</id>
+                        <id>attach-java-sources</id>
+                        <phase>none</phase>
+                    </execution>
+                    <execution>
+                        <id>attach-test-sources</id>
                         <phase>none</phase>
                     </execution>
                 </executions>
@@ -560,38 +564,67 @@
                 </configuration>
             </plugin>
 
+          <plugin>
+            <artifactId>maven-site-plugin</artifactId>
+            <configuration>
+              <reportPlugins combine.children="append">
+                <plugin>
+                  <artifactId>maven-javadoc-plugin</artifactId>
+                  <configuration>
+                    <detectJavaApiLink>true</detectJavaApiLink>
+                    <detectLinks>true</detectLinks>
+                    <quiet>true</quiet>
+                    <excludePackageNames>*.impl.*</excludePackageNames>
+                    <groups>
+                      <group>
+                        <title>Server</title>
+                        <packages>org.neo4j.server:org.neo4j.server.*</packages>
+                      </group>
+                      <group>
+                        <title>Server REST Interface</title>
+                        <packages>org.neo4j.server.rest:org.neo4j.server.rest.*</packages>
+                      </group>
+                      <group>
+                        <title>Server Admin Interface</title>
+                        <packages>org.neo4j.server.webadmin:org.neo4j.server.webadmin.*</packages>
+                      </group>
+                    </groups>
+                  </configuration>
+                  <reports>
+                    <report>javadoc</report>
+                  </reports>
+                </plugin>
+              </reportPlugins>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-descriptor</id>
+                <phase>none</phase>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <configuration>
+              <groups>
+                <group>
+                  <title>Server</title>
+                  <packages>org.neo4j.server:org.neo4j.server.*</packages>
+                </group>
+                <group>
+                  <title>Server REST Interface</title>
+                  <packages>org.neo4j.server.rest:org.neo4j.server.rest.*</packages>
+                </group>
+                <group>
+                  <title>Server Admin Interface</title>
+                  <packages>org.neo4j.server.webadmin:org.neo4j.server.webadmin.*</packages>
+                </group>
+              </groups>
+            </configuration>
+          </plugin>
+
         </plugins>
 
-        <pluginManagement>
-            <plugins>
-                <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
-                <plugin>
-                    <groupId>org.eclipse.m2e</groupId>
-                    <artifactId>lifecycle-mapping</artifactId>
-                    <version>1.0.0</version>
-                    <configuration>
-                        <lifecycleMappingMetadata>
-                            <pluginExecutions>
-                                <pluginExecution>
-                                    <pluginExecutionFilter>
-                                        <groupId>com.voltvoodoo</groupId>
-                                        <artifactId>brew</artifactId>
-                                        <versionRange>[0.2.7,)</versionRange>
-                                        <goals>
-                                            <goal>compile</goal>
-                                            <goal>optimize</goal>
-                                        </goals>
-                                    </pluginExecutionFilter>
-                                    <action>
-                                        <ignore />
-                                    </action>
-                                </pluginExecution>
-                            </pluginExecutions>
-                        </lifecycleMappingMetadata>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
     </build>
 
     <profiles>
@@ -750,21 +783,15 @@
 
         <!-- Firefox is default implementation, set in properties at the top of this file. -->
         <profile>
-            <id>htmlunit</id>
+            <id>chrome-mac</id>
             <properties>
-                <webdriver.impl.class>org.openqa.selenium.htmlunit.HtmlUnitDriver</webdriver.impl.class>
+                <webdriver.implementation>Chrome</webdriver.implementation>
             </properties>
         </profile>
         <profile>
-            <id>chrome</id>
+            <id>sauce-labs-firefox-windows</id>
             <properties>
-                <webdriver.impl.class>org.openqa.selenium.chrome.ChromeDriver</webdriver.impl.class>
-            </properties>
-        </profile>
-        <profile>
-            <id>ie</id>
-            <properties>
-                <webdriver.impl.class>org.openqa.selenium.ie.InternetExplorerDriver</webdriver.impl.class>
+                <webdriver.implementation>SauceLabsFirefoxWindows</webdriver.implementation>
             </properties>
         </profile>
 
@@ -800,13 +827,6 @@
                         </group>
                     </groups>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>clirr-maven-plugin</artifactId>
-                <reportSets>
-                    <reportSet />
-                </reportSets>
             </plugin>
         </plugins>
     </reporting>

@@ -19,6 +19,42 @@
  */
 package org.neo4j.index.impl.lucene;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.lucene.index.Term;
+import org.apache.lucene.queryParser.QueryParser.Operator;
+import org.apache.lucene.search.DefaultSimilarity;
+import org.apache.lucene.search.NumericRangeQuery;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TermQuery;
+import org.junit.Ignore;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestName;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.DynamicRelationshipType;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
+import org.neo4j.graphdb.PropertyContainer;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.index.Index;
+import org.neo4j.graphdb.index.IndexHits;
+import org.neo4j.graphdb.index.IndexManager;
+import org.neo4j.graphdb.index.RelationshipIndex;
+import org.neo4j.graphdb.index.UniqueFactory;
+import org.neo4j.helpers.collection.IteratorUtil;
+import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.index.lucene.QueryContext;
+import org.neo4j.index.lucene.ValueContext;
+import org.neo4j.kernel.AbstractGraphDatabase;
+import org.neo4j.test.ImpermanentGraphDatabase;
+
 import static org.apache.lucene.search.NumericRangeQuery.newIntRange;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNull.nullValue;
@@ -37,37 +73,10 @@ import static org.neo4j.index.impl.lucene.IsEmpty.isEmpty;
 import static org.neo4j.index.lucene.QueryContext.numericRange;
 import static org.neo4j.index.lucene.ValueContext.numeric;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-
-import org.apache.lucene.index.Term;
-import org.apache.lucene.queryParser.QueryParser.Operator;
-import org.apache.lucene.search.DefaultSimilarity;
-import org.apache.lucene.search.NumericRangeQuery;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.TermQuery;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.neo4j.graphdb.DynamicRelationshipType;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.PropertyContainer;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.graphdb.index.Index;
-import org.neo4j.graphdb.index.IndexHits;
-import org.neo4j.graphdb.index.IndexManager;
-import org.neo4j.graphdb.index.RelationshipIndex;
-import org.neo4j.helpers.collection.IteratorUtil;
-import org.neo4j.helpers.collection.MapUtil;
-import org.neo4j.index.lucene.QueryContext;
-import org.neo4j.index.lucene.ValueContext;
-import org.neo4j.kernel.AbstractGraphDatabase;
-import org.neo4j.test.ImpermanentGraphDatabase;
-
 public class TestLuceneIndex extends AbstractLuceneIndexTest
 {
+    public final @Rule TestName testname = new TestName();
+
     @SuppressWarnings( "unchecked" )
     private <T extends PropertyContainer> void makeSureAdditionsCanBeRead(
             Index<T> index, EntityCreator<T> entityCreator )
@@ -1276,13 +1285,22 @@ public class TestLuceneIndex extends AbstractLuceneIndexTest
     }
 
     @Test
-    public void notAbleToIndexWithNullKey() throws Exception
+    public void notAbleToIndexWithForbiddenKey() throws Exception
     {
         Index<Node> index = graphDb.index().forNodes( "check-for-null" );
         Node node = graphDb.createNode();
         try
         {
             index.add( node, null, "not allowed" );
+            fail( "Shouldn't be able to index something with null key" );
+        }
+        catch ( IllegalArgumentException e )
+        { // OK
+        }
+
+        try
+        {
+            index.add( node, "_id_", "not allowed" );
             fail( "Shouldn't be able to index something with null key" );
         }
         catch ( IllegalArgumentException e )
@@ -1342,7 +1360,7 @@ public class TestLuceneIndex extends AbstractLuceneIndexTest
         String TEXT = "text";
         String NUMERIC = "numeric";
         String TEXT_1 = "text_1";
-        
+
         Index<Node> index = nodeIndex( "update-index", LuceneIndexImplementation.EXACT_CONFIG );
         Node n = graphDb.createNode();
         index.add(n, NUMERIC, new ValueContext(5).indexNumeric());
@@ -1363,7 +1381,7 @@ public class TestLuceneIndex extends AbstractLuceneIndexTest
         // Test fails here
         assertNotNull( index.query(QueryContext.numericRange(NUMERIC, 5, 5, true, true)).getSingle() );
     }
-    
+
     @Test
     public void exactIndexWithCaseInsensitive() throws Exception
     {
@@ -1373,5 +1391,257 @@ public class TestLuceneIndex extends AbstractLuceneIndexTest
         assertContains( index.query( "name", "\"maTTias perSson\"" ), node );
         restartTx();
         assertContains( index.query( "name", "\"maTTias perSson\"" ), node );
+    }
+
+    @Test
+    public void notAbleToRemoveWithForbiddenKey() throws Exception
+    {
+        Index<Node> index = nodeIndex( "broken", LuceneIndexImplementation.EXACT_CONFIG );
+        Node node = graphDb.createNode();
+        index.add( node, "name", "Mattias" );
+        restartTx();
+        try
+        {
+            index.remove( node, null );
+            fail( "Shouldn't be able to" );
+        }
+        catch ( IllegalArgumentException e )
+        {   // OK
+        }
+        try
+        {
+            index.remove( node, "_id_" );
+            fail( "Shouldn't be able to" );
+        }
+        catch ( IllegalArgumentException e )
+        {   // OK
+        }
+    }
+
+    @Ignore( "an issue that should be fixed at some point" )
+    @Test( expected = NotFoundException.class )
+    public void shouldNotBeAbleToIndexNodeThatIsNotCommitted() throws Exception
+    {
+        Index<Node> index = nodeIndex( testname.getMethodName(),
+                LuceneIndexImplementation.EXACT_CONFIG );
+        Node node = graphDb.createNode();
+        String key = "noob";
+        String value = "Johan";
+
+        WorkThread thread = new WorkThread( index, graphDb, node );
+        thread.beginTransaction();
+        try
+        {
+            thread.add( node, key, value );
+        }
+        finally
+        {
+            thread.rollback();
+        }
+    }
+
+    @Test
+    public void putIfAbsentSingleThreaded()
+    {
+        Index<Node> index = nodeIndex( testname.getMethodName(), LuceneIndexImplementation.EXACT_CONFIG );
+        Node node = graphDb.createNode();
+        String key = "name";
+        String value = "Mattias";
+        String value2 = "Persson";
+        assertNull( index.putIfAbsent( node, key, value ) );
+        assertEquals( node, index.get( key, value ).getSingle() );
+        assertNotNull( index.putIfAbsent( node, key, value ) );
+        assertNull( index.putIfAbsent( node, key, value2 ) );
+        assertNotNull( index.putIfAbsent( node, key, value2 ) );
+        restartTx();
+        assertNotNull( index.putIfAbsent( node, key, value ) );
+        assertNotNull( index.putIfAbsent( node, key, value2 ) );
+        assertEquals( node, index.get( key, value ).getSingle() );
+    }
+
+    @Test
+    public void putIfAbsentMultiThreaded() throws Exception
+    {
+        Index<Node> index = nodeIndex( testname.getMethodName(), LuceneIndexImplementation.EXACT_CONFIG );
+        Node node = graphDb.createNode();
+        commitTx();
+        String key = "name";
+        String value = "Mattias";
+
+        WorkThread t1 = new WorkThread( index, graphDb, node );
+        WorkThread t2 = new WorkThread( index, graphDb, node );
+        t1.beginTransaction();
+        t2.beginTransaction();
+        assertNull( t2.putIfAbsent( node, key, value ).get() );
+        Future<Node> futurePut = t1.putIfAbsent( node, key, value );
+        t1.waitUntilWaiting();
+        t2.commit();
+        assertNotNull( futurePut.get() );
+        t1.commit();
+
+        assertEquals( node, index.get( key, value ).getSingle() );
+    }
+
+    @Test
+    public void putIfAbsentOnOtherValueInOtherThread() throws Exception
+    {
+        Index<Node> index = nodeIndex( testname.getMethodName(), LuceneIndexImplementation.EXACT_CONFIG );
+        Node node = graphDb.createNode();
+        commitTx();
+        String key = "name";
+        String value = "Mattias";
+        String otherValue = "Tobias";
+
+        WorkThread t1 = new WorkThread( index, graphDb, node );
+        WorkThread t2 = new WorkThread( index, graphDb, node );
+        t1.beginTransaction();
+        t2.beginTransaction();
+        assertNull( t2.putIfAbsent( node, key, value ).get() );
+        Future<Node> futurePut = t1.putIfAbsent( node, key, otherValue );
+        t2.commit();
+        assertNull( futurePut.get() );
+        t1.commit();
+
+        assertEquals( node, index.get( key, value ).getSingle() );
+        assertEquals( node, index.get( key, otherValue ).getSingle() );
+    }
+
+    @Test
+    public void putIfAbsentOnOtherKeyInOtherThread() throws Exception
+    {
+        Index<Node> index = nodeIndex( testname.getMethodName(), LuceneIndexImplementation.EXACT_CONFIG );
+        Node node = graphDb.createNode();
+        commitTx();
+        String key = "name";
+        String otherKey = "friend";
+        String value = "Mattias";
+
+        WorkThread t1 = new WorkThread( index, graphDb, node );
+        WorkThread t2 = new WorkThread( index, graphDb, node );
+        t1.beginTransaction();
+        t2.beginTransaction();
+        assertNull( t2.putIfAbsent( node, key, value ).get() );
+        assertNull( t1.putIfAbsent( node, otherKey, value ).get() );
+        t2.commit();
+        t1.commit();
+
+        assertEquals( node, index.get( key, value ).getSingle() );
+        assertEquals( node, index.get( otherKey, value ).getSingle() );
+    }
+
+    @Test
+    public void putIfAbsentShouldntBlockIfNotAbsent() throws Exception
+    {
+        Index<Node> index = nodeIndex( testname.getMethodName(), LuceneIndexImplementation.EXACT_CONFIG );
+        Node node = graphDb.createNode();
+        String key = "key";
+        String value = "value";
+        index.add( node, key, value );
+        restartTx();
+
+        WorkThread otherThread = new WorkThread( index, graphDb, node );
+        otherThread.beginTransaction();
+
+        // Should not grab lock
+        index.putIfAbsent( node, key, value );
+
+        // Should be able to complete right away
+        assertNotNull( otherThread.putIfAbsent( node, key, value ).get() );
+
+        otherThread.commit();
+        commitTx();
+    }
+
+    @Test
+    public void getOrCreateNodeWithUniqueFactory() throws Exception
+    {
+        final String key = "name";
+        final String value = "Mattias";
+        final String property = "counter";
+
+        final Index<Node> index = nodeIndex( testname.getMethodName(), LuceneIndexImplementation.EXACT_CONFIG );
+        final AtomicInteger counter = new AtomicInteger();
+        UniqueFactory<Node> factory = new UniqueFactory.UniqueNodeFactory( index )
+        {
+            @Override
+            protected void initialize( Node node, Map<String, Object> properties )
+            {
+                assertEquals( value, properties.get( key ) );
+                assertEquals( 1, properties.size() );
+                node.setProperty( property, counter.getAndIncrement() );
+            }
+        };
+        Node unique = factory.getOrCreate( key, value );
+
+        assertNotNull( unique );
+        assertEquals( "not initialized", 0, unique.getProperty( property, null ) );
+        assertEquals( unique, index.get( key, value ).getSingle() );
+
+        assertEquals( unique, factory.getOrCreate( key, value ) );
+        assertEquals( "initialized more than once", 0, unique.getProperty( property ) );
+        assertEquals( unique, index.get( key, value ).getSingle() );
+    }
+
+    @Test
+    public void getOrCreateRelationshipWithUniqueFactory() throws Exception
+    {
+        final String key = "name";
+        final String value = "Mattias";
+
+        final Node root = graphDb.createNode();
+        final Index<Relationship> index = relationshipIndex( testname.getMethodName(), LuceneIndexImplementation.EXACT_CONFIG );
+        final DynamicRelationshipType type = DynamicRelationshipType.withName( "SINGLE" );
+        UniqueFactory<Relationship> factory = new UniqueFactory.UniqueRelationshipFactory( index )
+        {
+            @Override
+            protected Relationship create( Map<String, Object> properties )
+            {
+                assertEquals( value, properties.get( key ) );
+                assertEquals( 1, properties.size() );
+                return root.createRelationshipTo( graphDatabase().createNode(), type );
+            }
+        };
+
+        Relationship unique = factory.getOrCreate( key, value );
+        assertEquals( unique, root.getSingleRelationship( type, Direction.BOTH ) );
+        assertNotNull( unique );
+
+        assertEquals( unique, index.get( key, value ).getSingle() );
+
+        assertEquals( unique, factory.getOrCreate( key, value ) );
+        assertEquals( unique, root.getSingleRelationship( type, Direction.BOTH ) );
+        assertEquals( unique, index.get( key, value ).getSingle() );
+    }
+
+    @Test
+    public void getOrCreateMultiThreaded() throws Exception
+    {
+        Index<Node> index = nodeIndex( testname.getMethodName(), LuceneIndexImplementation.EXACT_CONFIG );
+        String key = "name";
+        String value = "Mattias";
+
+        WorkThread t1 = new WorkThread( index, graphDb, null );
+        WorkThread t2 = new WorkThread( index, graphDb, null );
+        t1.beginTransaction();
+        t2.beginTransaction();
+        Node node = t2.getOrCreate( key, value, 0 ).get();
+        assertNotNull( node );
+        assertEquals( 0, t2.getProperty( node, key ) );
+        Future<Node> futurePut = t1.getOrCreate( key, value, 1 );
+        t1.waitUntilWaiting();
+        t2.commit();
+        assertEquals( node, futurePut.get() );
+        assertEquals( 0, t1.getProperty( node, key ) );
+        t1.commit();
+
+        assertEquals( node, index.get( key, value ).getSingle() );
+    }
+
+    @Test
+    public void useStandardAnalyzer() throws Exception
+    {
+        Index<Node> index = nodeIndex( testname.getMethodName(), stringMap( "analyzer", MyStandardAnalyzer.class.getName() ) );
+        Node node = graphDb.createNode();
+        index.add( node, "name", "Mattias" );
     }
 }

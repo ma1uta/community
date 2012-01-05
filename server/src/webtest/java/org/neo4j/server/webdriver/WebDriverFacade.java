@@ -19,42 +19,88 @@
  */
 package org.neo4j.server.webdriver;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.net.MalformedURLException;
 
+import org.openqa.selenium.Platform;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.remote.DesiredCapabilities;
 
-public class WebDriverFacade {
-
+public class WebDriverFacade
+{
     private WebDriver browser;
 
-    public WebDriver getWebDriver() throws InvocationTargetException, IllegalAccessException, InstantiationException {
-        if (browser == null) {
-            try {
-                browser = getDriverConstructor().newInstance();
-            } catch(Throwable problem) {
-                throw new RuntimeException("Couldn't instantiate the selected selenium driver. See nested exception.", problem);
+    public WebDriver getWebDriver() throws InvocationTargetException, IllegalAccessException, InstantiationException
+    {
+        if ( browser == null )
+        {
+            String driverName = lookupDriverImplementation();
+            try
+            {
+                browser = WebDriverImplementation.valueOf( driverName ).createInstance();
+            }
+            catch ( Exception problem )
+            {
+                throw new RuntimeException( "Couldn't instantiate the selected selenium driver. See nested exception.", problem );
             }
         }
         return browser;
     }
 
-    public void closeBrowser() throws IllegalAccessException, InvocationTargetException, InstantiationException {
-        if (browser != null) {
-            browser.close();
-            browser.quit();
-        }
+    private String lookupDriverImplementation()
+    {
+        String driverName = System.getProperty( "webdriver.implementation", WebDriverImplementation.Firefox.name() );
+        System.out.println( "Using " + driverName );
+        return driverName;
     }
-    
-    @SuppressWarnings("unchecked")
-    private Constructor<WebDriver> getDriverConstructor() {
-        
-        String driverName = System.getProperty("webdriver.impl.class", "org.openqa.selenium.firefox.FirefoxDriver");
-        System.out.println(driverName);System.out.println(driverName);System.out.println(driverName);System.out.println(driverName);System.out.println(driverName);System.out.println(driverName);System.out.println(driverName);System.out.println(driverName);
-        try {
-            return (Constructor<WebDriver>) Thread.currentThread().getContextClassLoader().loadClass(driverName).getConstructor();
-        } catch (Throwable problem) {
-            throw new RuntimeException("Couldn't load " + driverName, problem);
+
+    public enum WebDriverImplementation {
+        Firefox()
+            {
+                public WebDriver createInstance()
+                {
+                    return new FirefoxDriver();
+                }
+            },
+        Chrome() {
+            public WebDriver createInstance()
+            {
+                WebdriverChromeDriver.ensurePresent();
+                return new ChromeDriver();
+            }
+        },
+        SauceLabsFirefoxWindows() {
+            public WebDriver createInstance() throws MalformedURLException
+            {
+                DesiredCapabilities capabilities = DesiredCapabilities.firefox();
+                capabilities.setCapability( "version", "5" );
+                capabilities.setCapability( "platform", Platform.VISTA );
+                capabilities.setCapability( "name", "Neo4j Web Testing" );
+
+                return WebdriverSauceLabsDriver.createDriver( capabilities );
+            }
+        },
+        SauceLabsChromeWindows() {
+            public WebDriver createInstance() throws MalformedURLException
+            {
+                DesiredCapabilities capabilities = DesiredCapabilities.chrome();
+                capabilities.setCapability( "platform", Platform.VISTA );
+                capabilities.setCapability( "name", "Neo4j Web Testing" );
+
+                return WebdriverSauceLabsDriver.createDriver( capabilities );
+            }
+        };
+
+        public abstract WebDriver createInstance() throws Exception;
+    }
+
+    public void quitBrowser() throws IllegalAccessException, InvocationTargetException, InstantiationException
+    {
+        if ( browser != null )
+        {
+            browser.quit();
         }
     }
 }

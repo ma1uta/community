@@ -85,7 +85,7 @@ public class ReadOnlyGraphDatabaseProxy implements GraphDatabaseService, IndexMa
         {
             throw new UnsupportedOperationException();
         }
-        
+
         @Override
         public Transaction begin()
         {
@@ -613,6 +613,12 @@ public class ReadOnlyGraphDatabaseProxy implements GraphDatabaseService, IndexMa
             readOnly();
         }
 
+        public T putIfAbsent( T entity, String key, Object value )
+        {
+            readOnly();
+            return null;
+        }
+
         public IndexHits<T> get( String key, Object value )
         {
             return new ReadOnlyIndexHitsProxy<T>( this, actual.get( key, value ) );
@@ -647,6 +653,12 @@ public class ReadOnlyGraphDatabaseProxy implements GraphDatabaseService, IndexMa
         public boolean isWriteable()
         {
             return false;
+        }
+
+        @Override
+        public GraphDatabaseService getGraphDatabase()
+        {
+            return actual.getGraphDatabase();
         }
     }
 

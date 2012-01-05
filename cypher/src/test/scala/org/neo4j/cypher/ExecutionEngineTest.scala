@@ -1465,5 +1465,110 @@ RETURN x0.name?
 """)
     assert(List() === result.toList)
   }
-}
 
+  @Ignore
+  @Test def shouldBeAbleToHandleMultipleOptionalRelationshipsAndMultipleStartPoints() {
+    val a = createNode("A")
+    val b = createNode("B")
+    val z = createNode("Z")
+    val x = createNode("X")
+    val y = createNode("Y")
+
+    relate(a, z, "X", "rAZ")
+    relate(a, x, "X", "rAX")
+    relate(b, x, "X", "rBX")
+    relate(b, y, "X", "rBY")
+
+    val result = parseAndExecute("""START a=node(1), b=node(2) match a-[r1?]->x<-[r2?]-b return x""")
+    assert(List(z, x, y) === result.columnAs[Node]("x").toList)
+  }
+
+  private def createTriangle(number: Int): (Node, Node, Node) = {
+    val z = createNode("Z" + number)
+    val x = createNode("X" + number)
+    val y = createNode("Y" + number)
+    relate(z, x, "X", "ZX")
+    relate(x, y, "X", "ZY")
+    relate(y, z, "X", "YZ")
+    (z, x, y)
+  }
+
+  @Ignore
+  @Test def shouldHandleReallyWeirdOptionalPatterns() {
+    val a = createNode("A")
+    val b = createNode("B")
+    val c = createNode("C")
+
+    val (z1, x1, y1) = createTriangle(1)
+    val (z2, x2, y2) = createTriangle(2)
+    val (z3, x3, y3) = createTriangle(3)
+    val (z4, x4, y4) = createTriangle(4)
+
+    relate(a, x1, "X", "AX")
+    relate(b, z1, "X", "AZ")
+
+    relate(a, x2, "X", "AX")
+    relate(c, y2, "X", "CY")
+
+    relate(b, z3, "X", "BZ")
+
+    relate(a, x4, "X", "AX")
+    relate(b, z4, "X", "BZ")
+    relate(c, y4, "X", "CY")
+
+    val result = parseAndExecute("""START a=node(1), b=node(2), c=node(3) match a-[?]-x-->y-[?]-c, b-[?]-z<--y, z-->x return x""")
+    assert(List(x1,x2,x3,x4) === result.columnAs[Node]("x").toList)
+  }
+
+  @Test def shouldFindNodesBothDirections() {
+    val a = createNode()
+    relate(a, refNode, "Admin")
+    val result = parseAndExecute("""start n = node(0) match (n) -[:Admin]- (b) return Id(n), Id(b)""")
+    assert(List(Map("ID(n)" -> 0, "ID(b)" -> 1)) === result.toList)
+
+    val result2 = parseAndExecute("""start n = node(1) match (n) -[:Admin]- (b) return Id(n), Id(b)""")
+    assert(List(Map("ID(n)" -> 1, "ID(b)" -> 0)) === result2.toList)
+  }
+
+  @Test def shouldAllowOrderingOnAggregateFunction() {
+    createNode()
+
+    val result = parseAndExecute("start n = node(0) match (n)-[:KNOWS]-(c) return n, count(c) as cnt order by cnt")
+    assert(List() === result.toList)
+  }
+
+  @Test def shouldNotAllowOrderingOnNodes() {
+    createNode()
+
+    intercept[SyntaxException](parseAndExecute("start n = node(0,1) return n order by n").toList)
+  }
+
+  @Test def shouldIgnoreNodesInParameters() {
+    val a = createNode()
+    relate(refNode, a, "X")
+
+    val result = parseAndExecute("start c = node(1) match (n)--(c) return n", "self" -> refNode)
+    assert(1 === result.size)
+  }
+
+  @Test def shouldHandleParametersNamedAsIdentifiers() {
+    val a = createNode("bar" -> "Andres")
+
+    val result = parseAndExecute("start foo=node(1) where foo.bar = {foo} return foo.bar", "foo" -> "Andres")
+    assert(List(Map("foo.bar" -> "Andres")) === result.toList)
+  }
+
+  @Test def shouldHandleComparisonsWithDifferentTypes() {
+    createNode("belt" -> 13)
+
+    val result = parseAndExecute("start n=node(1) where n.belt = 'white' OR n.belt = false return n")
+    assert(List() === result.toList)
+  }
+
+  @Test def shouldAllowComparisonsOfNodes() {
+    val a = createNode()
+
+    val result = parseAndExecute("start a=node(0,1),b=node(1,0) where a != b return a,b")
+    assert(List(Map("a" -> refNode, "b" -> a), Map("b" -> refNode, "a" -> a)) === result.toList)
+  }
+}

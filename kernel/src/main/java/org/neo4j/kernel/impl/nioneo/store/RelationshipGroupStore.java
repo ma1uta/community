@@ -227,7 +227,7 @@ public class RelationshipGroupStore extends AbstractStore implements Store, Reco
     }
 
     @Override
-    public void logIdUsage( StringLogger logger )
+    public void logIdUsage( StringLogger.LineLogger logger )
     {
         NeoStore.logIdUsage( logger, this );
     }
