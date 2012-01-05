@@ -235,11 +235,13 @@ public class TestLoopRelationships extends AbstractNeo4jTestCase
                 Node root = getGraphDb().createNode();
                 Relationship[] relationships = createRelationships( size, i,
                         root );
+                System.out.println( "created relationships " + print( relationships ) );
                 for ( int j = 0; j < size; j++ )
                 {
                     if ( delete[j] )
                     {
                         relationships[j].delete();
+                        System.out.println( "deleted relationship " + relationships[j] );
                         relationships[j] = null;
                     }
                     newTransaction();
@@ -250,6 +252,14 @@ public class TestLoopRelationships extends AbstractNeo4jTestCase
                         i, relationships );
             }
         }
+    }
+
+    private String print( Relationship[] relationships )
+    {
+        StringBuilder b = new StringBuilder();
+        for ( Relationship rel : relationships )
+            b.append( rel.getStartNode() + "--" + rel + "->" + rel.getEndNode() );
+        return b.toString();
     }
 
     private static Iterable<boolean[]> permutations( final int size )

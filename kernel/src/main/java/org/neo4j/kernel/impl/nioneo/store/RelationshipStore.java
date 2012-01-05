@@ -217,6 +217,8 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
     private void updateRecord( RelationshipRecord record,
         PersistenceWindow window, boolean force )
     {
+        System.out.println( "update " + record );
+        
         long id = record.getId();
         Buffer buffer = window.getOffsettedBuffer( id );
         if ( record.inUse() || force )

@@ -767,7 +767,7 @@ class NodeImpl extends ArrayBasedPrimitive
         ArrayMap<String, SetAndDirectionCounter> allRemoved = nm.getCowRelationshipRemoveMap( this );
         for ( RelIdArray ids : relationships )
         {
-            SetAndDirectionCounter removed = allRemoved.get( ids.getType() );
+            SetAndDirectionCounter removed = allRemoved != null ? allRemoved.get( ids.getType() ) : null;
             if ( removed == null || removed.totalCount.get() < ids.size( DirectionWrapper.BOTH ) )
             {   // If not all of these removed add it to the list
                 types.add( ids.getType() );
