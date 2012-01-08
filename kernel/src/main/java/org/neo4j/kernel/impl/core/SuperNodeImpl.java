@@ -38,13 +38,11 @@ public class SuperNodeImpl extends NodeImpl
     SuperNodeImpl( long id, long firstRel, long firstProp, boolean newNode )
     {
         super( id, firstRel, firstProp, newNode );
-        System.out.println( "super:" + id );
     }
 
     SuperNodeImpl( long id, long firstRel, long firstProp )
     {
         super( id, firstRel, firstProp );
-        System.out.println( "super:" + id );
     }
 
     protected Pair<ArrayMap<String,RelIdArray>,Map<Long,RelationshipImpl>> getInitialRelationships(

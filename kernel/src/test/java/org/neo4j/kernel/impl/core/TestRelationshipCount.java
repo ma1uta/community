@@ -73,6 +73,13 @@ public class TestRelationshipCount extends AbstractNeo4jTestCase
         {
             node.createRelationshipTo( getGraphDb().createNode(), MyRelTypes.TEST );
         }
+        /* If newTransaction is left out here we have a situation where a node is committed,
+         * the current transaction has converted it into a super node, but the node impl has
+         * fallen out of cache. This means that when it starts to load relationships it gets
+         * the committed value for firstRel, but that is interpreted as firstGroup when loading
+         * the relationships, since the node is a super node. I.e. not supported a.t.m.
+         */
+        newTransaction();
         clearCache();
         assertEquals( expectedRelCount, node.getDegree() );
         assertEquals( expectedRelCount, node.getDegree( Direction.BOTH ) );

@@ -235,13 +235,11 @@ public class TestLoopRelationships extends AbstractNeo4jTestCase
                 Node root = getGraphDb().createNode();
                 Relationship[] relationships = createRelationships( size, i,
                         root );
-                System.out.println( "created relationships " + print( relationships ) );
                 for ( int j = 0; j < size; j++ )
                 {
                     if ( delete[j] )
                     {
                         relationships[j].delete();
-                        System.out.println( "deleted relationship " + relationships[j] );
                         relationships[j] = null;
                     }
                     newTransaction();

@@ -175,7 +175,6 @@ public abstract class AbstractNeo4jTestCase
             tx.finish();
         }
         tx = graphDb.beginTx();
-        System.out.println( "new tx" );
         return tx;
     }
 

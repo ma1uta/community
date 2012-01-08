@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.neo4j.graphdb.Direction;
@@ -777,7 +778,15 @@ class NodeImpl extends ArrayBasedPrimitive
         ArrayMap<String, RelIdArray> add = nm.getCowRelationshipAddMap( this );
         if ( add != null )
         {
-            for ( String addedType : add.keySet() ) types.add( addedType );
+            for ( Entry<String, RelIdArray> addedType : add.entrySet() )
+            {
+                RelIdArray ids = addedType.getValue();
+                SetAndDirectionCounter removed = allRemoved != null ? allRemoved.get( ids.getType() ) : null;
+                if ( removed == null || removed.totalCount.get() < ids.size( DirectionWrapper.BOTH ) )
+                {
+                    types.add( addedType.getKey() );
+                }
+            }
         }
         
         return new IterableWrapper<RelationshipType, String>( types )

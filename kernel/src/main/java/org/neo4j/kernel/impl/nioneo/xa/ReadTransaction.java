@@ -140,7 +140,6 @@ class ReadTransaction implements NeoStoreTransaction
             long nodeId, RelationshipLoadingPosition loadPosition, int grabSize, RelationshipStore relStore,
             DirectionWrapper direction, RelationshipType[] types )
     {
-        System.out.println( "getMoreRelationships " + nodeId + ", " + loadPosition );
         // initialCapacity=grabSize saves the lists the trouble of resizing
         List<RelationshipRecord> out = new ArrayList<RelationshipRecord>();
         List<RelationshipRecord> in = new ArrayList<RelationshipRecord>();
@@ -153,7 +152,6 @@ class ReadTransaction implements NeoStoreTransaction
         for ( int i = 0; i < grabSize &&
             position != Record.NO_NEXT_RELATIONSHIP.intValue(); i++ )
         {
-            System.out.println( "getting " + position );
             RelationshipRecord relRecord = relStore.getChainRecord( position );
             if ( relRecord == null )
             {
@@ -193,12 +191,10 @@ class ReadTransaction implements NeoStoreTransaction
             if ( firstNode == nodeId )
             {
                 next = relRecord.getFirstNextRel();
-                System.out.println( "next (first) " + next );
             }
             else if ( secondNode == nodeId )
             {
                 next = relRecord.getSecondNextRel();
-                System.out.println( "next (second) " + next );
             }
             else
             {

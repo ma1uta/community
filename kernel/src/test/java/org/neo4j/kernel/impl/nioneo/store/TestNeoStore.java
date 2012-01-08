@@ -270,10 +270,8 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         xaCon.getWriteTransaction().createRelationshipType( relType2, "relationshiptype2" );
         long rel1 = ds.nextId( Relationship.class );
         xaCon.getWriteTransaction().relationshipCreate( rel1, relType1, node1, node2 );
-        System.out.println( "Created outgoing rel " + rel1 + " for " + node1 );
         long rel2 = ds.nextId( Relationship.class );
         xaCon.getWriteTransaction().relationshipCreate( rel2, relType2, node2, node1 );
-        System.out.println( "Created incoming rel " + rel2 + " for " + node1 );
 
         PropertyData r1prop1 = xaCon.getWriteTransaction().relAddProperty(
                 rel1, index( "prop1" ), "string1" );
