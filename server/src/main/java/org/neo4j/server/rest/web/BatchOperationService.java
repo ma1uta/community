@@ -21,7 +21,9 @@ package org.neo4j.server.rest.web;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringWriter;
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 
 import javax.servlet.ServletException;
@@ -34,17 +36,18 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
 import org.codehaus.jackson.JsonFactory;
+import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonToken;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.rest.domain.BatchOperationFailedException;
 import org.neo4j.server.rest.repr.BadInputException;
 import org.neo4j.server.rest.repr.BatchOperationResults;
-import org.neo4j.server.rest.repr.InputFormat;
 import org.neo4j.server.rest.repr.OutputFormat;
-import org.neo4j.server.rest.repr.formats.StreamingJsonUtils;
 import org.neo4j.server.web.WebServer;
 
 @Path( "/batch" )
@@ -55,15 +58,15 @@ public class BatchOperationService
     private static final String METHOD_KEY = "method";
     private static final String BODY_KEY = "body";
     private static final String TO_KEY = "to";
-    
-    private static final JsonFactory jsonFactory = new JsonFactory(); 
+    private static final String[] HEADERS_TO_PASSOVER = { "Authorization" };
+
+    private static final JsonFactory jsonFactory = new JsonFactory();
     
     private final OutputFormat output;
     private final WebServer webServer;
     private final Database database;
 
-    public BatchOperationService( @Context Database database, @Context WebServer webServer, @Context InputFormat input,
-            @Context OutputFormat output )
+    public BatchOperationService(@Context Database database, @Context WebServer webServer, @Context OutputFormat output)
     {
         this.output = output;
         this.webServer = webServer;
@@ -71,7 +74,8 @@ public class BatchOperationService
     }
 
     @POST
-    public Response performBatchOperations( @Context UriInfo uriInfo, InputStream body ) throws BadInputException
+    public Response performBatchOperations( @Context UriInfo uriInfo, @Context HttpHeaders httpHeaders, 
+                                            InputStream body ) throws BadInputException
     {
         AbstractGraphDatabase db = database.graph;
 
@@ -79,6 +83,7 @@ public class BatchOperationService
         try
         {
             JsonParser jp = jsonFactory.createJsonParser(body);
+            ObjectMapper mapper = new ObjectMapper();
             
             BatchOperationResults results = new BatchOperationResults();
             
@@ -86,7 +91,7 @@ public class BatchOperationService
             String field;
             String jobMethod, jobPath, jobBody;
             Integer jobId;
-            
+
             // TODO: Perhaps introduce a simple DSL for 
             // deserializing streamed JSON?
             while( (token = jp.nextToken()) != null) {
@@ -103,13 +108,18 @@ public class BatchOperationService
                          } else if(field.equals(ID_KEY)) {
                              jobId = jp.getIntValue();
                          } else if(field.equals(BODY_KEY)) {
-                             //TODO: this swallows escapes like "\\"
-                             jobBody = StreamingJsonUtils.readCurrentValueAsString(jp, token);
+                            JsonNode node = mapper.readTree(jp);
+                            StringWriter out = new StringWriter();
+                            JsonGenerator gen = jsonFactory.createJsonGenerator(out);
+                            mapper.writeTree(gen, node);
+                            gen.flush();
+                            gen.close();
+                            jobBody = out.toString();
                          }
                      }
 
                      // Read one job description. Execute it.
-                     performJob(results, uriInfo, jobMethod, jobPath, jobBody, jobId);
+                     performJob(results, uriInfo, jobMethod, jobPath, jobBody, jobId, httpHeaders);
                  }
             }
 
@@ -133,14 +143,10 @@ public class BatchOperationService
         }
     }
 
-    private void performJob( BatchOperationResults results, UriInfo uriInfo, String method, String path, String body, Integer id )
+    private void performJob( BatchOperationResults results, UriInfo uriInfo, String method, String path, String body, 
+                             Integer id, HttpHeaders httpHeaders )
             throws IOException, ServletException
     {
-        
-
-        InternalJettyServletRequest req = new InternalJettyServletRequest();
-        InternalJettyServletResponse res = new InternalJettyServletResponse();
-
         // Replace {[ID]} placeholders with location values
         Map<Integer, String> locations = results.getLocations();
         path = replaceLocationPlaceholders( path, locations );
@@ -148,8 +154,9 @@ public class BatchOperationService
 
         URI targetUri = calculateTargetUri( uriInfo, path );
 
-        req.setup( method, targetUri.toString(), body );
-        res.setup();
+        InternalJettyServletRequest req = new InternalJettyServletRequest(method, targetUri.toString(), body );
+        InternalJettyServletResponse res = new InternalJettyServletResponse();
+        addHeaders(req, httpHeaders);
 
         webServer.invokeDirectly( targetUri.getPath(), req, res );
 
@@ -162,6 +169,17 @@ public class BatchOperationService
         {
             throw new BatchOperationFailedException( res.getStatus(), res.getOutputStream()
                     .toString() );
+        }
+    }
+    
+    private void addHeaders(final InternalJettyServletRequest res, final HttpHeaders httpHeaders)
+    {
+        for ( String header : HEADERS_TO_PASSOVER)
+        {
+            final List<String> value = httpHeaders.getRequestHeader(header);
+            if (value == null) continue;
+            if (value.size() != 1) throw new IllegalArgumentException("expecting one value per header");
+            res.addHeader(header, value.get(0));
         }
     }
 

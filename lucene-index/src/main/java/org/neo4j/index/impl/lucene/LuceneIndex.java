@@ -38,12 +38,14 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexHits;
 import org.neo4j.index.lucene.QueryContext;
+import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.impl.cache.LruCache;
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
 import org.neo4j.kernel.impl.util.IoPrimitiveUtils;
@@ -53,11 +55,11 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
     static final String KEY_DOC_ID = "_id_";
     static final String KEY_START_NODE_ID = "_start_node_id_";
     static final String KEY_END_NODE_ID = "_end_node_id_";
-    
+
     private static Set<String> FORBIDDEN_KEYS = new HashSet<String>( Arrays.asList( null, KEY_DOC_ID, KEY_START_NODE_ID, KEY_END_NODE_ID ) );
 
     final LuceneIndexImplementation service;
-    private IndexIdentifier identifier;
+    private final IndexIdentifier identifier;
     final IndexType type;
     private volatile boolean deleted;
 
@@ -91,6 +93,12 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
         }
     }
 
+    @Override
+    public GraphDatabaseService getGraphDatabase()
+    {
+        return service.graphDb();
+    }
+
     LuceneXaConnection getReadOnlyConnection()
     {
         assertNotDeleted();
@@ -114,7 +122,7 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
      * documentation.
      *
      * Adds key/value to the {@code entity} in this index. Added values are
-     * searchable withing the transaction, but composite {@code AND}
+     * searchable within the transaction, but composite {@code AND}
      * queries aren't guaranteed to return added values correctly within that
      * transaction. When the transaction has been committed all such queries
      * are guaranteed to return correct results.
@@ -135,6 +143,12 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
         }
     }
 
+    @Override
+    public T putIfAbsent( T entity, String key, Object value )
+    {
+        return ((AbstractGraphDatabase)service.graphDb()).getConfig().getGraphDbModule().getNodeManager().indexPutIfAbsent( this, entity, key, value );
+    }
+
     private void assertValidKey( String key )
     {
         if ( FORBIDDEN_KEYS.contains( key ) )
@@ -148,7 +162,7 @@ public abstract class LuceneIndex<T extends PropertyContainer> implements Index<
      * generic documentation.
      *
      * Removes key/value to the {@code entity} in this index. Removed values
-     * are excluded withing the transaction, but composite {@code AND}
+     * are excluded within the transaction, but composite {@code AND}
      * queries aren't guaranteed to exclude removed values correctly within
      * that transaction. When the transaction has been committed all such
      * queries are guaranteed to return correct results.

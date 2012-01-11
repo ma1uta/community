@@ -100,6 +100,13 @@ class PatternMatcher(bindings: Map[String, MatchingPair], predicates: Seq[Predic
 
   }
 
+  private def alreadyPinned[U](currentRel: PatternRelationship, x: GraphRelationship): Boolean = {
+    boundRels.get(currentRel.key) match {
+      case Some(pinnedRel) => pinnedRel.matches(x)
+      case None => true
+    }
+  }
+
   private def traverseRelationship[U](currentNode: MatchingPair,
                                       currentRel: PatternRelationship,
                                       history: History,
@@ -112,10 +119,7 @@ class PatternMatcher(bindings: Map[String, MatchingPair], predicates: Seq[Predic
     val relationships = currentNode.getGraphRelationships(currentRel)
     val step1 = history.filter(relationships)
     val notVisitedRelationships: Seq[GraphRelationship] = step1.
-      filter(x => boundRels.get(currentRel.key) match {
-      case Some(pinnedRel) => pinnedRel.matches(x)
-      case None => true
-    })
+      filter(x => alreadyPinned(currentRel, x))
 
     val nextPNode = currentRel.getOtherNode(pNode)
 
