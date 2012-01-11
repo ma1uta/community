@@ -72,13 +72,13 @@ public class LockReleaser
     public static class PrimitiveElement
     {
         PrimitiveElement() {}
-        
+
         private final ArrayMap<Long,CowNodeElement> nodes =
             new ArrayMap<Long,CowNodeElement>();
         private final ArrayMap<Long,CowRelElement> relationships =
             new ArrayMap<Long,CowRelElement>();
         private CowGraphElement graph;
-        
+
         public CowNodeElement nodeElement( long id, boolean create )
         {
             CowNodeElement result = nodes.get( id );
@@ -100,33 +100,33 @@ public class LockReleaser
             }
             return result;
         }
-        
+
         public CowGraphElement graphElement( boolean create )
         {
             if ( graph == null && create ) graph = new CowGraphElement();
             return graph;
         }
     }
-    
+
     static class CowEntityElement
     {
         protected long id;
         protected boolean deleted;
         protected ArrayMap<Integer,PropertyData> propertyAddMap;
         protected ArrayMap<Integer,PropertyData> propertyRemoveMap;
-        
+
         CowEntityElement( long id )
         {
             this.id = id;
         }
-        
+
         public ArrayMap<Integer, PropertyData> getPropertyAddMap( boolean create )
         {
             assertNotDeleted();
             if ( propertyAddMap == null && create ) propertyAddMap = new ArrayMap<Integer, PropertyData>();
             return propertyAddMap;
         }
-        
+
         private void assertNotDeleted()
         {
             if ( deleted ) throw new IllegalStateException( this + " has been deleted in this tx" );
@@ -175,19 +175,19 @@ public class LockReleaser
         {
             super( id );
         }
-        
+
         private long firstRel = Record.NO_NEXT_RELATIONSHIP.intValue();
         private long firstProp = Record.NO_NEXT_PROPERTY.intValue();
 
         private ArrayMap<String,RelIdArray> relationshipAddMap;
         private ArrayMap<String,SetAndDirectionCounter> relationshipRemoveMap;
-        
+
         public ArrayMap<String, RelIdArray> getRelationshipAddMap( boolean create )
         {
             if ( relationshipAddMap == null && create ) relationshipAddMap = new ArrayMap<String, RelIdArray>();
             return relationshipAddMap;
         }
-        
+
         public RelIdArray getRelationshipAddMap( String type, boolean create )
         {
             ArrayMap<String, RelIdArray> map = getRelationshipAddMap( create );
@@ -200,7 +200,7 @@ public class LockReleaser
             }
             return result;
         }
-        
+
         public ArrayMap<String, SetAndDirectionCounter> getRelationshipRemoveMap( boolean create )
         {
             if ( relationshipRemoveMap == null && create ) relationshipRemoveMap = new ArrayMap<String, SetAndDirectionCounter>();
@@ -219,7 +219,7 @@ public class LockReleaser
             }
             return result;
         }
-        
+
         @Override
         public String toString()
         {
@@ -233,7 +233,7 @@ public class LockReleaser
         {
             super( id );
         }
-        
+
         @Override
         public String toString()
         {
@@ -247,14 +247,14 @@ public class LockReleaser
         {
             super( -1 );
         }
-        
+
         @Override
         public String toString()
         {
             return "Graph";
         }
     }
-    
+
     public LockReleaser( LockManager lockManager,
         TransactionManager transactionManager )
     {
@@ -283,12 +283,21 @@ public class LockReleaser
             this.resource = resource;
             this.lockType = type;
         }
-        
+
         public boolean releaseIfAcquired( LockManager lockManager )
         {
             if ( released ) return false;
             lockType.release( resource, lockManager );
             return (released = true);
+        }
+
+        @Override
+        public String toString()
+        {
+            StringBuilder string = new StringBuilder( lockType.name() ).append( "-LockElement[" );
+            if ( released ) string.append( "released," );
+            string.append( resource );
+            return string.append( ']' ).toString();
         }
     }
 
@@ -378,7 +387,7 @@ public class LockReleaser
     {
         return getPrimitiveElement( true ).nodeElement( node.getId(), true ).getRelationshipRemoveMap( type, true );
     }
-    
+
     public void setFirstIds( long nodeId, long firstRel, long firstProp )
     {
         CowNodeElement nodeElement = getPrimitiveElement( true ).nodeElement( nodeId, true );
@@ -556,7 +565,7 @@ public class LockReleaser
     {
         return getPrimitiveElement( getTransaction(), create );
     }
-    
+
     public PrimitiveElement getPrimitiveElement( Transaction tx, boolean create )
     {
         if ( tx == null )
@@ -586,7 +595,7 @@ public class LockReleaser
 
     public void deletePrimitive( Primitive primitive )
     {
-        primitive.getEntityElement( getPrimitiveElement( true ), true ).deleted = true; 
+        primitive.getEntityElement( getPrimitiveElement( true ), true ).deleted = true;
     }
 
     public void removeNodeFromCache( long nodeId )
@@ -636,7 +645,7 @@ public class LockReleaser
             nodeManager.removeGraphPropertiesFromCache();
         }
     }
-    
+
     private class ReadOnlyTxReleaser implements Synchronization
     {
         private final Transaction tx;
