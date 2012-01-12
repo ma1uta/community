@@ -115,7 +115,13 @@ class ExecutionPlanImpl(query: Query, graph: GraphDatabaseService) extends Execu
 
         val result = new ColumnFilterPipe(context.pipe, returnItems)
 
-        val func = (params: Map[String, Any]) => new PipeExecutionResult(result.createResults(params), result.symbols, returns.columns)
+        val func = (params: Map[String, Any]) => {
+          val start = System.currentTimeMillis()
+          val results = result.createResults(params)
+          val timeTaken = System.currentTimeMillis() - start
+
+          new PipeExecutionResult(results, result.symbols, returns.columns, timeTaken)
+        }
         val executionPlan = result.executionPlan()
 
         (func, executionPlan)
@@ -239,6 +245,13 @@ class ExecutionPlanImpl(query: Query, graph: GraphDatabaseService) extends Execu
       new NodeStartPipe(lastPipe, varName, m => {
         val queryText = query(m)
         val indexHits: Iterable[Node] = graph.index.forNodes(idxName).query(queryText)
+        indexHits.asScala
+      })
+
+    case RelationshipByIndexQuery(varName, idxName, query) =>
+      new RelationshipStartPipe(lastPipe, varName, m => {
+        val queryText = query(m)
+        val indexHits: Iterable[Relationship] = graph.index.forRelationships(idxName).query(queryText)
         indexHits.asScala
       })
 
