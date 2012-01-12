@@ -727,7 +727,7 @@ public class NeoStore extends AbstractStore
     public NeoStoreRecord asRecord()
     {
         NeoStoreRecord result = new NeoStoreRecord();
-        result.setNextProp( getRecord( 5 ) );
+        result.setFirstProp( getRecord( 5 ) );
         return result;
     }
 

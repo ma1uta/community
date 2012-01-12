@@ -116,11 +116,11 @@ public class StoreMigrator
                 nodeStore.setHighId( nodeRecord.getId() + 1 );
                 if ( nodeRecord.inUse() )
                 {
-                    long startOfPropertyChain = nodeRecord.getNextProp();
+                    long startOfPropertyChain = nodeRecord.getFirstProp();
                     if ( startOfPropertyChain != Record.NO_NEXT_RELATIONSHIP.intValue() )
                     {
                         long propertyRecordId = migrateProperties( startOfPropertyChain, propertyWriter );
-                        nodeRecord.setNextProp( propertyRecordId );
+                        nodeRecord.setFirstProp( propertyRecordId );
                     }
                     nodeStore.updateRecord( nodeRecord );
                 } else
@@ -142,11 +142,11 @@ public class StoreMigrator
                 relationshipStore.setHighId( relationshipRecord.getId() + 1 );
                 if ( relationshipRecord.inUse() )
                 {
-                    long startOfPropertyChain = relationshipRecord.getNextProp();
+                    long startOfPropertyChain = relationshipRecord.getFirstProp();
                     if ( startOfPropertyChain != Record.NO_NEXT_RELATIONSHIP.intValue() )
                     {
                         long propertyRecordId = migrateProperties( startOfPropertyChain, propertyWriter );
-                        relationshipRecord.setNextProp( propertyRecordId );
+                        relationshipRecord.setFirstProp( propertyRecordId );
                     }
                     relationshipStore.updateRecord( relationshipRecord );
                 } else

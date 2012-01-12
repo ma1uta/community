@@ -19,48 +19,88 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
+/**
+ * A record in the {@link NodeStore} with accessors for the different parts of record.
+ */
 public class NodeRecord extends PrimitiveRecord
 {
-    private long committedNextRel;
-    private long nextRel;
+    private long committedFirstRel;
+    private long firstRel;
     private boolean superNode;
+    private boolean committedSuperNode;
     
-    public NodeRecord( long id, boolean superNode, long nextRel, long nextProp )
+    /**
+     * @param id record id.
+     * @param superNode if this record is a super node or not.
+     * @param firstRel the first relationship record in the chain for this node.
+     * If this is a super node nextRel refers to the first relationship group id. 
+     * @param firstProp the first property record in the property chain.
+     */
+    public NodeRecord( long id, boolean superNode, long firstRel, long firstProp )
     {
-        super( id, nextProp );
-        this.superNode = superNode;
-        this.committedNextRel = this.nextRel = nextRel;
+        super( id, firstProp );
+        this.committedSuperNode = this.superNode = superNode;
+        this.committedFirstRel = this.firstRel = firstRel;
     }
 
-    public long getNextRel()
+    /**
+     * @return the first relationship record for this node.
+     */
+    public long getFirstRel()
     {
-        return nextRel;
+        return firstRel;
     }
 
-    public void setNextRel( long nextRel )
+    /**
+     * Sets the first relationship record for this node.
+     * @param firstRel the first relationship in this chain.
+     */
+    public void setFirstRel( long firstRel )
     {
-        this.nextRel = nextRel;
+        this.firstRel = firstRel;
     }
     
-    public long getCommittedNextRel()
+    /**
+     * @return the first relationship for this node as seen in the committed store file,
+     * so even if {@link #setFirstRel(long)} is called the value returned here isn't affected.
+     * If this node record is marked as {@link #isCreated() created} it will return -1.
+     */
+    public long getCommittedFirstRel()
     {
-        return isCreated() ? Record.NO_NEXT_RELATIONSHIP.intValue() : committedNextRel;
+        return isCreated() ? Record.NO_NEXT_RELATIONSHIP.intValue() : committedFirstRel;
     }
 
-    @Override
-    public String toString()
+    /**
+     * @return whether or not this node is a super node.
+     */
+    public boolean isSuperNode()
     {
-        return new StringBuilder( "Node[" ).append( getId() ).append( ",used=" ).append( inUse() ).append( ",rel=" ).append(
-                nextRel ).append( ",prop=" ).append( getNextProp() ).append( superNode?",superNode":"" ).append( "]" ).toString();
+        return superNode;
     }
-
+    
+    /**
+     * Sets whether or not this node is a super node.
+     * @param superNode whether ot not this node is a super node.
+     */
     public void setSuperNode( boolean superNode )
     {
         this.superNode = superNode;
     }
     
-    public boolean isSuperNode()
+    /**
+     * @return whether or not this node is a super node, as seen in the committed store file.
+     * so even if {@link #setSuperNode(boolean)} is called the value returned here isn't affected.
+     * If this node record is marked as {@link #isCreated() created} it will return false.
+     */
+    public boolean isCommittedSuperNode()
     {
-        return superNode;
+        return isCreated() ? false : committedSuperNode;
+    }
+    
+    @Override
+    public String toString()
+    {
+        return new StringBuilder( "Node[" ).append( getId() ).append( ",used=" ).append( inUse() ).append( ",rel=" ).append(
+                firstRel ).append( ",prop=" ).append( getFirstProp() ).append( superNode?",superNode":"" ).append( "]" ).toString();
     }
 }

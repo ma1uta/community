@@ -244,8 +244,8 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         Buffer buffer = window.getOffsettedBuffer( id );
         if ( record.inUse() || force )
         {
-            long nextRel = record.getNextRel();
-            long nextProp = record.getNextProp();
+            long nextRel = record.getFirstRel();
+            long nextProp = record.getFirstProp();
 
             short relModifier = nextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (short)((nextRel & 0x700000000L) >> 31);
             short propModifier = nextProp == Record.NO_NEXT_PROPERTY.intValue() ? 0 : (short)((nextProp & 0xF00000000L) >> 28);

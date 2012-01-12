@@ -126,7 +126,7 @@ class ReadTransaction implements NeoStoreTransaction
     private Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( NodeRecord node )
     {
         assert node.isSuperNode();
-        return loadRelationshipGroups( node.getId(), node.getNextRel() );
+        return loadRelationshipGroups( node.getId(), node.getFirstRel() );
     }
     
     @Override
@@ -158,8 +158,8 @@ class ReadTransaction implements NeoStoreTransaction
                 // return what we got so far
                 return result;
             }
-            long firstNode = relRecord.getFirstNode();
-            long secondNode = relRecord.getSecondNode();
+            long firstNode = relRecord.getStartNode();
+            long secondNode = relRecord.getEndNode();
             if ( relRecord.inUse() )
             {
                 if ( firstNode == secondNode )
@@ -190,11 +190,11 @@ class ReadTransaction implements NeoStoreTransaction
             long next = 0;
             if ( firstNode == nodeId )
             {
-                next = relRecord.getFirstNextRel();
+                next = relRecord.getStartNodeNextRel();
             }
             else if ( secondNode == nodeId )
             {
-                next = relRecord.getSecondNextRel();
+                next = relRecord.getEndNodeNextRel();
             }
             else
             {
@@ -265,13 +265,13 @@ class ReadTransaction implements NeoStoreTransaction
             throw new InvalidRecordException( "Relationship[" + relId +
                 "] not in use" );
         }
-        return loadProperties( getPropertyStore(), relRecord.getNextProp() );
+        return loadProperties( getPropertyStore(), relRecord.getFirstProp() );
     }
 
     @Override
     public ArrayMap<Integer,PropertyData> nodeLoadProperties( long nodeId, boolean light )
     {
-        return loadProperties( getPropertyStore(), getNodeStore().getRecord( nodeId ).getNextProp() );
+        return loadProperties( getPropertyStore(), getNodeStore().getRecord( nodeId ).getFirstProp() );
     }
     
     @Override
@@ -492,7 +492,7 @@ class ReadTransaction implements NeoStoreTransaction
     public int getRelationshipCount( long id, int type, DirectionWrapper direction )
     {
         NodeRecord node = getNodeStore().getRecord( id );
-        long nextRel = node.getNextRel();
+        long nextRel = node.getFirstRel();
         if ( nextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ) return 0;
         if ( !node.isSuperNode() )
         {
@@ -561,7 +561,7 @@ class ReadTransaction implements NeoStoreTransaction
     {   // Relationship count is in a PREV field of the first record in a chain
         if ( relId == Record.NO_NEXT_RELATIONSHIP.intValue() ) return 0;
         RelationshipRecord rel = getRelationshipStore().getRecord( relId );
-        return (int) (node.getId() == rel.getFirstNode() ? rel.getFirstPrevRel() : rel.getSecondPrevRel());
+        return (int) (node.getId() == rel.getStartNode() ? rel.getStartNodePrevRel() : rel.getEndNodePrevRel());
     }
     
     @Override

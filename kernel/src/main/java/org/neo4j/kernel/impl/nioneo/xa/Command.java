@@ -350,8 +350,8 @@ public abstract class Command extends XaCommand
             buffer.put( inUse );
             if ( record.inUse() )
             {
-                buffer.putLong( record.getNextRel() ).putLong(
-                    record.getNextProp() ).put( record.isSuperNode() ? (byte) 1 : (byte) 0 );
+                buffer.putLong( record.getFirstRel() ).putLong(
+                    record.getFirstProp() ).put( record.isSuperNode() ? (byte) 1 : (byte) 0 );
             }
         }
 
@@ -440,12 +440,12 @@ public abstract class Command extends XaCommand
 
         long getFirstNode()
         {
-            return record.getFirstNode();
+            return record.getStartNode();
         }
 
         long getSecondNode()
         {
-            return record.getSecondNode();
+            return record.getEndNode();
         }
 
         boolean isRemove()
@@ -483,13 +483,13 @@ public abstract class Command extends XaCommand
             buffer.put( inUse );
             if ( record.inUse() )
             {
-                buffer.putLong( record.getFirstNode() ).putLong(
-                    record.getSecondNode() ).putInt( record.getType() ).putLong(
-                    record.getFirstPrevRel() )
-                    .putLong( record.getFirstNextRel() ).putLong(
-                        record.getSecondPrevRel() ).putLong(
-                        record.getSecondNextRel() ).putLong(
-                        record.getNextProp() ).put( (byte) ((record.isFirstInFirstChain()?1:0) | (record.isFirstInSecondChain()?2:0)) );
+                buffer.putLong( record.getStartNode() ).putLong(
+                    record.getEndNode() ).putInt( record.getType() ).putLong(
+                    record.getStartNodePrevRel() )
+                    .putLong( record.getStartNodeNextRel() ).putLong(
+                        record.getEndNodePrevRel() ).putLong(
+                        record.getEndNodeNextRel() ).putLong(
+                        record.getFirstProp() ).put( (byte) ((record.isFirstInStartNodeChain()?1:0) | (record.isFirstInEndNodeChain()?2:0)) );
             }
         }
 
@@ -530,14 +530,14 @@ public abstract class Command extends XaCommand
                 record = new RelationshipRecord( id, buffer.getLong(), buffer
                     .getLong(), buffer.getInt() );
                 record.setInUse( inUse );
-                record.setFirstPrevRel( buffer.getLong() );
-                record.setFirstNextRel( buffer.getLong() );
-                record.setSecondPrevRel( buffer.getLong() );
-                record.setSecondNextRel( buffer.getLong() );
-                record.setNextProp( buffer.getLong() );
+                record.setStartNodePrevRel( buffer.getLong() );
+                record.setStartNodeNextRel( buffer.getLong() );
+                record.setEndNodePrevRel( buffer.getLong() );
+                record.setEndNodeNextRel( buffer.getLong() );
+                record.setFirstProp( buffer.getLong() );
                 byte extraByte = buffer.get();
-                record.setFirstInFirstChain( (extraByte&0x1) > 0 );
-                record.setFirstInSecondChain( (extraByte&0x2) > 0 );
+                record.setFirstInStartNodeChain( (extraByte&0x1) > 0 );
+                record.setFirstInEndNodeChain( (extraByte&0x2) > 0 );
             }
             else
             {
@@ -586,7 +586,7 @@ public abstract class Command extends XaCommand
         @Override
         public void execute()
         {
-            neoStore.setGraphNextProp( record.getNextProp() );
+            neoStore.setGraphNextProp( record.getFirstProp() );
         }
         
         @Override
@@ -604,7 +604,7 @@ public abstract class Command extends XaCommand
         @Override
         public void writeToFile( LogBuffer buffer ) throws IOException
         {
-            buffer.put( NEOSTORE_COMMAND ).putLong( record.getNextProp() );
+            buffer.put( NEOSTORE_COMMAND ).putLong( record.getFirstProp() );
         }
 
         public static Command readCommand( NeoStore neoStore,
@@ -617,7 +617,7 @@ public abstract class Command extends XaCommand
             buffer.flip();
             long nextProp = buffer.getLong();
             NeoStoreRecord record = new NeoStoreRecord();
-            record.setNextProp( nextProp );
+            record.setFirstProp( nextProp );
             return new NeoStoreCommand( neoStore, record );
         }
     }

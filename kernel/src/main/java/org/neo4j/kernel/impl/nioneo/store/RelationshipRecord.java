@@ -21,33 +21,33 @@ package org.neo4j.kernel.impl.nioneo.store;
 
 public class RelationshipRecord extends PrimitiveRecord
 {
-    private final long firstNode;
-    private final long secondNode;
+    private final long startNode;
+    private final long endNode;
     private final int type;
-    private long firstPrevRel = Record.NO_PREV_RELATIONSHIP.intValue();
-    private long firstNextRel = Record.NO_NEXT_RELATIONSHIP.intValue();
-    private long secondPrevRel = Record.NO_PREV_RELATIONSHIP.intValue();
-    private long secondNextRel = Record.NO_NEXT_RELATIONSHIP.intValue();
-    private boolean firstInFirstChain;
-    private boolean firstInSecondChain;
+    private long startNodePrevRel = Record.NO_PREV_RELATIONSHIP.intValue();
+    private long startNodeNextRel = Record.NO_NEXT_RELATIONSHIP.intValue();
+    private long endNodePrevRel = Record.NO_PREV_RELATIONSHIP.intValue();
+    private long endNodeNextRel = Record.NO_NEXT_RELATIONSHIP.intValue();
+    private boolean firstInStartNodeChain;
+    private boolean firstInEndNodeChain;
 
-    public RelationshipRecord( long id, long firstNode, long secondNode, int type )
+    public RelationshipRecord( long id, long startNode, long endNode, int type )
     {
         // TODO take firstProp in here
         super( id, Record.NO_NEXT_PROPERTY.intValue() );
-        this.firstNode = firstNode;
-        this.secondNode = secondNode;
+        this.startNode = startNode;
+        this.endNode = endNode;
         this.type = type;
     }
 
-    public long getFirstNode()
+    public long getStartNode()
     {
-        return firstNode;
+        return startNode;
     }
 
-    public long getSecondNode()
+    public long getEndNode()
     {
-        return secondNode;
+        return endNode;
     }
 
     public int getType()
@@ -55,73 +55,73 @@ public class RelationshipRecord extends PrimitiveRecord
         return type;
     }
     
-    public boolean isFirstInFirstChain()
+    public boolean isFirstInStartNodeChain()
     {
-        return firstInFirstChain;
+        return firstInStartNodeChain;
     }
     
-    public void setFirstInFirstChain( boolean firstInFirstChain )
+    public void setFirstInStartNodeChain( boolean first )
     {
-        this.firstInFirstChain = firstInFirstChain;
+        this.firstInStartNodeChain = first;
     }
     
-    public boolean isFirstInSecondChain()
+    public boolean isFirstInEndNodeChain()
     {
-        return firstInSecondChain;
+        return firstInEndNodeChain;
     }
     
-    public void setFirstInSecondChain( boolean firstInSecondChain )
+    public void setFirstInEndNodeChain( boolean first )
     {
-        this.firstInSecondChain = firstInSecondChain;
+        this.firstInEndNodeChain = first;
     }
 
-    public long getFirstPrevRel()
+    public long getStartNodePrevRel()
     {
-        return firstPrevRel;
+        return startNodePrevRel;
     }
 
-    public void setFirstPrevRel( long firstPrevRel )
+    public void setStartNodePrevRel( long rel )
     {
-        this.firstPrevRel = firstPrevRel;
+        this.startNodePrevRel = rel;
     }
 
-    public long getFirstNextRel()
+    public long getStartNodeNextRel()
     {
-        return firstNextRel;
+        return startNodeNextRel;
     }
 
-    public void setFirstNextRel( long firstNextRel )
+    public void setStartNodeNextRel( long firstNextRel )
     {
-        this.firstNextRel = firstNextRel;
+        this.startNodeNextRel = firstNextRel;
     }
 
-    public long getSecondPrevRel()
+    public long getEndNodePrevRel()
     {
-        return secondPrevRel;
+        return endNodePrevRel;
     }
 
-    public void setSecondPrevRel( long secondPrevRel )
+    public void setEndNodePrevRel( long rel )
     {
-        this.secondPrevRel = secondPrevRel;
+        this.endNodePrevRel = rel;
     }
 
-    public long getSecondNextRel()
+    public long getEndNodeNextRel()
     {
-        return secondNextRel;
+        return endNodeNextRel;
     }
 
-    public void setSecondNextRel( long secondNextRel )
+    public void setEndNodeNextRel( long rel )
     {
-        this.secondNextRel = secondNextRel;
+        this.endNodeNextRel = rel;
     }
 
     @Override
     public String toString()
     {
         return new StringBuilder( "Relationship[" ).append( getId() ).append( ",used=" ).append( inUse() ).append(
-                ",source=" ).append( firstNode ).append( ",target=" ).append( secondNode ).append( ",type=" ).append(
-                type ).append( ",sPrev=" ).append( firstPrevRel ).append( ",sNext=" ).append( firstNextRel ).append(
-                ",tPrev=" ).append( secondPrevRel ).append( ",tNext=" ).append( secondNextRel ).append( ",prop=" ).append(
-                getNextProp() ).append( (firstInFirstChain?",firstInFirstChain":"") ).append( (firstInSecondChain?",firstInSecondChain":"") ).append( "]" ).toString();
+                ",start=" ).append( startNode ).append( ",end=" ).append( endNode ).append( ",type=" ).append(
+                type ).append( ",sPrev=" ).append( startNodePrevRel ).append( ",sNext=" ).append( startNodeNextRel ).append(
+                ",ePrev=" ).append( endNodePrevRel ).append( ",eNext=" ).append( endNodeNextRel ).append( ",prop=" ).append(
+                getFirstProp() ).append( (firstInStartNodeChain?",sFirst":"") ).append( (firstInEndNodeChain?",eFirst":"") ).append( "]" ).toString();
     }
 }

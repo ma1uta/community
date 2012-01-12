@@ -190,7 +190,7 @@ public class BatchInserterImpl implements BatchInserter
     {
         PropertyRecord current = null;
         PropertyBlock target = null;
-        long nextProp = primitive.getNextProp();
+        long nextProp = primitive.getFirstProp();
         int propIndex = indexHolder.getKeyId( property );
         if ( nextProp == Record.NO_NEXT_PROPERTY.intValue() || propIndex == -1 )
         {
@@ -232,12 +232,12 @@ public class BatchInserterImpl implements BatchInserter
         boolean primitiveChanged = false;
         long prevProp = propRecord.getPrevProp();
         long nextProp = propRecord.getNextProp();
-        if ( primitive.getNextProp() == propRecord.getId() )
+        if ( primitive.getFirstProp() == propRecord.getId() )
         {
             assert propRecord.getPrevProp() == Record.NO_PREVIOUS_PROPERTY.intValue() : propRecord
                                                                                         + " for "
                                                                                         + primitive;
-            primitive.setNextProp( nextProp );
+            primitive.setFirstProp( nextProp );
             primitiveChanged = true;
         }
         if ( prevProp != Record.NO_PREVIOUS_PROPERTY.intValue() )
@@ -278,7 +278,7 @@ public class BatchInserterImpl implements BatchInserter
             Object value )
     {
         boolean result = false;
-        long nextProp = primitive.getNextProp();
+        long nextProp = primitive.getFirstProp();
         int index = indexHolder.getKeyId( name );
 
         if ( index == -1 )
@@ -345,16 +345,16 @@ public class BatchInserterImpl implements BatchInserter
         {
             thatFits = new PropertyRecord( getPropertyStore().nextId() );
 
-            if ( primitive.getNextProp() != Record.NO_NEXT_PROPERTY.intValue() )
+            if ( primitive.getFirstProp() != Record.NO_NEXT_PROPERTY.intValue() )
             {
                 PropertyRecord first = getPropertyStore().getRecord(
-                        primitive.getNextProp() );
+                        primitive.getFirstProp() );
                 thatFits.setNextProp( first.getId() );
                 first.setPrevProp( thatFits.getId() );
                 getPropertyStore().updateRecord( first );
                 result = true;
             }
-            primitive.setNextProp( thatFits.getId() );
+            primitive.setFirstProp( thatFits.getId() );
         }
         thatFits.addPropertyBlock( block );
         getPropertyStore().updateRecord( thatFits );
@@ -364,7 +364,7 @@ public class BatchInserterImpl implements BatchInserter
     private boolean primitiveHasProperty( PrimitiveRecord record,
             String propertyName )
     {
-        long nextProp = record.getNextProp();
+        long nextProp = record.getFirstProp();
         int propertyIndex = indexHolder.getKeyId( propertyName );
         if (nextProp == Record.NO_NEXT_PROPERTY.intValue() || propertyIndex == -1)
         {
@@ -404,7 +404,7 @@ public class BatchInserterImpl implements BatchInserter
                 Record.NO_NEXT_RELATIONSHIP.intValue(), Record.NO_NEXT_PROPERTY.intValue() );
         nodeRecord.setInUse( true );
         nodeRecord.setCreated();
-        nodeRecord.setNextProp( createPropertyChain( properties ) );
+        nodeRecord.setFirstProp( createPropertyChain( properties ) );
         getNodeStore().updateRecord( nodeRecord );
         return nodeId;
     }
@@ -447,7 +447,7 @@ public class BatchInserterImpl implements BatchInserter
         connectRelationship( firstNode, secondNode, record );
         getNodeStore().updateRecord( firstNode );
         getNodeStore().updateRecord( secondNode );
-        record.setNextProp( createPropertyChain( properties ) );
+        record.setFirstProp( createPropertyChain( properties ) );
         getRelationshipStore().updateRecord( record );
         return id;
     }
@@ -455,30 +455,30 @@ public class BatchInserterImpl implements BatchInserter
     private void connectRelationship( NodeRecord firstNode,
             NodeRecord secondNode, RelationshipRecord rel )
     {
-        assert firstNode.getNextRel() != rel.getId();
-        assert secondNode.getNextRel() != rel.getId();
-        rel.setFirstNextRel( firstNode.getNextRel() );
-        rel.setSecondNextRel( secondNode.getNextRel() );
+        assert firstNode.getFirstRel() != rel.getId();
+        assert secondNode.getFirstRel() != rel.getId();
+        rel.setStartNodeNextRel( firstNode.getFirstRel() );
+        rel.setEndNodeNextRel( secondNode.getFirstRel() );
         connect( firstNode, rel );
         connect( secondNode, rel );
-        firstNode.setNextRel( rel.getId() );
-        secondNode.setNextRel( rel.getId() );
+        firstNode.setFirstRel( rel.getId() );
+        secondNode.setFirstRel( rel.getId() );
     }
 
     private void connect( NodeRecord node, RelationshipRecord rel )
     {
-        if ( node.getNextRel() != Record.NO_NEXT_RELATIONSHIP.intValue() )
+        if ( node.getFirstRel() != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
-            RelationshipRecord nextRel = getRelationshipStore().getRecord( node.getNextRel() );
+            RelationshipRecord nextRel = getRelationshipStore().getRecord( node.getFirstRel() );
             boolean changed = false;
-            if ( nextRel.getFirstNode() == node.getId() )
+            if ( nextRel.getStartNode() == node.getId() )
             {
-                nextRel.setFirstPrevRel( rel.getId() );
+                nextRel.setStartNodePrevRel( rel.getId() );
                 changed = true;
             }
-            if ( nextRel.getSecondNode() == node.getId() )
+            if ( nextRel.getEndNode() == node.getId() )
             {
-                nextRel.setSecondPrevRel( rel.getId() );
+                nextRel.setEndNodePrevRel( rel.getId() );
                 changed = true;
             }
             if ( !changed )
@@ -492,9 +492,9 @@ public class BatchInserterImpl implements BatchInserter
     public void setNodeProperties( long node, Map<String,Object> properties )
     {
         NodeRecord record = getNodeRecord( node );
-        if ( record.getNextProp() != Record.NO_NEXT_PROPERTY.intValue() )
+        if ( record.getFirstProp() != Record.NO_NEXT_PROPERTY.intValue() )
         {
-            deletePropertyChain( record.getNextProp() );
+            deletePropertyChain( record.getFirstProp() );
             /*
              * Batch inserter does not make any attempt to maintain the store's
              * integrity. It makes sense however to keep some things intact where
@@ -504,10 +504,10 @@ public class BatchInserterImpl implements BatchInserter
              * way, if during creation, something goes wrong, it will not have the properties
              * expected instead of throwing invalid record exceptions.
              */
-            record.setNextProp( Record.NO_NEXT_PROPERTY.intValue() );
+            record.setFirstProp( Record.NO_NEXT_PROPERTY.intValue() );
             getNodeStore().updateRecord( record );
         }
-        record.setNextProp( createPropertyChain( properties ) );
+        record.setFirstProp( createPropertyChain( properties ) );
         getNodeStore().updateRecord( record );
     }
 
@@ -515,17 +515,17 @@ public class BatchInserterImpl implements BatchInserter
         Map<String,Object> properties )
     {
         RelationshipRecord record = getRelationshipRecord( rel );
-        if ( record.getNextProp() != Record.NO_NEXT_PROPERTY.intValue() )
+        if ( record.getFirstProp() != Record.NO_NEXT_PROPERTY.intValue() )
         {
-            deletePropertyChain( record.getNextProp() );
+            deletePropertyChain( record.getFirstProp() );
             /*
              * See setNodeProperties above for an explanation of what goes on
              * here
              */
-            record.setNextProp( Record.NO_NEXT_PROPERTY.intValue() );
+            record.setFirstProp( Record.NO_NEXT_PROPERTY.intValue() );
             getRelationshipStore().updateRecord( record );
         }
-        record.setNextProp( createPropertyChain( properties ) );
+        record.setFirstProp( createPropertyChain( properties ) );
         getRelationshipStore().updateRecord( record );
     }
 
@@ -537,9 +537,9 @@ public class BatchInserterImpl implements BatchInserter
     public Map<String,Object> getNodeProperties( long nodeId )
     {
         NodeRecord record = getNodeRecord( nodeId );
-        if ( record.getNextProp() != Record.NO_NEXT_PROPERTY.intValue() )
+        if ( record.getFirstProp() != Record.NO_NEXT_PROPERTY.intValue() )
         {
-            return getPropertyChain( record.getNextProp() );
+            return getPropertyChain( record.getFirstProp() );
         }
         return Collections.emptyMap();
     }
@@ -547,21 +547,21 @@ public class BatchInserterImpl implements BatchInserter
     public Iterable<Long> getRelationshipIds( long nodeId )
     {
         NodeRecord nodeRecord = getNodeRecord( nodeId );
-        long nextRel = nodeRecord.getNextRel();
+        long nextRel = nodeRecord.getFirstRel();
         List<Long> ids = new ArrayList<Long>();
         while ( nextRel != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
             RelationshipRecord relRecord = getRelationshipRecord( nextRel );
             ids.add( relRecord.getId() );
-            long firstNode = relRecord.getFirstNode();
-            long secondNode = relRecord.getSecondNode();
+            long firstNode = relRecord.getStartNode();
+            long secondNode = relRecord.getEndNode();
             if ( firstNode == nodeId )
             {
-                nextRel = relRecord.getFirstNextRel();
+                nextRel = relRecord.getStartNodeNextRel();
             }
             else if ( secondNode == nodeId )
             {
-                nextRel = relRecord.getSecondNextRel();
+                nextRel = relRecord.getEndNodeNextRel();
             }
             else
             {
@@ -576,7 +576,7 @@ public class BatchInserterImpl implements BatchInserter
     public Iterable<SimpleRelationship> getRelationships( long nodeId )
     {
         NodeRecord nodeRecord = getNodeRecord( nodeId );
-        long nextRel = nodeRecord.getNextRel();
+        long nextRel = nodeRecord.getFirstRel();
         List<SimpleRelationship> rels = new ArrayList<SimpleRelationship>();
         while ( nextRel != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
@@ -584,16 +584,16 @@ public class BatchInserterImpl implements BatchInserter
             RelationshipType type = new RelationshipTypeImpl(
                 typeHolder.getName( relRecord.getType() ) );
             rels.add( new SimpleRelationship( relRecord.getId(),
-                relRecord.getFirstNode(), relRecord.getSecondNode(), type ) );
-            long firstNode = relRecord.getFirstNode();
-            long secondNode = relRecord.getSecondNode();
+                relRecord.getStartNode(), relRecord.getEndNode(), type ) );
+            long firstNode = relRecord.getStartNode();
+            long secondNode = relRecord.getEndNode();
             if ( firstNode == nodeId )
             {
-                nextRel = relRecord.getFirstNextRel();
+                nextRel = relRecord.getStartNodeNextRel();
             }
             else if ( secondNode == nodeId )
             {
-                nextRel = relRecord.getSecondNextRel();
+                nextRel = relRecord.getEndNodeNextRel();
             }
             else
             {
@@ -610,16 +610,16 @@ public class BatchInserterImpl implements BatchInserter
         RelationshipRecord record = getRelationshipRecord( relId );
         RelationshipType type = new RelationshipTypeImpl(
             typeHolder.getName( record.getType() ) );
-        return new SimpleRelationship( record.getId(), record.getFirstNode(),
-            record.getSecondNode(), type );
+        return new SimpleRelationship( record.getId(), record.getStartNode(),
+            record.getEndNode(), type );
     }
 
     public Map<String,Object> getRelationshipProperties( long relId )
     {
         RelationshipRecord record = getRelationshipRecord( relId );
-        if ( record.getNextProp() != Record.NO_NEXT_PROPERTY.intValue() )
+        if ( record.getFirstProp() != Record.NO_NEXT_PROPERTY.intValue() )
         {
-            return getPropertyChain( record.getNextProp() );
+            return getPropertyChain( record.getFirstProp() );
         }
         return Collections.emptyMap();
     }

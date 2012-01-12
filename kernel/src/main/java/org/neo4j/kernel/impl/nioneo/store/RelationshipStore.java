@@ -221,29 +221,29 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
         Buffer buffer = window.getOffsettedBuffer( id );
         if ( record.inUse() || force )
         {
-            long firstNode = record.getFirstNode();
+            long firstNode = record.getStartNode();
             short firstNodeMod = (short)((firstNode & 0x700000000L) >> 31);
 
-            long secondNode = record.getSecondNode();
+            long secondNode = record.getEndNode();
             long secondNodeMod = (secondNode & 0x700000000L) >> 4;
 
-            long firstPrevRel = record.getFirstPrevRel();
+            long firstPrevRel = record.getStartNodePrevRel();
             long firstPrevRelMod = firstPrevRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (firstPrevRel & 0x700000000L) >> 7;
 
-            long firstNextRel = record.getFirstNextRel();
+            long firstNextRel = record.getStartNodeNextRel();
             long firstNextRelMod = firstNextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (firstNextRel & 0x700000000L) >> 10;
 
-            long secondPrevRel = record.getSecondPrevRel();
+            long secondPrevRel = record.getEndNodePrevRel();
             long secondPrevRelMod = secondPrevRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (secondPrevRel & 0x700000000L) >> 13;
 
-            long secondNextRel = record.getSecondNextRel();
+            long secondNextRel = record.getEndNodeNextRel();
             long secondNextRelMod = secondNextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (secondNextRel & 0x700000000L) >> 16;
 
-            long nextProp = record.getNextProp();
+            long nextProp = record.getFirstProp();
             long nextPropMod = nextProp == Record.NO_NEXT_PROPERTY.intValue() ? 0 : (nextProp & 0xF00000000L) >> 28;
             
-            long firstInFirstChain = record.isFirstInFirstChain() ? 0x80000000 : 0;
-            long firstInSecondChain = record.isFirstInSecondChain() ? 0x8000 : 0;
+            long firstInFirstChain = record.isFirstInStartNodeChain() ? 0x80000000 : 0;
+            long firstInSecondChain = record.isFirstInEndNodeChain() ? 0x8000 : 0;
 
             // [    ,   x] in use flag
             // [    ,xxx ] first node high order bits
@@ -318,8 +318,8 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
             longFromIntAndMod( secondNode, secondNodeMod ), type );
         record.setInUse( inUse );
         
-        record.setFirstInFirstChain( (typeInt & 0x80000000) != 0 );
-        record.setFirstInSecondChain( (typeInt & 0x8000) != 0 );
+        record.setFirstInStartNodeChain( (typeInt & 0x80000000) != 0 );
+        record.setFirstInEndNodeChain( (typeInt & 0x8000) != 0 );
 
         long firstPrevRel = buffer.getUnsignedInt();
         long firstNextRel = buffer.getUnsignedInt();
@@ -328,19 +328,19 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
         long nextProp = buffer.getUnsignedInt();
         
         long firstPrevRelMod = (typeInt & 0xE000000L) << 7;
-        record.setFirstPrevRel( longFromIntAndMod( firstPrevRel, firstPrevRelMod ) );
+        record.setStartNodePrevRel( longFromIntAndMod( firstPrevRel, firstPrevRelMod ) );
 
         long firstNextRelMod = (typeInt & 0x1C00000L) << 10;
-        record.setFirstNextRel( longFromIntAndMod( firstNextRel, firstNextRelMod ) );
+        record.setStartNodeNextRel( longFromIntAndMod( firstNextRel, firstNextRelMod ) );
 
         long secondPrevRelMod = (typeInt & 0x380000L) << 13;
-        record.setSecondPrevRel( longFromIntAndMod( secondPrevRel, secondPrevRelMod ) );
+        record.setEndNodePrevRel( longFromIntAndMod( secondPrevRel, secondPrevRelMod ) );
 
         long secondNextRelMod = (typeInt & 0x70000L) << 16;
-        record.setSecondNextRel( longFromIntAndMod( secondNextRel, secondNextRelMod ) );
+        record.setEndNodeNextRel( longFromIntAndMod( secondNextRel, secondNextRelMod ) );
 
         long nextPropMod = (inUseByte & 0xF0L) << 28;
-        record.setNextProp( longFromIntAndMod( nextProp, nextPropMod ) );
+        record.setFirstProp( longFromIntAndMod( nextProp, nextPropMod ) );
         
         return record;
     }

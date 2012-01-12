@@ -468,9 +468,9 @@ public class NodeManager
             }
             NodeRecord record = persistenceManager.loadLightNode( nodeId );
             if ( record == null ) return null;
-            long nextRel = record.getCommittedNextRel();
-            long nextProp = record.getCommittedNextProp();
-            node = record.isSuperNode() ?
+            long nextRel = record.getCommittedFirstRel();
+            long nextProp = record.getCommittedFirstProp();
+            node = record.isCommittedSuperNode() ?
                     new SuperNodeImpl( nodeId, nextRel, nextProp ) :
                     new NodeImpl( nodeId, nextRel, nextProp );
             nodeCache.put( nodeId, node );
@@ -531,8 +531,8 @@ public class NodeManager
                     + "] exist but relationship type[" + typeId
                     + "] not found." );
             }
-            final long startNodeId = data.getFirstNode();
-            final long endNodeId = data.getSecondNode();
+            final long startNodeId = data.getStartNode();
+            final long endNodeId = data.getEndNode();
             relationship = newRelationshipImpl( relId, startNodeId, endNodeId, type, typeId, false );
             relCache.put( relId, relationship );
             return new RelationshipProxy( relId, this );
@@ -617,7 +617,7 @@ public class NodeManager
                     + "] exist but relationship type[" + typeId
                     + "] not found." );
             }
-            relationship = newRelationshipImpl( relId, data.getFirstNode(), data.getSecondNode(),
+            relationship = newRelationshipImpl( relId, data.getStartNode(), data.getEndNode(),
                     type, typeId, false );
             relCache.put( relId, relationship );
             return relationship;
@@ -682,7 +682,7 @@ public class NodeManager
             {
                 type = getRelationshipTypeById( rel.getType() );
                 assert type != null;
-                relImpl = newRelationshipImpl( relId, rel.getFirstNode(), rel.getSecondNode(), type,
+                relImpl = newRelationshipImpl( relId, rel.getStartNode(), rel.getEndNode(), type,
                         rel.getType(), false );
                 relsMap.put( relId, relImpl );
                 // relCache.put( relId, relImpl );

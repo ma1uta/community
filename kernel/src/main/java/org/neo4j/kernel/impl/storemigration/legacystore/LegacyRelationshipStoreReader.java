@@ -105,24 +105,24 @@ public class LegacyRelationshipStoreReader
 
                                 long firstPrevRel = LegacyStore.getUnsignedInt( buffer );
                                 long firstPrevRelMod = (typeInt & 0xE000000L) << 7;
-                                record.setFirstPrevRel( LegacyStore.longFromIntAndMod( firstPrevRel, firstPrevRelMod ) );
+                                record.setStartNodePrevRel( LegacyStore.longFromIntAndMod( firstPrevRel, firstPrevRelMod ) );
 
                                 long firstNextRel = LegacyStore.getUnsignedInt( buffer );
                                 long firstNextRelMod = (typeInt & 0x1C00000L) << 10;
-                                record.setFirstNextRel( LegacyStore.longFromIntAndMod( firstNextRel, firstNextRelMod ) );
+                                record.setStartNodeNextRel( LegacyStore.longFromIntAndMod( firstNextRel, firstNextRelMod ) );
 
                                 long secondPrevRel = LegacyStore.getUnsignedInt( buffer );
                                 long secondPrevRelMod = (typeInt & 0x380000L) << 13;
-                                record.setSecondPrevRel( LegacyStore.longFromIntAndMod( secondPrevRel, secondPrevRelMod ) );
+                                record.setEndNodePrevRel( LegacyStore.longFromIntAndMod( secondPrevRel, secondPrevRelMod ) );
 
                                 long secondNextRel = LegacyStore.getUnsignedInt( buffer );
                                 long secondNextRelMod = (typeInt & 0x70000L) << 16;
-                                record.setSecondNextRel( LegacyStore.longFromIntAndMod( secondNextRel, secondNextRelMod ) );
+                                record.setEndNodeNextRel( LegacyStore.longFromIntAndMod( secondNextRel, secondNextRelMod ) );
 
                                 long nextProp = LegacyStore.getUnsignedInt( buffer );
                                 long nextPropMod = (inUseByte & 0xF0L) << 28;
 
-                                record.setNextProp( LegacyStore.longFromIntAndMod( nextProp, nextPropMod ) );
+                                record.setFirstProp( LegacyStore.longFromIntAndMod( nextProp, nextPropMod ) );
                             }
                             else
                             {

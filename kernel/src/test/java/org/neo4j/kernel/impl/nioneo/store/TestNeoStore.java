@@ -355,9 +355,9 @@ public class TestNeoStore extends AbstractNeo4jTestCase
     private RelationshipLoadingPosition getPosition( NeoStoreXaConnection xaCon, long nodeId )
     {
         NodeRecord node = xaCon.getWriteTransaction().nodeLoadLight( nodeId );
-        if ( !node.isSuperNode() ) return new SingleChainPosition( node.getNextRel() );
+        if ( !node.isSuperNode() ) return new SingleChainPosition( node.getFirstRel() );
         
-        Map<Integer, RelationshipGroupRecord> rawGroups = xaCon.getWriteTransaction().loadRelationshipGroups( nodeId, node.getNextRel() );
+        Map<Integer, RelationshipGroupRecord> rawGroups = xaCon.getWriteTransaction().loadRelationshipGroups( nodeId, node.getFirstRel() );
         Map<String, RelationshipGroupRecord> groups = new HashMap<String, RelationshipGroupRecord>();
         RelationshipType[] types = new RelationshipType[rawGroups.size()];
         int i = 0;
@@ -459,12 +459,12 @@ public class TestNeoStore extends AbstractNeo4jTestCase
             {
                 if ( rel.getId() == rel1 )
                 {
-                    assertEquals( node, rel.getFirstNode() );
+                    assertEquals( node, rel.getStartNode() );
                     assertEquals( relType1, rel.getType() );
                 }
                 else if ( rel.getId() == rel2 )
                 {
-                    assertEquals( node, rel.getSecondNode() );
+                    assertEquals( node, rel.getEndNode() );
                     assertEquals( relType2, rel.getType() );
                 }
                 else
@@ -533,12 +533,12 @@ public class TestNeoStore extends AbstractNeo4jTestCase
             {
                 if ( rel.getId() == rel1 )
                 {
-                    assertEquals( node, rel.getSecondNode() );
+                    assertEquals( node, rel.getEndNode() );
                     assertEquals( relType1, rel.getType() );
                 }
                 else if ( rel.getId() == rel2 )
                 {
-                    assertEquals( node, rel.getFirstNode() );
+                    assertEquals( node, rel.getStartNode() );
                     assertEquals( relType2, rel.getType() );
                 }
                 else
@@ -593,8 +593,8 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         }
         assertEquals( 3, count );
         RelationshipRecord relData = xaCon.getWriteTransaction().relLoadLight( rel );
-        assertEquals( firstNode, relData.getFirstNode() );
-        assertEquals( secondNode, relData.getSecondNode() );
+        assertEquals( firstNode, relData.getStartNode() );
+        assertEquals( secondNode, relData.getEndNode() );
         assertEquals( relType, relData.getType() );
     }
 
@@ -640,8 +640,8 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         }
         assertEquals( 3, count );
         RelationshipRecord relData = xaCon.getWriteTransaction().relLoadLight( rel );
-        assertEquals( firstNode, relData.getFirstNode() );
-        assertEquals( secondNode, relData.getSecondNode() );
+        assertEquals( firstNode, relData.getStartNode() );
+        assertEquals( secondNode, relData.getEndNode() );
         assertEquals( relType, relData.getType() );
     }
 
@@ -716,8 +716,8 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         assertEquals( 3, count );
         assertEquals( 3, xaCon.getWriteTransaction().relLoadProperties( rel, false ).size() );
         RelationshipRecord relData = xaCon.getWriteTransaction().relLoadLight( rel );
-        assertEquals( firstNode, relData.getFirstNode() );
-        assertEquals( secondNode, relData.getSecondNode() );
+        assertEquals( firstNode, relData.getStartNode() );
+        assertEquals( secondNode, relData.getEndNode() );
         assertEquals( relType, relData.getType() );
         xaCon.getWriteTransaction().relDelete( rel );
         RelationshipLoadingPosition firstPos = getPosition( xaCon, firstNode );
@@ -771,8 +771,8 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         assertEquals( 3, count );
         assertEquals( 3, xaCon.getWriteTransaction().relLoadProperties( rel, false ).size() );
         RelationshipRecord relData = xaCon.getWriteTransaction().relLoadLight( rel );
-        assertEquals( firstNode, relData.getFirstNode() );
-        assertEquals( secondNode, relData.getSecondNode() );
+        assertEquals( firstNode, relData.getStartNode() );
+        assertEquals( secondNode, relData.getEndNode() );
         assertEquals( relType, relData.getType() );
         xaCon.getWriteTransaction().relDelete( rel );
         RelationshipLoadingPosition firstPos = getPosition( xaCon, firstNode );
