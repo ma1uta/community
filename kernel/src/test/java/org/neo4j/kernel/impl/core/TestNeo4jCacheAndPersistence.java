@@ -35,6 +35,7 @@ import javax.transaction.TransactionManager;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
@@ -401,6 +402,7 @@ public class TestNeo4jCacheAndPersistence extends AbstractNeo4jTestCase
         node2.delete();
     }
     
+    @Ignore( "Can't depend on this behaviour since the introduction of super nodes, at least the implementation of it currently" )
     @Test
     public void testRelationshipCachingIterator()
     {
