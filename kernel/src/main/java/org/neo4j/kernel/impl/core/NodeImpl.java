@@ -71,6 +71,9 @@ class NodeImpl extends ArrayBasedPrimitive
     // newNode will only be true for NodeManager.createNode
     NodeImpl( long id, long firstRel, long firstProp, boolean newNode )
     {
+        /* TODO firstRel/firstProp isn't used yet due to some unresolved issue with clearing
+         * of cache and keeping those first ids in the node instead of loading on demand.
+         */
         super( newNode );
         this.id = id;
         if ( newNode )
@@ -364,8 +367,8 @@ class NodeImpl extends ArrayBasedPrimitive
     }
 
     protected RelationshipLoadingPosition initializeRelChainPosition( NodeManager nm, RelationshipLoadingPosition cachedPosition )
-    { // A regular node is all set
-        return cachedPosition;
+    {
+        return nm.getRelationshipChainPosition( this ).build( nm );
     }
 
     private RelIdArray[] toRelIdArray( ArrayMap<String, RelIdArray> tmpRelMap )
@@ -599,13 +602,6 @@ class NodeImpl extends ArrayBasedPrimitive
         return getRelationships( nodeManager, type, dir ).iterator().hasNext();
     }
     
-    @Override
-    protected void commitPropertyMaps( ArrayMap<Integer, PropertyData> cowPropertyAddMap,
-            ArrayMap<Integer, PropertyData> cowPropertyRemoveMap, long firstProp )
-    {
-        super.commitPropertyMaps( cowPropertyAddMap, cowPropertyRemoveMap, firstProp );
-    }
-
     protected void commitRelationshipMaps(
         ArrayMap<String,RelIdArray> cowRelationshipAddMap,
         ArrayMap<String,SetAndDirectionCounter> cowRelationshipRemoveMap, long firstRel )
@@ -613,7 +609,6 @@ class NodeImpl extends ArrayBasedPrimitive
         if ( relationships == null )
         {
             // we will load full in some other tx
-            setFirstRelChainPosition( firstRel );
             return;
         }
 
@@ -651,11 +646,6 @@ class NodeImpl extends ArrayBasedPrimitive
                 }
             }
         }
-    }
-
-    private void setFirstRelChainPosition( long firstRel )
-    {
-        this.relChainPosition.updateFirst( firstRel );
     }
 
     RelationshipLoadingPosition getRelChainPosition()

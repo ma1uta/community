@@ -911,6 +911,14 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
 //        }
 //        return ReadTransaction.getRelationshipChainPosition( nodeId, neoStore );
 //    }
+    
+    @Override
+    public RelationshipLoadingPosition.Definition getRelationshipChainPosition( long id )
+    {
+        NodeRecord node = getNodeRecord( id, false );
+        if ( node != null && node.isCreated() ) return RelationshipLoadingPosition.EMPTY_DEFINITION;
+        return ReadTransaction.getRelationshipChainPosition( id, getNodeStore(), getRelationshipGroupStore() );
+    }
 
     public Map<DirectionWrapper, Iterable<RelationshipRecord>> getMoreRelationships( long nodeId,
         RelationshipLoadingPosition position, DirectionWrapper direction, RelationshipType[] types )
@@ -1048,9 +1056,35 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     @Override
     public ArrayMap<Integer,PropertyData> nodeLoadProperties( long nodeId, boolean light )
     {
-        NodeRecord nodeRecord = getNodeRecord( nodeId, light );
+        NodeRecord nodeRecord = getNodeRecord( nodeId, true );
         if ( nodeRecord.isCreated() ) return null;
+        nodeRecord = getNodeStore().getRecord( nodeId );
+        if ( !nodeRecord.inUse() )
+        {
+            throw new InvalidRecordException( "Node[" + nodeId +
+                "] not in use" );
+        }
         return ReadTransaction.loadProperties( getPropertyStore(), nodeRecord.getFirstProp() );
+//        NodeRecord nodeRecord = getNodeRecord( nodeId );
+//        if ( nodeRecord != null && nodeRecord.isCreated() )
+//        {
+//            return null;
+//        }
+//        if ( nodeRecord != null )
+//        {
+//            if ( !nodeRecord.inUse() && !light )
+//            {
+//                throw new IllegalStateException( "Node[" + nodeId +
+//                        "] has been deleted in this tx" );
+//            }
+//        }
+//        nodeRecord = getNodeStore().getRecord( nodeId );
+//        if ( !nodeRecord.inUse() )
+//        {
+//            throw new InvalidRecordException( "Node[" + nodeId +
+//                "] not in use" );
+//        }
+//        return ReadTransaction.loadProperties( getPropertyStore(), nodeRecord.getNextProp() );
     }
 
     public Object propertyGetValueOrNull( PropertyBlock block )
@@ -2211,7 +2245,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     {
         return ReadTransaction.loadProperties( getPropertyStore(), getOrLoadNeoStoreRecord().getFirstProp() );
     }
-
+    
     private static enum RecordAdder
     {
         NODE

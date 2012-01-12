@@ -246,8 +246,7 @@ public interface NeoStoreTransaction
      * @return The properties loaded, as a map from property index id to
      *         property data.
      */
-    public ArrayMap<Integer,PropertyData> nodeLoadProperties( long nodeId,
-            boolean light );
+    public ArrayMap<Integer,PropertyData> nodeLoadProperties( long nodeId, boolean light );
 
     /**
      * Loads the complete property chain for the given relationship and returns
@@ -367,4 +366,12 @@ public interface NeoStoreTransaction
      * to the node {@code id}.
      */
     public Integer[] getRelationshipTypes( long id );
+
+    /**
+     * Loads the committed start of the relationship chain for node with {@code id} and returns
+     * it as a position definition.
+     * @param id the node id.
+     * @return the position definition set to the first relationship for that node.
+     */
+    public RelationshipLoadingPosition.Definition getRelationshipChainPosition( long id );
 }

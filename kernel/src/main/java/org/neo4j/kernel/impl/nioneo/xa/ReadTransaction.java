@@ -32,6 +32,9 @@ import javax.transaction.xa.XAResource;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.core.RelationshipLoadingPosition;
+import org.neo4j.kernel.impl.core.SingleChainPosition;
+import org.neo4j.kernel.impl.core.SuperNodeChainPosition;
+import org.neo4j.kernel.impl.core.RelationshipLoadingPosition.Definition;
 import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
@@ -572,5 +575,31 @@ class ReadTransaction implements NeoStoreTransaction
         int i = 0;
         for ( Integer type : groups.keySet() ) types[i++] = type;
         return types;
+    }
+    
+    @Override
+    public Definition getRelationshipChainPosition( long id )
+    {
+        return getRelationshipChainPosition( id, getNodeStore(), getRelationshipGroupStore() );
+    }
+    
+    static RelationshipLoadingPosition.Definition getRelationshipChainPosition( long id, NodeStore nodeStore,
+            RelationshipGroupStore groupStore )
+    {
+        NodeRecord node = nodeStore.getRecord( id );
+        if ( node.isSuperNode() )
+        {
+            long firstGroup = node.getFirstRel();
+            if ( firstGroup == Record.NO_NEXT_RELATIONSHIP.intValue() ) return RelationshipLoadingPosition.EMPTY_DEFINITION;
+            Map<Integer, RelationshipGroupRecord> groups = loadRelationshipGroups( id, firstGroup, groupStore );
+            return new SuperNodeChainPosition.Definition( groups );
+        }
+        else
+        {
+            long firstRel = node.getFirstRel();
+            return firstRel == Record.NO_NEXT_RELATIONSHIP.intValue() ?
+                    RelationshipLoadingPosition.EMPTY_DEFINITION :
+                    new SingleChainPosition( firstRel );
+        }
     }
 }

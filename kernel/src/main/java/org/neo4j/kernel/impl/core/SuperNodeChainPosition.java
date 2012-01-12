@@ -24,12 +24,30 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.helpers.Pair;
 import org.neo4j.kernel.impl.nioneo.store.Record;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipGroupRecord;
 import org.neo4j.kernel.impl.util.DirectionWrapper;
 
 public class SuperNodeChainPosition implements RelationshipLoadingPosition
 {
+    public static class Definition implements RelationshipLoadingPosition.Definition
+    {
+        private final Map<Integer, RelationshipGroupRecord> groups;
+
+        public Definition( Map<Integer, RelationshipGroupRecord> groups )
+        {
+            this.groups = groups;
+        }
+        
+        @Override
+        public RelationshipLoadingPosition build( NodeManager nm )
+        {
+            Pair<RelationshipType[], Map<String, RelationshipGroupRecord>> translation = nm.translateRelationshipGroups( groups );
+            return new SuperNodeChainPosition( translation.first(), translation.other() );
+        }
+    }
+    
     private final Map<String, RelationshipLoadingPosition> positions = new HashMap<String, RelationshipLoadingPosition>();
     private final Map<String, RelationshipGroupRecord> groups;
     private final RelationshipType[] types;

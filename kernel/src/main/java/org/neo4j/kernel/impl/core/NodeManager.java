@@ -1070,6 +1070,11 @@ public class NodeManager
         persistenceManager.relRemoveProperty( rel.getId(), property );
     }
     
+    RelationshipLoadingPosition.Definition getRelationshipChainPosition( NodeImpl node )
+    {
+        return persistenceManager.getRelationshipChainPosition( node.getId() );
+    }
+    
     public ArrayMap<String, SetAndDirectionCounter> getCowRelationshipRemoveMap( NodeImpl node )
     {
         return lockReleaser.getCowRelationshipRemoveMap( node );
@@ -1356,9 +1361,8 @@ public class NodeManager
         };
     }
 
-    public Pair<RelationshipType[], Map<String, RelationshipGroupRecord>> loadRelationshipGroups( long id, long firstRel )
+    Pair<RelationshipType[], Map<String, RelationshipGroupRecord>> translateRelationshipGroups( Map<Integer, RelationshipGroupRecord> rawGroups )
     {
-        Map<Integer, RelationshipGroupRecord> rawGroups = persistenceManager.loadRelationshipGroups( id, firstRel );
         Map<String, RelationshipGroupRecord> groups = new HashMap<String, RelationshipGroupRecord>();
         RelationshipType[] types = new RelationshipType[rawGroups.size()];
         int i = 0;

@@ -429,4 +429,9 @@ public class PersistenceManager
     {
         return getReadOnlyResourceIfPossible().loadRelationshipGroups( id, firstRel );
     }
+
+    public RelationshipLoadingPosition.Definition getRelationshipChainPosition( long id )
+    {
+        return getReadOnlyResourceIfPossible().getRelationshipChainPosition( id );
+    }
 }

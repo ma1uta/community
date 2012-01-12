@@ -57,4 +57,18 @@ public interface RelationshipLoadingPosition
             return false;
         }
     };
+    
+    public interface Definition
+    {
+        RelationshipLoadingPosition build( NodeManager nm );
+    }
+    
+    public static final Definition EMPTY_DEFINITION = new Definition()
+    {
+        @Override
+        public RelationshipLoadingPosition build( NodeManager nm )
+        {
+            return EMPTY;
+        }
+    };
 }
