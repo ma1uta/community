@@ -28,7 +28,7 @@ import java.lang.String
 import symbols.SymbolTable
 
 
-class PipeExecutionResult(result: Traversable[Map[String, Any]], val symbols:SymbolTable, val columns: List[String])
+class PipeExecutionResult(result: Traversable[Map[String, Any]], val symbols:SymbolTable, val columns: List[String], val timeTaken:Long)
   extends ExecutionResult
   with StringExtras {
   def javaColumns: java.util.List[String] = columns.asJava
@@ -66,13 +66,11 @@ class PipeExecutionResult(result: Traversable[Map[String, Any]], val symbols:Sym
   }
 
   def dumpToString(writer: PrintWriter) {
-    val start = System.currentTimeMillis()
     val eagerResult = result.toList
-    val timeTaken = System.currentTimeMillis() - start
 
     val columnSizes = calculateColumnSizes(eagerResult)
 
-    val headers = columns.map((c) => Map[String, Any](c -> c)).reduceLeft(_ ++ _)
+    val headers = columns.map((c) => Map[String, Any](c -> Some(c))).reduceLeft(_ ++ _)
     val headerLine: String = createString(columns, columnSizes, headers)
     val lineWidth: Int = headerLine.length - 2
     val --- = "+" + repeat("-", lineWidth) + "+"
@@ -101,6 +99,9 @@ class PipeExecutionResult(result: Traversable[Map[String, Any]], val symbols:Sym
   private def text(obj: Any): String = obj match {
     case x: Node => x.toString + props(x)
     case x: Relationship => ":" + x.getType.toString + "[" + x.getId + "] " + props(x)
+    case x: Array[_] => x.map( text ).mkString("[", ",", "]")
+    case x: String => "\"" + x + "\""
+    case Some(x) => x.toString
     case null => "<null>"
     case x => x.toString
   }

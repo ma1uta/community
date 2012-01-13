@@ -35,14 +35,6 @@ class ExecutionPlanImpl(query: Query, graph: GraphDatabaseService) extends Execu
     plan
   }
 
-  private def canUseOrderedAggregation(sortColumns: Seq[String], keyColumns: Seq[String]): Boolean = {
-    //    start a  = node(1,2)
-    //    return a.COL1, a.COL2, avg(a.num)
-    //    order by a.COL1
-
-    val take = keyColumns.take(sortColumns.size)
-    take == sortColumns
-  }
 
   private def prepareExecutionPlan(): ((Map[String, Any]) => PipeExecutionResult, String) = {
     query match {
@@ -123,7 +115,13 @@ class ExecutionPlanImpl(query: Query, graph: GraphDatabaseService) extends Execu
 
         val result = new ColumnFilterPipe(context.pipe, returnItems)
 
-        val func = (params: Map[String, Any]) => new PipeExecutionResult(result.createResults(params), result.symbols, returns.columns)
+        val func = (params: Map[String, Any]) => {
+          val start = System.currentTimeMillis()
+          val results = result.createResults(params)
+          val timeTaken = System.currentTimeMillis() - start
+
+          new PipeExecutionResult(results, result.symbols, returns.columns, timeTaken)
+        }
         val executionPlan = result.executionPlan()
 
         (func, executionPlan)
@@ -250,9 +248,18 @@ class ExecutionPlanImpl(query: Query, graph: GraphDatabaseService) extends Execu
         indexHits.asScala
       })
 
+    case RelationshipByIndexQuery(varName, idxName, query) =>
+      new RelationshipStartPipe(lastPipe, varName, m => {
+        val queryText = query(m)
+        val indexHits: Iterable[Relationship] = graph.index.forRelationships(idxName).query(queryText)
+        indexHits.asScala
+      })
+
     case NodeById(varName, valueGenerator) => new NodeStartPipe(lastPipe, varName, m => makeNodes[Node](valueGenerator(m), varName, graph.getNodeById))
     case RelationshipById(varName, id) => new RelationshipStartPipe(lastPipe, varName, m => makeNodes[Relationship](id(m), varName, graph.getRelationshipById))
   }
+
+  private def canUseOrderedAggregation(sortColumns: Seq[String], keyColumns: Seq[String]): Boolean = keyColumns.take(sortColumns.size) == sortColumns
 
   private def makeNodes[T](data: Any, name: String, getElement: Long => T): Seq[T] = {
     def castElement(x: Any): T = x match {

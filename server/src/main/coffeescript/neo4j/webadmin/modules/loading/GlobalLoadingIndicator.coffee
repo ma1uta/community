@@ -25,18 +25,28 @@ define(
     class GlobalLoadingIndicator
       
       constructor : (@target="#global-loading-indicator") ->
-        
+        @runningRequests = 0
 
       init : ->
-        $(window).ajaxStart () => 
-          @timeout = setTimeout @show, 400
-        $(window).ajaxStop @hide
+        $(window).ajaxSend @onAjaxSend
+        $(window).ajaxComplete @onAjaxComplete
+
+      onAjaxSend : =>
+        @runningRequests++
+        if @runningRequests is 1
+          @timeout = setTimeout @show, 1000
+
+      onAjaxComplete : =>
+        @runningRequests--
+        if @runningRequests <= 0
+          @runningRequests = 0
+          clearTimeout @timeout
+          @hide()
 
       show : =>
         $(@target).show()
 
       hide : =>
-        clearTimeout @timeout
         $(@target).hide()
 
 )
