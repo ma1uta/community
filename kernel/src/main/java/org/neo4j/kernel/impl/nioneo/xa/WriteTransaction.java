@@ -282,7 +282,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         }
         try
         {
-            boolean freeIds = neoStore.getTxHook().freeIdsDuringRollback();
+            boolean freeIds = neoStore.freeIdsDuringRollback();
             if ( relTypeRecords != null ) for ( RelationshipTypeRecord record : relTypeRecords.values() )
             {
                 if ( record.isCreated() )
@@ -584,7 +584,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             {
                 neoStore.setRecoveredStatus( false );
             }
-            neoStore.getIdGeneratorFactory().updateIdGenerators( neoStore );
+            neoStore.updateIdGenerators( );
         }
         finally
         {

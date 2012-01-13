@@ -40,19 +40,25 @@ public class NioNeoDbPersistenceSource implements PersistenceSource
 
     private NeoStoreXaDataSource xaDs = null;
     private String dataSourceName = null;
-    private NeoStoreTransaction readOnlyResourceConnection; 
+    private NeoStoreTransaction readOnlyResourceConnection;
+    private XaDataSourceManager xaDataSourceManager;
+
+    public NioNeoDbPersistenceSource(XaDataSourceManager xaDataSourceManager)
+    {
+        this.xaDataSourceManager = xaDataSourceManager;
+    }
 
     public synchronized void init()
     {
         // Do nothing
     }
 
-    public synchronized void start( XaDataSourceManager xaDsManager )
+    public synchronized void start()
     {
-        xaDs = (NeoStoreXaDataSource) xaDsManager.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
+        xaDs = (NeoStoreXaDataSource) xaDataSourceManager.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
         if ( xaDs == null )
         {
-            throw new IllegalStateException( 
+            throw new IllegalStateException(
                 "Unable to get nioneodb datasource" );
         }
         readOnlyResourceConnection = new ReadTransaction( xaDs.getNeoStore() );

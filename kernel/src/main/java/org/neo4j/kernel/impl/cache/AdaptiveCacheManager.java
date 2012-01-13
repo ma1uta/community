@@ -24,16 +24,31 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 public class AdaptiveCacheManager
 {
+    public interface Configuration
+    {
+        int adaptive_cache_worker_sleep_time(int def);
+
+        float adaptive_cache_manager_decrease_ratio(float def, float min, float max);
+
+        float adaptive_cache_manager_increase_ratio(float def, float min, float max);
+    }
+
+    private Configuration config;
+
+    public AdaptiveCacheManager(Configuration config)
+    {
+        this.config = config;
+    }
+
     private static final Logger log = Logger
         .getLogger( AdaptiveCacheManager.class.getName() );
 
-    private float decreaseRatio = 1.15f;
-    private float increaseRatio = 1.1f;
+    private float decreaseRatio;
+    private float increaseRatio;
 
     private final List<AdaptiveCacheElement> caches = 
         new LinkedList<AdaptiveCacheElement>();
@@ -113,72 +128,17 @@ public class AdaptiveCacheManager
         return null;
     }
 
-    private void parseParams( Map<Object,Object> params )
+    private void parseParams( )
     {
-        if ( params == null )
-        {
-            return;
-        }
-        if ( params.containsKey( "adaptive_cache_worker_sleep_time" ) )
-        {
-            Object value = params.get( "adaptive_cache_worker_sleep_time" );
-            int sleepTime = 3000;
-            try
-            {
-                sleepTime = Integer.parseInt( (String) value );
-            }
-            catch ( NumberFormatException e )
-            {
-                log.warning( 
-                    "Unable to parse apdaptive_cache_worker_sleep_time " + 
-                    value );
-            }
-            workerThread.setSleepTime( sleepTime );
-        }
-        if ( params.containsKey( "adaptive_cache_manager_decrease_ratio" ) )
-        {
-            Object value = params.get( 
-                "adaptive_cache_manager_decrease_ratio" );
-            try
-            {
-                decreaseRatio = Float.parseFloat( (String) value );
-            }
-            catch ( NumberFormatException e )
-            {
-                log.warning( 
-                    "Unable to parse adaptive_cache_manager_decrease_ratio " + 
-                    value );
-            }
-            if ( decreaseRatio < 1 )
-            {
-                decreaseRatio = 1.0f;
-            }
-        }
-        if ( params.containsKey( "adaptive_cache_manager_increase_ratio" ) )
-        {
-            Object value = params.get( 
-                "adaptive_cache_manager_increase_ratio" );
-            try
-            {
-                increaseRatio = Float.parseFloat( (String) value );
-            }
-            catch ( NumberFormatException e )
-            {
-                log.warning( 
-                    "Unable to parse adaptive_cache_manager_increase_ratio " + 
-                    value );
-            }
-            if ( increaseRatio < 1 )
-            {
-                increaseRatio = 1.0f;
-            }
-        }
+        workerThread.setSleepTime(config.adaptive_cache_worker_sleep_time(3000));
+        decreaseRatio = config.adaptive_cache_manager_decrease_ratio(1.15f, 1.0f, Float.MAX_VALUE);
+        increaseRatio = config.adaptive_cache_manager_increase_ratio(1.1f, 1.0f, Float.MAX_VALUE);
     }
 
-    public void start( Map<Object,Object> params )
+    public void start()
     {
         workerThread = new AdaptiveCacheWorker();
-        parseParams( params );
+        parseParams( );
         workerThread.start();
     }
 

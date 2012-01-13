@@ -33,7 +33,7 @@ public final class DefaultTransactionManagerProvider extends TransactionManagerP
     }
 
     @Override
-    protected AbstractTransactionManager loadTransactionManager( String txLogDir,
+    public AbstractTransactionManager loadTransactionManager( String txLogDir,
             KernelPanicEventGenerator kpe, TxHook rollbackHook, StringLogger msgLog, FileSystemAbstraction fileSystem )
     {
         return new TxManager( txLogDir, kpe, rollbackHook, msgLog, fileSystem );

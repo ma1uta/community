@@ -31,8 +31,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.logging.Logger;
 
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -43,25 +41,13 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.graphdb.event.KernelEventHandler;
 import org.neo4j.graphdb.event.TransactionEventHandler;
-import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.helpers.Service;
 import org.neo4j.kernel.impl.core.KernelPanicEventGenerator;
-import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.core.NodeManager;
-import org.neo4j.kernel.impl.core.RelationshipTypeCreator;
-import org.neo4j.kernel.impl.core.TransactionEventsSyncHook;
-import org.neo4j.kernel.impl.core.TxEventSyncHookFactory;
-import org.neo4j.kernel.impl.index.IndexStore;
-import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
-import org.neo4j.kernel.impl.nioneo.store.StoreId;
 import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
 import org.neo4j.kernel.impl.transaction.LockManager;
-import org.neo4j.kernel.impl.transaction.TxHook;
-import org.neo4j.kernel.impl.transaction.TxModule;
 import org.neo4j.kernel.impl.transaction.xaframework.ForceMode;
-import org.neo4j.kernel.impl.transaction.xaframework.LogBufferFactory;
-import org.neo4j.kernel.impl.transaction.xaframework.TxIdGeneratorFactory;
 import org.neo4j.kernel.impl.util.StringLogger;
 
 class EmbeddedGraphDbImpl
@@ -75,21 +61,19 @@ class EmbeddedGraphDbImpl
     private final GraphDbInstance graphDbInstance;
     private final GraphDatabaseService graphDbService;
     private final NodeManager nodeManager;
+    private Config config;
     private final String storeDir;
 
-    private final List<KernelEventHandler> kernelEventHandlers =
-            new CopyOnWriteArrayList<KernelEventHandler>();
-    private final Collection<TransactionEventHandler<?>> transactionEventHandlers =
-            new CopyOnWriteArraySet<TransactionEventHandler<?>>();
-    private final KernelPanicEventGenerator kernelPanicEventGenerator =
-            new KernelPanicEventGenerator( kernelEventHandlers );
+    private List<KernelEventHandler> kernelEventHandlers;
+    private final Collection<TransactionEventHandler<?>> transactionEventHandlers;
+    private KernelPanicEventGenerator kernelPanicEventGenerator;
 
     private final KernelData extensions;
 
-    private final IndexManagerImpl indexManager;
     private final StringLogger msgLog;
     private final TransactionBuilder defaultTxBuilder = new TransactionBuilderImpl( this, ForceMode.forced );
     private final LockManager lockManager;
+    private AbstractTransactionManager txManager;
     private final LockReleaser lockReleaser;
 
     /**
@@ -98,131 +82,33 @@ class EmbeddedGraphDbImpl
      * future releases.
      *
      * @param storeDir the store directory for the db files
-     * @param fileSystem
-     * @param config configuration parameters
+     *
      */
-    public EmbeddedGraphDbImpl( String storeDir, StoreId storeId, Map<String, String> inputParams,
-            AbstractGraphDatabase graphDbService, LockManagerFactory lockManagerFactory,
-            IdGeneratorFactory idGeneratorFactory, RelationshipTypeCreator relTypeCreator,
-            TxIdGeneratorFactory txIdFactory, TxHook txHook,
-            LastCommittedTxIdSetter lastCommittedTxIdSetter, FileSystemAbstraction fileSystem )
+    public EmbeddedGraphDbImpl(String storeDir,
+                               AbstractGraphDatabase graphDbService,
+                               LockManager lockManager,
+                               AbstractTransactionManager txManager,
+                               LockReleaser lockReleaser,
+                               List<KernelEventHandler> kernelEventHandlers,
+                               Collection<TransactionEventHandler<?>> transactionEventHandlers,
+                               KernelPanicEventGenerator kernelPanicEventGenerator,
+                               KernelData extensions,
+                               GraphDbInstance graphDbInstance,
+                               NodeManager nodeManager)
     {
         this.storeDir = storeDir;
-        TxModule txModule = newTxModule( inputParams, txHook, graphDbService.getMessageLog(), fileSystem );
-        lockManager = lockManagerFactory.create( txModule );
-        lockReleaser = new LockReleaser( lockManager, txModule.getTxManager() );
-        final Config config = new Config( graphDbService, storeId, inputParams,
-                kernelPanicEventGenerator, txModule, lockManager, lockReleaser, idGeneratorFactory,
-                new SyncHookFactory(), relTypeCreator, txIdFactory.create( txModule.getTxManager() ),
-                lastCommittedTxIdSetter, fileSystem );
-        /*
-         *  LogBufferFactory needs access to the parameters so it has to be added after the default and
-         *  user supplied configurations are consolidated
-         */
-        config.getParams().put( LogBufferFactory.class,
-                CommonFactories.defaultLogBufferFactory() );
-        graphDbInstance = new GraphDbInstance( storeDir, true, config );
+        this.lockManager = lockManager;
+        this.txManager = txManager;
+        this.lockReleaser = lockReleaser;
+        this.kernelEventHandlers = kernelEventHandlers;
+        this.transactionEventHandlers = transactionEventHandlers;
+        this.kernelPanicEventGenerator = kernelPanicEventGenerator;
+        this.graphDbInstance = graphDbInstance;
         this.msgLog = graphDbService.getMessageLog();
         this.graphDbService = graphDbService;
-        IndexStore indexStore = graphDbInstance.getConfig().getIndexStore();
-        this.indexManager = new IndexManagerImpl( this, indexStore );
+        this.nodeManager = nodeManager;
 
-        extensions = new KernelData()
-        {
-            @Override
-            public Version version()
-            {
-                return Version.getKernel();
-            }
-
-            @Override
-            public Config getConfig()
-            {
-                return config;
-            }
-
-            @Override
-            public Map<Object, Object> getConfigParams()
-            {
-                return config.getParams();
-            }
-
-            @Override
-            public GraphDatabaseService graphDatabase()
-            {
-                return EmbeddedGraphDbImpl.this.graphDbService;
-            }
-        };
-
-        boolean started = false;
-        try
-        {
-            final KernelExtensionLoader extensionLoader;
-            if ( "false".equalsIgnoreCase( inputParams.get( Config.LOAD_EXTENSIONS ) ) )
-            {
-                extensionLoader = KernelExtensionLoader.DONT_LOAD;
-            }
-            else
-            {
-                extensionLoader = new KernelExtensionLoader()
-                {
-                    private Collection<KernelExtension<?>> loaded;
-
-                    @Override
-                    public void configureKernelExtensions()
-                    {
-                        loaded = extensions.loadExtensionConfigurations( msgLog );
-                    }
-
-                    @Override
-                    public void initializeIndexProviders()
-                    {
-                        extensions.loadIndexImplementations( indexManager, msgLog );
-                    }
-
-                    @Override
-                    public void load()
-                    {
-                        extensions.loadExtensions( loaded, msgLog );
-                    }
-                };
-            }
-            graphDbInstance.start( graphDbService, extensionLoader );
-            nodeManager = config.getGraphDbModule().getNodeManager();
-            /*
-             *  IndexManager has to exist before extensions load (so that
-             *  it is present and taken into consideration) but after
-             *  graphDbInstance is started so that there is access to the
-             *  nodeManager. In other words, the start() below has to be here.
-             */
-            indexManager.start();
-            extensionLoader.load();
-
-            started = true; // must be last
-        }
-        catch ( Error cause )
-        {
-            msgLog.logMessage( "Startup failed", cause );
-            throw cause;
-        }
-        catch ( RuntimeException cause )
-        {
-            cause.printStackTrace();
-            msgLog.logMessage( "Startup failed", cause );
-            throw cause;
-        }
-        finally
-        {
-            // If startup failed, cleanup the extensions - or they will leak
-            if ( !started ) extensions.shutdown( msgLog );
-        }
-    }
-
-    private TxModule newTxModule( Map<String, String> inputParams, TxHook rollbackHook, StringLogger msgLog, FileSystemAbstraction fileSystem )
-    {
-        return Boolean.parseBoolean( inputParams.get( Config.READ_ONLY ) ) ? new TxModule( true,
-                kernelPanicEventGenerator ) : new TxModule( this.storeDir,
-                kernelPanicEventGenerator, rollbackHook, msgLog, fileSystem, inputParams.get( Config.TXMANAGER_IMPLEMENTATION ) );
+        this.extensions = extensions;
     }
 
     <T> Collection<T> getManagementBeans( Class<T> beanClass )
@@ -386,11 +272,10 @@ class EmbeddedGraphDbImpl
             if ( placeboTransaction == null )
             {
                 placeboTransaction = new PlaceboTransaction(
-                        graphDbInstance.getTransactionManager() );
+                        txManager );
             }
             return placeboTransaction;
         }
-        AbstractTransactionManager txManager = (AbstractTransactionManager) graphDbInstance.getTransactionManager();
         Transaction result = null;
         try
         {
@@ -405,17 +290,6 @@ class EmbeddedGraphDbImpl
         return result;
     }
     
-    /**
-     * Returns a non-standard configuration object. Will most likely be removed
-     * in future releases.
-     *
-     * @return a configuration object
-     */
-    public Config getConfig()
-    {
-        return graphDbInstance.getConfig();
-    }
-
     @Override
     public String toString()
     {
@@ -483,23 +357,6 @@ class EmbeddedGraphDbImpl
             throw new IllegalStateException( handler + " isn't registered" );
         }
         return handler;
-    }
-
-    private class SyncHookFactory implements TxEventSyncHookFactory
-    {
-        @Override
-        public TransactionEventsSyncHook create()
-        {
-            return transactionEventHandlers.isEmpty() ? null :
-                    new TransactionEventsSyncHook(
-                            nodeManager, transactionEventHandlers,
-                            getConfig().getTxModule().getTxManager() );
-        }
-    }
-
-    IndexManager index()
-    {
-        return this.indexManager;
     }
 
     KernelData getKernelData()

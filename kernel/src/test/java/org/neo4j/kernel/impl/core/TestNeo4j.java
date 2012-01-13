@@ -36,7 +36,6 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.helpers.collection.IteratorUtil;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.Config;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
@@ -61,15 +60,13 @@ public class TestNeo4j extends AbstractNeo4jTestCase
         {
             // ok no one set, oldReferenceNode is null then
         }
-        GraphDbModule graphDbModule = ( (AbstractGraphDatabase) getGraphDb() ).getConfig().getGraphDbModule();
-
         Node newReferenceNode = getGraphDb().createNode();
-        graphDbModule.setReferenceNodeId( newReferenceNode.getId() );
+        getNodeManager().setReferenceNodeId( newReferenceNode.getId() );
         assertEquals( newReferenceNode, getGraphDb().getReferenceNode() );
         newReferenceNode.delete();
         if ( oldReferenceNode != null )
         {
-            graphDbModule.setReferenceNodeId( oldReferenceNode.getId() );
+            getNodeManager().setReferenceNodeId( oldReferenceNode.getId() );
             assertEquals( oldReferenceNode, getGraphDb().getReferenceNode() );
         }
     }
@@ -160,9 +157,7 @@ public class TestNeo4j extends AbstractNeo4jTestCase
     @Test
     public void testIdUsageInfo()
     {
-        GraphDbModule graphDbModule = ((AbstractGraphDatabase) getGraphDb()).getConfig()
-            .getGraphDbModule();
-        NodeManager nm = graphDbModule.getNodeManager();
+        NodeManager nm = getGraphDb().getNodeManager();
         long nodeCount = nm.getNumberOfIdsInUse( Node.class );
         long relCount = nm.getNumberOfIdsInUse( Relationship.class );
         if ( nodeCount > nm.getHighestPossibleIdInUse( Node.class ) )
@@ -333,14 +328,14 @@ public class TestNeo4j extends AbstractNeo4jTestCase
         EmbeddedGraphDatabase db = new EmbeddedGraphDatabase( 
                 storeDir, config );
         XaDataSourceManager xaDsMgr = 
-                db.getConfig().getTxModule().getXaDataSourceManager();
+                db.getXaDataSourceManager();
         XaDataSource xaDs = xaDsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
         assertTrue( xaDs.isLogicalLogKept() );
         db.shutdown();
         
         config.remove( Config.KEEP_LOGICAL_LOGS );
         db = new EmbeddedGraphDatabase( storeDir, config );
-        xaDsMgr = db.getConfig().getTxModule().getXaDataSourceManager();
+        xaDsMgr = db.getXaDataSourceManager();
         xaDs = xaDsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
         // Here we rely on the default value being set to true due to the existence
         // of previous log files.
@@ -349,7 +344,7 @@ public class TestNeo4j extends AbstractNeo4jTestCase
 
         config.put( Config.KEEP_LOGICAL_LOGS, "false" );
         db = new EmbeddedGraphDatabase( storeDir, config );
-        xaDsMgr = db.getConfig().getTxModule().getXaDataSourceManager();
+        xaDsMgr = db.getXaDataSourceManager();
         xaDs = xaDsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
         // Here we explicitly turn off the keeping of logical logs so it should be
         // false even if there are previous existing log files.
@@ -358,7 +353,7 @@ public class TestNeo4j extends AbstractNeo4jTestCase
         
         config.put( Config.KEEP_LOGICAL_LOGS, Config.DEFAULT_DATA_SOURCE_NAME + "=false" );
         db = new EmbeddedGraphDatabase( storeDir, config );
-        xaDsMgr = db.getConfig().getTxModule().getXaDataSourceManager();
+        xaDsMgr = db.getXaDataSourceManager();
         xaDs = xaDsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
         // Here we explicitly turn off the keeping of logical logs so it should be
         // false even if there are previous existing log files.
@@ -367,14 +362,14 @@ public class TestNeo4j extends AbstractNeo4jTestCase
         
         config.put( Config.KEEP_LOGICAL_LOGS, Config.DEFAULT_DATA_SOURCE_NAME + "=true" );
         db = new EmbeddedGraphDatabase( storeDir, config );
-        xaDsMgr = db.getConfig().getTxModule().getXaDataSourceManager();
+        xaDsMgr = db.getXaDataSourceManager();
         xaDs = xaDsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
         assertTrue( xaDs.isLogicalLogKept() );
         db.shutdown();
 
         config.put( Config.KEEP_LOGICAL_LOGS, "true" );
         db = new EmbeddedGraphDatabase( storeDir, config );
-        xaDsMgr = db.getConfig().getTxModule().getXaDataSourceManager();
+        xaDsMgr = db.getXaDataSourceManager();
         xaDs = xaDsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
         assertTrue( xaDs.isLogicalLogKept() );
         db.shutdown();

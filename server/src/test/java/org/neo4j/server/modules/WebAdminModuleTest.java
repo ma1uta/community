@@ -68,13 +68,6 @@ public class WebAdminModuleTest
         when( neoServer.getDatabase() ).thenReturn( db );
         when( neoServer.getConfiguration() ).thenReturn( new MapConfiguration( new HashMap<Object, Object>() ) );
 
-        Config config = mock( Config.class );
-        when( db.graph.getConfig() ).thenReturn( config );
-        NodeManager nodeManager = mock( NodeManager.class );
-        GraphDbModule graphDbModule = mock( GraphDbModule.class );
-        when( config.getGraphDbModule() ).thenReturn( graphDbModule );
-        when( graphDbModule.getNodeManager() ).thenReturn( nodeManager );
-
         CompositeDataSupport result = mock( CompositeDataSupport.class );
         when( result.get( "used" ) ).thenReturn( 50L );
         when( result.get( "max" ) ).thenReturn( 1000L );

@@ -17,41 +17,23 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.tooling.wrap;
 
-abstract class WrappedObject<W>
+package org.neo4j.kernel;
+
+import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
+
+/**
+* Default implementation of LastCommittedTxIdSetter that does nothing
+*/
+class DefaultLastCommittedTxIdSetter implements LastCommittedTxIdSetter
 {
-    final WrappedGraphDatabase graphdb;
-    final W wrapped;
-
-    WrappedObject( WrappedGraphDatabase graphdb, W wrapped )
+    public void setLastCommittedTxId( long txId )
     {
-        this.graphdb = graphdb;
-        this.wrapped = wrapped;
+        // Do nothing
     }
 
     @Override
-    public final int hashCode()
+    public void close()
     {
-        return wrapped.hashCode();
-    }
-
-    @Override
-    public final boolean equals( Object obj )
-    {
-        if ( this == obj ) return true;
-        if ( getClass().isInstance( obj ) )
-        {
-            WrappedObject<?> other = (WrappedObject<?>) obj;
-            if ( wrapped == null ? other.wrapped == null : wrapped.equals( other.wrapped ) )
-                return graphdb.equals( other.graphdb );
-        }
-        return false;
-    }
-
-    @Override
-    public String toString()
-    {
-        return wrapped.toString();
     }
 }

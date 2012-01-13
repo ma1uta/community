@@ -33,6 +33,7 @@ import javax.transaction.xa.XAResource;
 
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.helpers.UTF8;
+import org.neo4j.kernel.DependencyResolver;
 import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
 import org.neo4j.kernel.impl.transaction.xaframework.XaResource;
 
@@ -57,12 +58,15 @@ public class XaDataSourceManager
     // key = data source name, value = branchId
     private final Map<String,byte[]> sourceIdMapping = 
         new HashMap<String,byte[]>();
+    
+    private DependencyResolver dependencyResolver;
 
-    XaDataSourceManager()
+    public XaDataSourceManager(DependencyResolver dependencyResolver)
     {
+        this.dependencyResolver = dependencyResolver;
     }
 
-    XaDataSource create( String className, Map<?,?> params )
+    XaDataSource create( String className, Map<String, String> params)
         throws ClassNotFoundException,
         InstantiationException, IllegalAccessException,
         InvocationTargetException
@@ -71,11 +75,24 @@ public class XaDataSourceManager
         Constructor<?>[] constructors = clazz.getConstructors();
         for ( Constructor<?> constructor : constructors )
         {
-            Class<?>[] parameters = constructor.getParameterTypes();
-            if ( parameters.length == 1 && parameters[0].equals( Map.class ) )
+            try
             {
+                Class<?>[] parameters = constructor.getParameterTypes();
+                Object[] args = new Object[parameters.length];
+                for (int i = 0; i < parameters.length; i++)
+                {
+                    Class<?> parameter = parameters[i];
+                    if (parameter.equals(Map.class))
+                        args[i] = params;
+                    else
+                        args[i] = dependencyResolver.resolveDependency(parameter);
+                }
                 return (XaDataSource) constructor
-                    .newInstance( new Object[] { params } );
+                        .newInstance( args );
+            } catch (IllegalArgumentException e)
+            {
+                // Ignore, just skip this constructor
+                e.printStackTrace();
             }
         }
         throw new InstantiationException( "Unable to instantiate " + className
@@ -109,14 +126,11 @@ public class XaDataSourceManager
     /**
      * Public for testing purpose. Do not use.
      */
-    public synchronized void registerDataSource( String name,
-        XaDataSource dataSource, byte branchId[] )
+    public synchronized void registerDataSource( XaDataSource dataSource)
     {
-        dataSource.setBranchId( branchId );
-        dataSource.setName( name );
-        dataSources.put( name, dataSource );
-        branchIdMapping.put( UTF8.decode( branchId ), dataSource );
-        sourceIdMapping.put( name, branchId );
+        dataSources.put( dataSource.getName(), dataSource );
+        branchIdMapping.put( UTF8.decode( dataSource.getBranchId() ), dataSource );
+        sourceIdMapping.put( dataSource.getName(), dataSource.getBranchId() );
     }
 
     /**

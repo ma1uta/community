@@ -19,100 +19,37 @@
  */
 package org.neo4j.kernel.impl.core;
 
-import java.util.Arrays;
-import java.util.Map;
-import java.util.logging.Logger;
-
-import javax.transaction.HeuristicMixedException;
-import javax.transaction.HeuristicRollbackException;
-import javax.transaction.NotSupportedException;
-import javax.transaction.RollbackException;
-import javax.transaction.SystemException;
-import javax.transaction.TransactionManager;
-
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.NotFoundException;
-import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.graphdb.TransactionFailureException;
-import org.neo4j.kernel.Config;
-import org.neo4j.kernel.impl.cache.AdaptiveCacheManager;
-import org.neo4j.kernel.impl.core.NodeManager.CacheType;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
-import org.neo4j.kernel.impl.persistence.EntityIdGenerator;
 import org.neo4j.kernel.impl.persistence.PersistenceManager;
-import org.neo4j.kernel.impl.transaction.LockManager;
 
 public class GraphDbModule
 {
-    private static final CacheType DEFAULT_CACHE_TYPE = CacheType.soft;
-    private static Logger log = Logger.getLogger( GraphDbModule.class.getName() );
-
     private boolean startIsOk = true;
 
     private static final int INDEX_COUNT = 2500;
 
-    private final GraphDatabaseService graphDbService;
-    private final TransactionManager transactionManager;
-    private final AdaptiveCacheManager cacheManager;
-    private final LockManager lockManager;
-    private final EntityIdGenerator idGenerator;
-    
+    private PersistenceManager persistenceManager;
     private NodeManager nodeManager;
     
-    private boolean readOnly = false;
-
-    public GraphDbModule( GraphDatabaseService graphDb,
-            AdaptiveCacheManager cacheManager, LockManager lockManager,
-            TransactionManager transactionManager, EntityIdGenerator idGenerator,
-            boolean readOnly )
+    public GraphDbModule(
+            PersistenceManager persistenceManager,
+            NodeManager nodeManager)
     {
-        this.graphDbService = graphDb;
-        this.cacheManager = cacheManager;
-        this.lockManager = lockManager;
-        this.transactionManager = transactionManager;
-        this.idGenerator = idGenerator;
-        this.readOnly = readOnly;
+        this.persistenceManager = persistenceManager;
+        this.nodeManager = nodeManager;
     }
     
     public void init()
     {
     }
 
-    public void start( LockReleaser lockReleaser, 
-        PersistenceManager persistenceManager, RelationshipTypeCreator relTypeCreator,
-        Map<Object,Object> params )
+    public void start()
     {
         if ( !startIsOk )
         {
             return;
         }
         
-        String cacheTypeName = (String) params.get( Config.CACHE_TYPE );
-        CacheType cacheType = null;
-        try
-        {
-            cacheType = cacheTypeName != null ? CacheType.valueOf( cacheTypeName ) : DEFAULT_CACHE_TYPE;
-        }
-        catch ( IllegalArgumentException e )
-        {
-            throw new IllegalArgumentException( "Invalid cache type, please use one of: " +
-                    Arrays.asList( CacheType.values() ) + " or keep empty for default (" +
-                    DEFAULT_CACHE_TYPE + ")", e.getCause() );
-        }
-        
-        if ( !readOnly )
-        {
-            nodeManager = new NodeManager( graphDbService, cacheManager,
-                    lockManager, lockReleaser, transactionManager,
-                    persistenceManager, idGenerator, relTypeCreator, cacheType );
-        }
-        else
-        {
-            nodeManager = new ReadOnlyNodeManager( graphDbService,
-                    cacheManager, lockManager, lockReleaser,
-                    transactionManager, persistenceManager, idGenerator, cacheType );
-        }
         // load and verify from PS
         NameData[] relTypes = null;
         NameData[] propertyIndexes = null;
@@ -126,97 +63,10 @@ public class GraphDbModule
         {
             nodeManager.setHasAllpropertyIndexes( true );
         }
-        nodeManager.start( params );
+        nodeManager.start( );
         startIsOk = false;
     }
     
-    private void beginTx()
-    {
-        try
-        {
-            transactionManager.begin();
-        }
-        catch ( NotSupportedException e )
-        {
-            throw new TransactionFailureException( 
-                "Unable to begin transaction.", e );
-        }
-        catch ( SystemException e )
-        {
-            throw new TransactionFailureException( 
-                "Unable to begin transaction.", e );
-        }
-    }
-    
-    private void commitTx()
-    {
-        try
-        {
-            transactionManager.commit();
-        }
-        catch ( SecurityException e )
-        {
-            throw new TransactionFailureException( "Failed to commit.", e );
-        }
-        catch ( IllegalStateException e )
-        {
-            throw new TransactionFailureException( "Failed to commit.", e );
-        }
-        catch ( RollbackException e )
-        {
-            throw new TransactionFailureException( "Failed to commit.", e );
-        }
-        catch ( HeuristicMixedException e )
-        {
-            throw new TransactionFailureException( "Failed to commit.", e );
-        }
-        catch ( HeuristicRollbackException e )
-        {
-            throw new TransactionFailureException( "Failed to commit.", e );
-        }
-        catch ( SystemException e )
-        {
-            throw new TransactionFailureException( "Failed to commit.", e );
-        }
-    }
-    
-    public void setReferenceNodeId( Long nodeId )
-    {
-        nodeManager.setReferenceNodeId( nodeId.longValue() );
-        try
-        {
-            nodeManager.getReferenceNode();
-        }
-        catch ( NotFoundException e )
-        {
-            log.warning( "Reference node[" + nodeId + "] not valid." );
-        }
-    }
-
-    public Long getCurrentReferenceNodeId()
-    {
-        try
-        {
-            return nodeManager.getReferenceNode().getId();
-        }
-        catch ( NotFoundException e )
-        {
-            return -1L;
-        }
-    }
-
-    public Node createNewReferenceNode()
-    {
-        Node node = nodeManager.createNode();
-        nodeManager.setReferenceNodeId( node.getId() );
-        return node;
-    }
-
-    public void reload( Map<Object,Object> params )
-    {
-        throw new UnsupportedOperationException();
-    }
-
     public void stop()
     {
         nodeManager.clearPropertyIndexes();
@@ -231,10 +81,5 @@ public class GraphDbModule
     public NodeManager getNodeManager()
     {
         return this.nodeManager;
-    }
-
-    public Iterable<RelationshipType> getRelationshipTypes()
-    {
-        return nodeManager.getRelationshipTypes();
     }
 }

@@ -97,7 +97,7 @@ public class TxManager extends AbstractTransactionManager
     final TxHook finishHook;
     private final FileSystemAbstraction fileSystem;
 
-    TxManager( String txLogDir, KernelPanicEventGenerator kpe, TxHook finishHook, StringLogger msgLog, FileSystemAbstraction fileSystem )
+    public TxManager( String txLogDir, KernelPanicEventGenerator kpe, TxHook finishHook, StringLogger msgLog, FileSystemAbstraction fileSystem )
     {
         this.txLogDir = txLogDir;
         this.fileSystem = fileSystem;

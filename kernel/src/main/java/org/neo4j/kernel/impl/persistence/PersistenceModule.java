@@ -19,10 +19,6 @@
  */
 package org.neo4j.kernel.impl.persistence;
 
-import javax.transaction.TransactionManager;
-
-import org.neo4j.kernel.impl.core.LockReleaser;
-import org.neo4j.kernel.impl.core.TxEventSyncHookFactory;
 
 /**
  *
@@ -36,8 +32,9 @@ public class PersistenceModule
 
     private PersistenceManager persistenceManager;
 
-    public PersistenceModule()
+    public PersistenceModule(PersistenceManager persistenceManager)
     {
+        this.persistenceManager = persistenceManager;
     }
 
     public synchronized void init()
@@ -45,12 +42,8 @@ public class PersistenceModule
         // Do nothing
     }
 
-    public synchronized void start( TransactionManager transactionManager,
-        PersistenceSource persistenceSource,
-            TxEventSyncHookFactory syncHookFactory, LockReleaser lockReleaser )
+    public synchronized void start()
     {
-        this.persistenceManager = new PersistenceManager( transactionManager,
-                persistenceSource, syncHookFactory, lockReleaser );
     }
 
     public synchronized void reload()

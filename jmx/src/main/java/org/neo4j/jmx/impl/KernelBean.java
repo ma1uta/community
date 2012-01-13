@@ -28,6 +28,7 @@ import javax.management.ObjectName;
 
 import org.neo4j.jmx.Kernel;
 import org.neo4j.kernel.Config;
+import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.KernelData;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
 import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
@@ -77,7 +78,7 @@ public class KernelBean extends Neo4jMBean implements Kernel
 
     public static NeoStoreXaDataSource getNeoDataSource( KernelData kernel )
     {
-        XaDataSourceManager mgr = kernel.getConfig().getTxModule().getXaDataSourceManager();
+        XaDataSourceManager mgr = ((EmbeddedGraphDatabase)kernel.graphDatabase()).getXaDataSourceManager();
         return (NeoStoreXaDataSource) mgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
     }
 

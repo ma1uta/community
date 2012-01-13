@@ -34,7 +34,6 @@ import org.junit.Test;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.Config;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.impl.nioneo.store.AbstractDynamicStore;
@@ -47,7 +46,7 @@ import org.neo4j.test.TargetDirectory;
 public class TestShortStringProperties extends TestShortString
 {
     private static final TargetDirectory target = TargetDirectory.forTest( TestShortStringProperties.class );
-    private static AbstractGraphDatabase graphdb;
+    private static EmbeddedGraphDatabase graphdb;
 
     @BeforeClass
     public static void startup()
@@ -92,7 +91,7 @@ public class TestShortStringProperties extends TestShortString
 
     private void clearCache()
     {
-        graphdb.getConfig().getGraphDbModule().getNodeManager().clearCache();
+        graphdb.getNodeManager().clearCache();
     }
 
     private static final String LONG_STRING = "this is a really long string, believe me!";
@@ -273,7 +272,7 @@ public class TestShortStringProperties extends TestShortString
 
     private PropertyStore propertyStore()
     {
-        XaDataSourceManager dsMgr = graphdb.getConfig().getTxModule().getXaDataSourceManager();
+        XaDataSourceManager dsMgr = graphdb.getXaDataSourceManager();
         return ( (NeoStoreXaConnection) dsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME ).getXaConnection() ).getPropertyStore();
     }
 }

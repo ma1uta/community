@@ -39,6 +39,8 @@ import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.index.IndexXaConnection;
+import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
+import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
 import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
 
 class IndexManagerImpl implements IndexManager
@@ -47,15 +49,20 @@ class IndexManagerImpl implements IndexManager
     private final Map<String, IndexImplementation> indexProviders = new HashMap<String, IndexImplementation>();
 
     private final EmbeddedGraphDbImpl graphDbImpl;
-    private final NodeAutoIndexerImpl nodeAutoIndexer;
-    private final RelationshipAutoIndexerImpl relAutoIndexer;
+    private NodeAutoIndexerImpl nodeAutoIndexer;
+    private RelationshipAutoIndexerImpl relAutoIndexer;
+    private Config config;
+    private XaDataSourceManager xaDataSourceManager;
+    private AbstractTransactionManager txManager;
 
-    IndexManagerImpl( EmbeddedGraphDbImpl graphDbImpl, IndexStore indexStore )
+    IndexManagerImpl( Config config,IndexStore indexStore,
+                      XaDataSourceManager xaDataSourceManager, AbstractTransactionManager txManager, EmbeddedGraphDbImpl gdb)
     {
-        this.graphDbImpl = graphDbImpl;
+        graphDbImpl = gdb;
+        this.config = config;
+        this.xaDataSourceManager = xaDataSourceManager;
+        this.txManager = txManager;
         this.indexStore = indexStore;
-        this.nodeAutoIndexer = new NodeAutoIndexerImpl( graphDbImpl );
-        this.relAutoIndexer = new RelationshipAutoIndexerImpl( graphDbImpl );
     }
 
     void start()
@@ -183,7 +190,7 @@ class IndexManagerImpl implements IndexManager
             String indexName, Map<String, String> suppliedConfig )
     {
         Pair<Map<String, String>, Boolean> result = findIndexConfig( cls,
-                indexName, suppliedConfig, graphDbImpl.getConfig().getParams() );
+                indexName, suppliedConfig, config.getParams() );
         if ( result.other() )
         {
             IndexCreatorThread creator = new IndexCreatorThread( cls, indexName, result.first() );
@@ -225,12 +232,12 @@ class IndexManagerImpl implements IndexManager
         {
             String provider = config.get( PROVIDER );
             String dataSourceName = getIndexProvider( provider ).getDataSourceName();
-            XaDataSource dataSource = graphDbImpl.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource( dataSourceName );
+            XaDataSource dataSource = xaDataSourceManager.getXaDataSource(dataSourceName);
             IndexXaConnection connection = (IndexXaConnection) dataSource.getXaConnection();
             Transaction tx = graphDbImpl.tx().begin();
             try
             {
-                javax.transaction.Transaction javaxTx = graphDbImpl.getConfig().getTxModule().getTxManager().getTransaction();
+                javax.transaction.Transaction javaxTx = txManager.getTransaction();
                 javaxTx.enlistResource( connection.getXaResource() );
                 connection.createIndex( cls, indexName, config );
                 tx.success();
@@ -369,6 +376,17 @@ class IndexManagerImpl implements IndexManager
             indexStore.set( index.getEntityType(), index.getName(), config );
         }
         return value;
+    }
+
+    // TODO These setters/getters stick. Why are these indexers exposed!?
+    public void setNodeAutoIndexer(NodeAutoIndexerImpl nodeAutoIndexer)
+    {
+        this.nodeAutoIndexer = nodeAutoIndexer;
+    }
+
+    public void setRelAutoIndexer(RelationshipAutoIndexerImpl relAutoIndexer)
+    {
+        this.relAutoIndexer = relAutoIndexer;
     }
 
     public AutoIndexer<Node> getNodeAutoIndexer()

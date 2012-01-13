@@ -93,7 +93,7 @@ public class DatabaseTest
         assertThat( appender.toString(), containsString( "Successfully shutdown database" ) );
     }
 
-    @Test( expected = TransactionFailureException.class )
+    @Test( expected = IllegalStateException.class )
     public void shouldComplainIfDatabaseLocationIsAlreadyInUse()
     {
         deletionFailureOk = true;

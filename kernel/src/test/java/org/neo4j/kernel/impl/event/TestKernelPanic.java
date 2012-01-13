@@ -47,16 +47,16 @@ public class TestKernelPanic
         AbstractNeo4jTestCase.deleteFileOrDirectory( new File( path ) );
         EmbeddedGraphDatabase graphDb = new EmbeddedGraphDatabase( path );
         XaDataSourceManager xaDs =
-            graphDb.getConfig().getTxModule().getXaDataSourceManager();
+            graphDb.getXaDataSourceManager();
         
-        IllBehavingXaDataSource noob = new IllBehavingXaDataSource();
-        xaDs.registerDataSource( "noob", noob, UTF8.encode( "554342" ) );
+        IllBehavingXaDataSource noob = new IllBehavingXaDataSource(UTF8.encode( "554342" ), "noob");
+        xaDs.registerDataSource( noob );
         
         Panic panic = new Panic();
         graphDb.registerKernelEventHandler( panic );
      
         org.neo4j.graphdb.Transaction gdbTx = graphDb.beginTx();
-        TransactionManager txMgr = graphDb.getConfig().getTxModule().getTxManager();
+        TransactionManager txMgr = graphDb.getTxManager();
         Transaction tx = txMgr.getTransaction();
         
         graphDb.createNode();

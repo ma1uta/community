@@ -26,39 +26,16 @@ import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.transaction.Transaction;
-import javax.transaction.TransactionManager;
-
-import org.neo4j.kernel.impl.core.DefaultRelationshipTypeCreator;
-import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
-import org.neo4j.kernel.impl.core.RelationshipTypeCreator;
 import org.neo4j.kernel.impl.nioneo.store.FileLock;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.nioneo.store.IdGenerator;
 import org.neo4j.kernel.impl.nioneo.store.IdGeneratorImpl;
-import org.neo4j.kernel.impl.nioneo.store.NeoStore;
-import org.neo4j.kernel.impl.transaction.LockManager;
-import org.neo4j.kernel.impl.transaction.TxHook;
-import org.neo4j.kernel.impl.transaction.TxModule;
 import org.neo4j.kernel.impl.transaction.xaframework.DefaultLogBufferFactory;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBufferFactory;
-import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
-import org.neo4j.kernel.impl.transaction.xaframework.TxIdGeneratorFactory;
 import org.neo4j.kernel.impl.util.FileUtils;
 
 public class CommonFactories
 {
-    public static LockManagerFactory defaultLockManagerFactory()
-    {
-        return new LockManagerFactory()
-        {
-            public LockManager create( TxModule txModule )
-            {
-                return new LockManager( txModule.getTxManager() );
-            }
-        };
-    }
-    
     public static class DefaultIdGeneratorFactory implements IdGeneratorFactory
     {
         private final Map<IdType, IdGenerator> generators = new HashMap<IdType, IdGenerator>();
@@ -81,75 +58,17 @@ public class CommonFactories
             IdGeneratorImpl.createGenerator( fileName );
         }
         
-        public void updateIdGenerators( NeoStore neoStore )
+
+        @Override
+        public boolean shouldUpdateIdGenerators()
         {
-            neoStore.updateIdGenerators();
+            return true;
         }
     }
     
     public static IdGeneratorFactory defaultIdGeneratorFactory()
     {
         return new DefaultIdGeneratorFactory();
-    }
-    
-    public static RelationshipTypeCreator defaultRelationshipTypeCreator()
-    {
-        return new DefaultRelationshipTypeCreator();
-    }
-    
-    public static TxIdGeneratorFactory defaultTxIdGeneratorFactory()
-    {
-        return new TxIdGeneratorFactory()
-        {
-            public TxIdGenerator create( final TransactionManager txManager )
-            {
-                return TxIdGenerator.DEFAULT;
-            }
-        }; 
-    }
-    
-    public static TxHook defaultTxHook()
-    {
-        return new TxHook()
-        {
-            @Override
-            public void initializeTransaction( int eventIdentifier )
-            {
-                // Do nothing from the ordinary here
-            }
-            
-            public boolean hasAnyLocks( Transaction tx )
-            {
-                return false;
-            }
-            
-            public void finishTransaction( int eventIdentifier, boolean success )
-            {
-                // Do nothing from the ordinary here
-            }
-            
-            @Override
-            public boolean freeIdsDuringRollback()
-            {
-                return true;
-            }
-        };
-    }
-    
-    public static LastCommittedTxIdSetter defaultLastCommittedTxIdSetter()
-    {
-        return new LastCommittedTxIdSetter()
-        {
-            public void setLastCommittedTxId( long txId )
-            {
-                // Do nothing
-            }
-            
-            @Override
-            public void close()
-            {
-            }
-        };
     }
     
     public static FileSystemAbstraction defaultFileSystemAbstraction()

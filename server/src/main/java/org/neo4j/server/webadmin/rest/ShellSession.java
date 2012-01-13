@@ -22,6 +22,7 @@ package org.neo4j.server.webadmin.rest;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Service;
 import org.neo4j.kernel.AbstractGraphDatabase;
+import org.neo4j.kernel.GraphDatabaseSPI;
 import org.neo4j.kernel.KernelExtension;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.webadmin.console.ScriptSession;
@@ -42,7 +43,7 @@ public class ShellSession implements ScriptSession
     private final ShellClient client;
     private final CollectingOutput output;
     
-    public ShellSession( AbstractGraphDatabase graph )
+    public ShellSession( GraphDatabaseSPI graph )
     {
         ShellServerExtension shell = (ShellServerExtension) Service.load( KernelExtension.class, "shell" );
         if ( shell == null ) throw new UnsupportedOperationException( "Shell server not found" );
