@@ -81,10 +81,6 @@ class NodeImpl extends ArrayBasedPrimitive
             relationships = NO_RELATIONSHIPS;
             relChainPosition = RelationshipLoadingPosition.EMPTY;
         }
-        else
-        {
-            relChainPosition = new SingleChainPosition( firstRel );
-        }
     }
 
     @Override
