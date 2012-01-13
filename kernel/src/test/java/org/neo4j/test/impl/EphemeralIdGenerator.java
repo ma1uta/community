@@ -62,9 +62,9 @@ public class EphemeralIdGenerator implements IdGenerator
         }
 
         @Override
-        public void updateIdGenerators( NeoStore store )
+        public boolean shouldUpdateIdGenerators()
         {
-            store.updateIdGenerators();
+            return true;
         }
     }
     

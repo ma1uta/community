@@ -43,7 +43,7 @@ public class LegacyPropertyStoreReader
     {
         fileChannel = new RandomAccessFile( fileName, "r" ).getChannel();
         windowPool = new PersistenceWindowPool( fileName,
-                RECORD_LENGTH, fileChannel, CommonAbstractStore.calculateMappedMemory( null, fileName ),
+                RECORD_LENGTH, fileChannel, 0,
                 true, true );
     }
 

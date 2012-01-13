@@ -33,6 +33,11 @@ public class IdGenerator implements EntityIdGenerator
     // the persistence source used to store the HIGH keys
     private PersistenceSource persistenceSource = null;
 
+    public IdGenerator(PersistenceSource persistenceSource)
+    {
+        this.persistenceSource = persistenceSource;
+    }
+
     /**
      * Returns the next unique ID for the entity type represented by
      * <CODE>clazz</CODE>.
@@ -51,18 +56,6 @@ public class IdGenerator implements EntityIdGenerator
     public long getNumberOfIdsInUse( Class<?> clazz )
     {
         return getPersistenceSource().getNumberOfIdsInUse( clazz );
-    }
-
-    /**
-     * Configures the IdGenerator. <B>WARNING</B>: This method should only be
-     * invoked once from {@link IdGeneratorModule#start}.
-     * @param source
-     *            the persistence source used for id generation
-     */
-    public void configure( PersistenceSource source )
-    {
-        // Save connectivity
-        this.persistenceSource = source;
     }
 
     // Accesor for persistence source

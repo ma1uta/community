@@ -52,58 +52,20 @@ public class XaContainer
     /**
      * Creates a XaContainer.
      *
-     * @param logicalLog
-     *            The logical log file name
      * @param cf
      *            The command factory implementation
      * @param tf
-     *            The transaction factory implementation
-     * @param config Configuration map or null if no config needed
+ *            The transaction factory implementation
+     * @param log
      */
-    public static XaContainer create( XaDataSource dataSource,
-            String logicalLog, XaCommandFactory cf, XaTransactionFactory tf,
-            List<Pair<TransactionInterceptorProvider, Object>> providers,
-            Map<Object, Object> config )
-    {
-        if ( logicalLog == null || cf == null || tf == null )
-        {
-            throw new IllegalArgumentException( "Null parameter, "
-                + "LogicalLog[" + logicalLog + "] CommandFactory[" + cf
-                + "TransactionFactory[" + tf + "]" );
-        }
-        return new XaContainer( dataSource, logicalLog, cf, tf, providers,
-                config );
-    }
-
-    private XaContainer( XaDataSource dataSource, String logicalLog,
-            XaCommandFactory cf, XaTransactionFactory tf,
-            List<Pair<TransactionInterceptorProvider, Object>> providers,
-            Map<Object, Object> config )
+    public XaContainer(XaCommandFactory cf, XaTransactionFactory tf,
+                       XaResourceManager rm, XaLogicalLog log)
     {
         this.cf = cf;
         this.tf = tf;
 
-        // OK, this is ugly (although it only happens in test cases... config is never
-        // null diring normal circumstances.
-        TxIdGenerator txIdFactory = config != null ?
-                (TxIdGenerator) config.get( TxIdGenerator.class ) : TxIdGenerator.DEFAULT;
-        txIdFactory = txIdFactory != null ? txIdFactory : TxIdGenerator.DEFAULT;
-        AbstractTransactionManager txManager = (AbstractTransactionManager) config.get( TransactionManager.class );
-
-        rm = new XaResourceManager( dataSource, tf, txIdFactory, txManager, logicalLog );
-
-        if ( "true".equalsIgnoreCase( (String) config.get( Config.INTERCEPT_DESERIALIZED_TRANSACTIONS ) )
-             && providers != null )
-        {
-            log = new InterceptingXaLogicalLog( logicalLog, rm, cf, tf, config,
-                    providers );
-        }
-        else
-        {
-            log = new XaLogicalLog( logicalLog, rm, cf, tf, config );
-        }
-        rm.setLogicalLog( log );
-        tf.setLogicalLog( log );
+        this.rm = rm;
+        this.log = log;
     }
 
     /**

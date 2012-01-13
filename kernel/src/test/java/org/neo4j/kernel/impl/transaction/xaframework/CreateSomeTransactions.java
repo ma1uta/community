@@ -19,18 +19,17 @@
  */
 package org.neo4j.kernel.impl.transaction.xaframework;
 
-import static org.neo4j.helpers.collection.MapUtil.stringMap;
-import static org.neo4j.kernel.Config.KEEP_LOGICAL_LOGS;
-import static org.neo4j.test.BatchTransaction.beginBatchTx;
-
-import java.io.IOException;
-
 import org.neo4j.graphdb.Node;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.Config;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.impl.MyRelTypes;
 import org.neo4j.test.BatchTransaction;
+
+import java.io.IOException;
+
+import static org.neo4j.helpers.collection.MapUtil.stringMap;
+import static org.neo4j.kernel.Config.KEEP_LOGICAL_LOGS;
+import static org.neo4j.test.BatchTransaction.beginBatchTx;
 
 public class CreateSomeTransactions
 {
@@ -38,7 +37,7 @@ public class CreateSomeTransactions
     {
         String sourceDir = args[0];
         boolean shutdown = Boolean.parseBoolean( args[1] );
-        AbstractGraphDatabase db = new EmbeddedGraphDatabase( sourceDir, stringMap( KEEP_LOGICAL_LOGS, "true" ) );
+        EmbeddedGraphDatabase db = new EmbeddedGraphDatabase( sourceDir, stringMap( KEEP_LOGICAL_LOGS, "true" ) );
         
         BatchTransaction tx = beginBatchTx( db );
         Node node = db.createNode();
@@ -46,7 +45,7 @@ public class CreateSomeTransactions
         Node otherNode = db.createNode();
         node.createRelationshipTo( otherNode, MyRelTypes.TEST );
         tx.restart();
-        db.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME ).rotateLogicalLog();
+        db.getXaDataSourceManager().getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME ).rotateLogicalLog();
         
         for ( int i = 0; i < 5; i++ )
         {

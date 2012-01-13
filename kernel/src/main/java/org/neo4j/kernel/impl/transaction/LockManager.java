@@ -57,9 +57,9 @@ public class LockManager
 
     private final RagManager ragManager;
 
-    public LockManager( TransactionManager tm )
+    public LockManager( RagManager ragManager)
     {
-        ragManager = new RagManager( tm );
+        this.ragManager = ragManager;
     }
 
     public long getDetectedDeadlockCount()

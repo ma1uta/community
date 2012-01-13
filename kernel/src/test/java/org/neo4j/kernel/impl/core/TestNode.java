@@ -390,7 +390,7 @@ public class TestNode extends AbstractNeo4jTestCase
                 Transaction tx = getGraphDb().beginTx();
                 try
                 {
-                    ((AbstractGraphDatabase) getGraphDb()).getConfig().getLockManager().getWriteLock( entity );
+                    getGraphDb().getLockManager().getWriteLock( entity );
                     gotTheLock.set( true );
                     tx.success();
                 }

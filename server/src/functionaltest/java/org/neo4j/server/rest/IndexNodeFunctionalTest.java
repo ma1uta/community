@@ -39,6 +39,7 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.AbstractGraphDatabase;
+import org.neo4j.kernel.GraphDatabaseSPI;
 import org.neo4j.kernel.impl.annotations.Documented;
 import org.neo4j.server.database.DatabaseBlockedException;
 import org.neo4j.server.helpers.FunctionalTestHelper;
@@ -76,7 +77,7 @@ public class IndexNodeFunctionalTest extends AbstractRestFunctionalTestBase
 
     long createNode()
     {
-        AbstractGraphDatabase graphdb = server().getDatabase().graph;
+        GraphDatabaseSPI graphdb = server().getDatabase().graph;
         Transaction tx = graphdb.beginTx();
         Node node;
         try {

@@ -17,12 +17,31 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package org.neo4j.kernel;
 
-import org.neo4j.kernel.impl.transaction.LockManager;
-import org.neo4j.kernel.impl.transaction.TxModule;
-
-public interface LockManagerFactory
+/**
+ * Lifecycle interface for kernel components. Init is called first, 
+ * followed by start, 
+ * and then any number of stop-start sequences,
+ * and finally stop and destroy.
+ * 
+ * As a stop-start cycle could be due to change of configuration, please perform anything that depends on config
+ * in start().
+ *
+ * Implementations can throw any exception. Caller must handle this properly.
+ */
+public interface Lifecycle
 {
-    LockManager create( TxModule txModule );
+    void init()
+        throws Exception;
+    
+    void start()
+        throws Exception;
+    
+    void stop()
+        throws Exception;
+    
+    void destroy()
+        throws Exception;
 }

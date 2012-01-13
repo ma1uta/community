@@ -36,10 +36,9 @@ public class IdGeneratorModule
 {
     private static final String MODULE_NAME = "IdGeneratorModule";
 
-    private PersistenceSource persistenceSource = null;
     private final EntityIdGenerator idGenerator;
 
-    public IdGeneratorModule( EntityIdGenerator idGenerator )
+    public IdGeneratorModule( EntityIdGenerator idGenerator)
     {
         this.idGenerator = idGenerator;
     }
@@ -56,8 +55,6 @@ public class IdGeneratorModule
 
     public synchronized void start()
     {
-        // Configure the IdGenerator
-        idGenerator.configure( this.getPersistenceSource() );
     }
 
     public synchronized void reload()
@@ -79,17 +76,6 @@ public class IdGeneratorModule
     public String getModuleName()
     {
         return MODULE_NAME;
-    }
-
-    private synchronized PersistenceSource getPersistenceSource()
-    {
-        return this.persistenceSource;
-    }
-
-    public synchronized void setPersistenceSourceInstance(
-        PersistenceSource source )
-    {
-        this.persistenceSource = source;
     }
 
     @Override

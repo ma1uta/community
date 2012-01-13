@@ -37,7 +37,7 @@ import org.neo4j.kernel.impl.core.ReadOnlyDbException;
 import org.neo4j.kernel.impl.transaction.xaframework.XaResource;
 import org.neo4j.kernel.impl.util.ArrayMap;
 
-class ReadOnlyTxManager extends AbstractTransactionManager
+public class ReadOnlyTxManager extends AbstractTransactionManager
 {
     private static Logger log = Logger.getLogger( ReadOnlyTxManager.class.getName() );
 
@@ -47,7 +47,7 @@ class ReadOnlyTxManager extends AbstractTransactionManager
 
     private XaDataSourceManager xaDsManager = null;
 
-    ReadOnlyTxManager()
+    public ReadOnlyTxManager()
     {
     }
 

@@ -29,6 +29,6 @@ public interface IdGeneratorFactory
     void create( String fileName );
     
     IdGenerator get( IdType idType );
-    
-    void updateIdGenerators( NeoStore store );
+
+    boolean shouldUpdateIdGenerators();
 }

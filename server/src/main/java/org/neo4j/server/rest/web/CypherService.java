@@ -19,7 +19,9 @@
  */
 package org.neo4j.server.rest.web;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.POST;
@@ -66,7 +68,7 @@ public class CypherService {
         
         String query =  (String) command.get(QUERY_KEY);
         Map<String,Object> params = (Map<String, Object>) (command.containsKey(PARAMS_KEY) ? command.get(PARAMS_KEY) : new HashMap<String, Object>());
-        
+
         try {
             ExecutionResult result = executionEngine.execute( parser.parse( query ), params );
     

@@ -17,6 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package org.neo4j.kernel.impl.nioneo.store;
 
 import java.io.File;
@@ -49,45 +50,6 @@ public class StoreAccess
     private final RecordStore<DynamicRecord> propKeyStore;
     private boolean closable = false;
 
-    public StoreAccess( String path )
-    {
-        this( path, defaultParams() );
-    }
-
-    public StoreAccess( String path, Map<Object, Object> params )
-    {
-        params.put( FileSystemAbstraction.class, CommonFactories.defaultFileSystemAbstraction() );
-        params.put( StringLogger.class, StringLogger.SYSTEM );
-        // these need to be made ok
-        NodeStore nodeStore; RelationshipStore relStore; RelationshipTypeStore relTypeStore; PropertyStore propStore = null;
-        this.nodeStore = wrapStore( nodeStore = new NodeStore( path + "/neostore.nodestore.db", params ) );
-        this.relStore = wrapStore( relStore = new RelationshipStore( path + "/neostore.relationshipstore.db", params ) );
-        this.relTypeStore = wrapStore( relTypeStore = new RelationshipTypeStore(
-                path + "/neostore.relationshiptypestore.db", params ) );
-        this.typeNameStore = wrapStore( relTypeStore.getNameStore() );
-        if ( new File( path + "/neostore.propertystore.db" ).exists() )
-        {
-            this.propStore = wrapStore( propStore = new PropertyStore( path + "/neostore.propertystore.db", params ) );
-            this.propIndexStore = wrapStore( propStore.getIndexStore() );
-            this.propKeyStore = wrapStore( propStore.getIndexStore().getNameStore() );
-            this.stringStore = wrapStore( propStore.getStringStore() );
-            this.arrayStore = wrapStore( propStore.getArrayStore() );
-        }
-        else
-        {
-            this.propStore = null;
-            this.propIndexStore = null;
-            this.propKeyStore = null;
-            this.stringStore = null;
-            this.arrayStore = null;
-        }
-        this.closable = true;
-        nodeStore.makeStoreOk();
-        relStore.makeStoreOk();
-        if ( propStore != null ) propStore.makeStoreOk();
-        relTypeStore.makeStoreOk();
-    }
-
     public StoreAccess( AbstractGraphDatabase graphdb )
     {
         this( getNeoStoreFrom( graphdb ) );
@@ -95,7 +57,7 @@ public class StoreAccess
 
     private static NeoStore getNeoStoreFrom( AbstractGraphDatabase graphdb )
     {
-        XaDataSource nioneo = graphdb.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(
+        XaDataSource nioneo = graphdb.getXaDataSourceManager().getXaDataSource(
                 Config.DEFAULT_DATA_SOURCE_NAME );
         if ( nioneo instanceof NeoStoreXaDataSource )
         {

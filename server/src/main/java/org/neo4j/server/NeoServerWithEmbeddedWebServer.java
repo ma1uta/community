@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.configuration.Configuration;
 import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsManager;
@@ -34,7 +33,6 @@ import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.database.GraphDatabaseFactory;
 import org.neo4j.server.guard.Guard;
-import org.neo4j.server.guard.GuardedDatabaseFactory;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.modules.PluginInitializer;
 import org.neo4j.server.modules.RESTApiModule;
@@ -46,7 +44,7 @@ import org.neo4j.server.startup.healthcheck.StartupHealthCheck;
 import org.neo4j.server.startup.healthcheck.StartupHealthCheckFailedException;
 import org.neo4j.server.web.WebServer;
 
-import static org.neo4j.server.configuration.Configurator.WEBSERVER_LIMIT_EXECUTION_TIME_PROPERTY_KEY;
+import static org.neo4j.server.configuration.Configurator.*;
 
 public class NeoServerWithEmbeddedWebServer implements NeoServer
 {
@@ -170,10 +168,12 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
                 .getString( Configurator.DATABASE_LOCATION_PROPERTY_KEY ) ).getAbsolutePath();
         GraphDatabaseFactory dbFactory = bootstrapper.getGraphDatabaseFactory( configurator.configuration() );
 
+/*
         if ( guard != null )
         {
             dbFactory = new GuardedDatabaseFactory( dbFactory, guard );
         }
+*/
 
         Map<String, String> databaseTuningProperties = configurator.getDatabaseTuningProperties();
         if ( databaseTuningProperties != null )
@@ -184,7 +184,7 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         {
             this.database = new Database( dbFactory, dbLocation );
         }
-        return database.graph.getConfig().getDiagnosticsManager();
+        return database.graph.getDiagnosticsManager();
     }
 
     private void initGuard()

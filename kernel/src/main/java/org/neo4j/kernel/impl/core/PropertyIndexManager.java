@@ -53,7 +53,7 @@ public class PropertyIndexManager
 
     private boolean hasAll = false;
 
-    PropertyIndexManager( TransactionManager transactionManager,
+    public PropertyIndexManager( TransactionManager transactionManager,
         PersistenceManager persistenceManager, EntityIdGenerator idGenerator )
     {
         this.transactionManager = transactionManager;

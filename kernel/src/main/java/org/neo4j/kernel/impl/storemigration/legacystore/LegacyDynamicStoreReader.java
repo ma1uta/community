@@ -63,7 +63,7 @@ public class LegacyDynamicStoreReader
         blockSize = buffer.getInt();
 
         windowPool = new PersistenceWindowPool( fileName,
-                blockSize, fileChannel, CommonAbstractStore.calculateMappedMemory( null, fileName ),
+                blockSize, fileChannel, 0,
                 true, true );
     }
 

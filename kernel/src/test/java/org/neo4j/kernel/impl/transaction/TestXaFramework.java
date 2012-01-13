@@ -27,6 +27,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,23 +39,11 @@ import javax.transaction.xa.Xid;
 import org.junit.Before;
 import org.junit.Test;
 import org.neo4j.graphdb.Node;
+import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.UTF8;
 import org.neo4j.kernel.CommonFactories;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
-import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
-import org.neo4j.kernel.impl.transaction.xaframework.LogBuffer;
-import org.neo4j.kernel.impl.transaction.xaframework.LogBufferFactory;
-import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
-import org.neo4j.kernel.impl.transaction.xaframework.XaCommandFactory;
-import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
-import org.neo4j.kernel.impl.transaction.xaframework.XaConnectionHelpImpl;
-import org.neo4j.kernel.impl.transaction.xaframework.XaContainer;
-import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
-import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
-import org.neo4j.kernel.impl.transaction.xaframework.XaResourceHelpImpl;
-import org.neo4j.kernel.impl.transaction.xaframework.XaResourceManager;
-import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
-import org.neo4j.kernel.impl.transaction.xaframework.XaTransactionFactory;
+import org.neo4j.kernel.impl.transaction.xaframework.*;
 import org.neo4j.kernel.impl.util.FileUtils;
 import org.neo4j.kernel.impl.util.StringLogger;
 
@@ -92,9 +81,8 @@ public class TestXaFramework extends AbstractNeo4jTestCase
     public void setUpFramework()
     {
         getTransaction().finish();
-        TxModule txModule = getEmbeddedGraphDb().getConfig().getTxModule();
-        tm = txModule.getTxManager();
-        xaDsMgr = txModule.getXaDataSourceManager();
+        tm = getEmbeddedGraphDb().getTxManager();
+        xaDsMgr = getEmbeddedGraphDb().getXaDataSourceManager();
     }
 
     private static class DummyCommand extends XaCommand
@@ -220,16 +208,16 @@ public class TestXaFramework extends AbstractNeo4jTestCase
     {
         private XaContainer xaContainer = null;
 
-        public DummyXaDataSource( java.util.Map<Object,Object> map )
+        public DummyXaDataSource( java.util.Map<String,String> map, byte[] branchId, String name, XaFactory xaFactory)
             throws InstantiationException
         {
-            super( map );
+            super( branchId, name );
             try
             {
                 map.put( "store_dir", path() );
-                xaContainer = XaContainer.create( this, resourceFile(),
+                xaContainer = xaFactory.newXaContainer( this, resourceFile(),
                         new DummyCommandFactory(),
-                        new DummyTransactionFactory(), null, map );
+                        new DummyTransactionFactory(), null);
                 xaContainer.openLogicalLog();
             }
             catch ( IOException e )
@@ -261,20 +249,6 @@ public class TestXaFramework extends AbstractNeo4jTestCase
         public XaConnection getXaConnection()
         {
             return new DummyXaConnection( xaContainer.getResourceManager() );
-        }
-
-        @Override
-        public byte[] getBranchId()
-        {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
-        @Override
-        public void setBranchId( byte[] branchId )
-        {
-            // TODO Auto-generated method stub
-
         }
 
         @Override
@@ -350,14 +324,10 @@ public class TestXaFramework extends AbstractNeo4jTestCase
     @Test
     public void testCreateXaResource() throws Exception
     {
-        Map<Object,Object> config = new HashMap<Object,Object>();
+        Map<String,String> config = new HashMap<String,String>();
         config.put( "store_dir", "target/var" );
-        config.put( LogBufferFactory.class, CommonFactories.defaultLogBufferFactory() );
-        config.put( StringLogger.class, StringLogger.DEV_NULL );
-        config.put( FileSystemAbstraction.class, CommonFactories.defaultFileSystemAbstraction() );
-        config.put( TransactionManager.class, new PlaceboTm() );
-        xaDsMgr.registerDataSource( "dummy_datasource", new DummyXaDataSource(
-                config ), UTF8.encode( "DDDDDD" ) );
+        xaDsMgr.registerDataSource( new DummyXaDataSource(
+                config, UTF8.encode( "DDDDDD" ), "dummy_datasource", new XaFactory(config, TxIdGenerator.DEFAULT, new PlaceboTm(), CommonFactories.defaultLogBufferFactory(), CommonFactories.defaultFileSystemAbstraction(), StringLogger.DEV_NULL)) );
         XaDataSource xaDs = xaDsMgr.getXaDataSource( "dummy_datasource" );
         DummyXaConnection xaC = null;
         try
@@ -416,14 +386,9 @@ public class TestXaFramework extends AbstractNeo4jTestCase
         DummyXaConnection xaC1 = null;
         try
         {
-            Map<Object,Object> config = new HashMap<Object,Object>();
+            Map<String,String> config = new HashMap<String,String>();
             config.put( "store_dir", "target/var" );
-            config.put( LogBufferFactory.class, CommonFactories.defaultLogBufferFactory() );
-            config.put( FileSystemAbstraction.class, CommonFactories.defaultFileSystemAbstraction() );
-            config.put( StringLogger.class, StringLogger.DEV_NULL );
-            config.put( TransactionManager.class, new PlaceboTm() );
-            xaDsMgr.registerDataSource( "dummy_datasource1",
-                    new DummyXaDataSource( config ), UTF8.encode( "DDDDDD" ) );
+            xaDsMgr.registerDataSource(new DummyXaDataSource( config, UTF8.encode( "DDDDDD" ),"dummy_datasource1" , new XaFactory(config, TxIdGenerator.DEFAULT, new PlaceboTm(), CommonFactories.defaultLogBufferFactory(), CommonFactories.defaultFileSystemAbstraction(), StringLogger.DEV_NULL)) );
             xaDs1 = (DummyXaDataSource) xaDsMgr
                 .getXaDataSource( "dummy_datasource1" );
             xaC1 = (DummyXaConnection) xaDs1.getXaConnection();

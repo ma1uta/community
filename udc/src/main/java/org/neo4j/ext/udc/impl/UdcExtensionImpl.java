@@ -26,6 +26,7 @@ import java.util.Timer;
 import org.neo4j.ext.udc.UdcProperties;
 import org.neo4j.helpers.Service;
 import org.neo4j.kernel.Config;
+import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.KernelData;
 import org.neo4j.kernel.KernelExtension;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
@@ -123,7 +124,7 @@ public class UdcExtensionImpl extends KernelExtension<UdcTimerTask> implements U
         {
             // fall back to default
         }
-        NeoStoreXaDataSource ds = (NeoStoreXaDataSource) kernel.getConfig().getTxModule()
+        NeoStoreXaDataSource ds = (NeoStoreXaDataSource) ((EmbeddedGraphDatabase)kernel.graphDatabase())
                 .getXaDataSourceManager().getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
         boolean crashPing = ds.getXaContainer().getLogicalLog().wasNonClean();
         String storeId = Long.toHexString( ds.getRandomIdentifier() );
@@ -153,7 +154,7 @@ public class UdcExtensionImpl extends KernelExtension<UdcTimerTask> implements U
 
         private String getString( String key, String defaultValue )
         {
-            String result = (String)config.getParams().get( key );
+            String result = config.getParams().get( key );
             if ( result == null )
             {
                 result = props.getProperty( key, defaultValue );

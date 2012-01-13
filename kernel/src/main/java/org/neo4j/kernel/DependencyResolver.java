@@ -17,32 +17,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.tooling.wrap;
 
-public class TransactionNotAllowedException extends Exception
+package org.neo4j.kernel;
+
+/**
+ * Find a dependency given a type. This can be the exact type or a supertype of the actual dependency.
+ */
+public interface DependencyResolver
 {
-    public TransactionNotAllowedException( RuntimeException ex )
-    {
-        super( ex );
-    }
-
-    public TransactionNotAllowedException()
-    {
-        super();
-    }
-
-    void throwCause()
-    {
-        Throwable cause = getCause();
-        if ( cause instanceof RuntimeException )
-        {
-            throw (RuntimeException) cause;
-        }
-    }
-
-    @Override
-    public synchronized Throwable fillInStackTrace()
-    {
-        return this; // no stack trace
-    }
+    <T> T resolveDependency(Class<T> type)
+        throws IllegalArgumentException;
 }

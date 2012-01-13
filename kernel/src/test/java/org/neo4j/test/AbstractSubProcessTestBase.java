@@ -82,7 +82,7 @@ public class AbstractSubProcessTestBase
 
     protected interface Task extends Serializable
     {
-        void run( AbstractGraphDatabase graphdb );
+        void run( EmbeddedGraphDatabase graphdb );
     }
 
     @Before
@@ -173,7 +173,7 @@ public class AbstractSubProcessTestBase
         public Bootstrapper( AbstractSubProcessTestBase test, int instance )
                                                                                throws IOException
         {
-            this( test, instance, Collections.EMPTY_MAP );
+            this( test, instance, new HashMap<String, String>() );
         }
 
         public Bootstrapper( AbstractSubProcessTestBase test, int instance,
@@ -183,7 +183,7 @@ public class AbstractSubProcessTestBase
             this.storeDir = test.target.directory( "graphdb." + instance, true ).getCanonicalPath();
         }
 
-        protected AbstractGraphDatabase startup()
+        protected EmbeddedGraphDatabase startup()
         {
             return new EmbeddedGraphDatabase( storeDir, dbConfiguration );
         }
@@ -239,7 +239,7 @@ public class AbstractSubProcessTestBase
         }
 
         @Override
-        public void run( final AbstractGraphDatabase graphdb )
+        public void run( final EmbeddedGraphDatabase graphdb )
         {
             new Thread( new Runnable()
             {
@@ -255,9 +255,9 @@ public class AbstractSubProcessTestBase
     @SuppressWarnings( { "hiding", "serial" } )
     private static class SubInstance extends SubProcess<Instance, Bootstrapper> implements Instance
     {
-        private volatile AbstractGraphDatabase graphdb;
-        private static final AtomicReferenceFieldUpdater<SubInstance, AbstractGraphDatabase> GRAPHDB = AtomicReferenceFieldUpdater
-                .newUpdater( SubInstance.class, AbstractGraphDatabase.class, "graphdb" );
+        private volatile EmbeddedGraphDatabase graphdb;
+        private static final AtomicReferenceFieldUpdater<SubInstance, EmbeddedGraphDatabase> GRAPHDB = AtomicReferenceFieldUpdater
+                .newUpdater( SubInstance.class, EmbeddedGraphDatabase.class, "graphdb" );
         private volatile Bootstrapper bootstrap;
         private volatile Throwable failure;
 

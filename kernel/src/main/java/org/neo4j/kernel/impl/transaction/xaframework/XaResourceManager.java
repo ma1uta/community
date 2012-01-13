@@ -59,8 +59,9 @@ public class XaResourceManager
     private StringLogger msgLog;
     private final AbstractTransactionManager transactionManager;
 
-    XaResourceManager( XaDataSource dataSource, XaTransactionFactory tf,
-            TxIdGenerator txIdGenerator, AbstractTransactionManager transactionManager, String name )
+    public XaResourceManager( XaDataSource dataSource, XaTransactionFactory tf,
+            TxIdGenerator txIdGenerator, AbstractTransactionManager transactionManager,
+            String name )
     {
         this.dataSource = dataSource;
         this.tf = tf;
@@ -69,7 +70,7 @@ public class XaResourceManager
         this.name = name;
     }
 
-    synchronized void setLogicalLog( XaLogicalLog log )
+    public synchronized void setLogicalLog( XaLogicalLog log )
     {
         this.log = log;
         if ( log != null )
@@ -741,7 +742,7 @@ public class XaResourceManager
     public synchronized long applyPreparedTransaction(
             ReadableByteChannel transaction ) throws IOException
     {
-        long txId = TxIdGenerator.DEFAULT.generate( dataSource, 0 );
+        long txId = txIdGenerator.generate( dataSource, 0 );
         int masterId = txIdGenerator.getCurrentMasterId();
         log.applyTransactionWithoutTxId( transaction, txId, masterId, getForceMode() );
         return txId;

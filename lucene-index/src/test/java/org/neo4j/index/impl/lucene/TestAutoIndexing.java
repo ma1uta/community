@@ -45,7 +45,7 @@ import org.neo4j.test.ImpermanentGraphDatabase;
 
 public class TestAutoIndexing
 {
-    private GraphDatabaseService graphDb;
+    private ImpermanentGraphDatabase graphDb;
     private Transaction tx;
     private Map<String, String> config;
 
@@ -63,7 +63,7 @@ public class TestAutoIndexing
     {
         if ( config == null )
         {
-            return Collections.emptyMap();
+            config = new HashMap<String, String>();
         }
         return config;
     }
@@ -651,7 +651,7 @@ public class TestAutoIndexing
                 1 } );
 
         newTransaction();
-        ( (ImpermanentGraphDatabase) graphDb ).getConfig().getGraphDbModule().getNodeManager().clearCache();
+        graphDb.getNodeManager().clearCache();
         node1.removeProperty( "nodeProp" );
         newTransaction();
         assertFalse( node1.hasProperty( "nodeProp" ) );

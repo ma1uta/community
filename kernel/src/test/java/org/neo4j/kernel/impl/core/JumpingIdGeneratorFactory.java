@@ -69,10 +69,12 @@ public class JumpingIdGeneratorFactory implements IdGeneratorFactory
     {
     }
     
-    public void updateIdGenerators( NeoStore neoStore )
+    @Override
+    public boolean shouldUpdateIdGenerators()
     {
+        return false;
     }
-    
+
     private class JumpingIdGenerator implements IdGenerator
     {
         private AtomicLong nextId = new AtomicLong();

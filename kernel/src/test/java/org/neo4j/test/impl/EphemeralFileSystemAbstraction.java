@@ -25,6 +25,8 @@ import static java.lang.Math.min;
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -47,6 +49,8 @@ public class EphemeralFileSystemAbstraction implements FileSystemAbstraction
     {
         for (EphemeralFileChannel file : files.values()) free(file);
         files.clear();
+        
+        DynamicByteBuffer.dispose();
     }
 
     @Override
@@ -333,14 +337,56 @@ public class EphemeralFileSystemAbstraction implements FileSystemAbstraction
     {
         private static final int[] SIZES;
         private static volatile AtomicReferenceArray<Queue<Reference<ByteBuffer>>> POOL;
+        
+        static void dispose()
+        {
+            for (int i = POOL.length(); i < POOL.length(); i++)
+            {
+                for( Reference<ByteBuffer> byteBufferReference : POOL.get( i ) )
+                {
+                    ByteBuffer byteBuffer = byteBufferReference.get();
+                    if ( byteBuffer != null)
+                    {
+                        try
+                        {
+                            destroyDirectByteBuffer( byteBuffer );
+                        }
+                        catch( Throwable e )
+                        {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+
+            init();
+        }
+        
+        private static void destroyDirectByteBuffer(ByteBuffer toBeDestroyed)
+            throws IllegalArgumentException, IllegalAccessException,
+                   InvocationTargetException, SecurityException, NoSuchMethodException 
+        {
+            Method cleanerMethod = toBeDestroyed.getClass().getMethod("cleaner");
+            cleanerMethod.setAccessible(true);
+            Object cleaner = cleanerMethod.invoke(toBeDestroyed);
+            Method cleanMethod = cleaner.getClass().getMethod("clean");
+            cleanMethod.setAccessible(true);
+            cleanMethod.invoke(cleaner);
+        }
+        
+        private static void init()
+        {
+            AtomicReferenceArray<Queue<Reference<ByteBuffer>>> pool = POOL = new AtomicReferenceArray<Queue<Reference<ByteBuffer>>>( SIZES.length );
+            for ( int i = 0; i < SIZES.length; i++ ) pool.set( i, new ConcurrentLinkedQueue<Reference<ByteBuffer>>() );
+        }
+
         static
         {
             int K = 1024;
             SIZES = new int[] { 64 * K, 128 * K, 256 * K, 512 * K, 1024 * K };
-            AtomicReferenceArray<Queue<Reference<ByteBuffer>>> pool = POOL = new AtomicReferenceArray<Queue<Reference<ByteBuffer>>>( SIZES.length );
-            for ( int i = 0; i < SIZES.length; i++ ) pool.set( i, new ConcurrentLinkedQueue<Reference<ByteBuffer>>() );
+            init();
         }
-        
+
         private ByteBuffer buf;
 
         public DynamicByteBuffer()

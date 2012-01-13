@@ -69,12 +69,12 @@ public abstract class AbstractNeo4jTestCase
         }
     };
 
-    private static AbstractGraphDatabase graphDb;
+    private static EmbeddedGraphDatabase graphDb;
     private Transaction tx;
 
     private static boolean requiresPersistentGraphDatabase = false;
 
-    public GraphDatabaseService getGraphDb()
+    public EmbeddedGraphDatabase getGraphDb()
     {
         return graphDb;
     }
@@ -82,12 +82,13 @@ public abstract class AbstractNeo4jTestCase
     private static void setupGraphDatabase( boolean requiresPersistentGraphDatabase )
     {
         AbstractNeo4jTestCase.requiresPersistentGraphDatabase  = requiresPersistentGraphDatabase;
+//        graphDb = new EmbeddedGraphDatabase( getStorePath( "neo-test" ) );
         graphDb = requiresPersistentGraphDatabase ? new EmbeddedGraphDatabase( getStorePath( "neo-test" ) ) : new ImpermanentGraphDatabase();
     }
 
-    public AbstractGraphDatabase getEmbeddedGraphDb()
+    public EmbeddedGraphDatabase getEmbeddedGraphDb()
     {
-        return (AbstractGraphDatabase) graphDb;
+        return graphDb;
     }
 
     protected boolean restartGraphDbBetweenTests()
@@ -180,7 +181,7 @@ public abstract class AbstractNeo4jTestCase
 
     public NodeManager getNodeManager()
     {
-        return ((AbstractGraphDatabase) graphDb).getConfig().getGraphDbModule().getNodeManager();
+        return graphDb.getNodeManager();
     }
 
     public static void deleteFileOrDirectory( String dir )
@@ -210,7 +211,7 @@ public abstract class AbstractNeo4jTestCase
 
     protected void clearCache()
     {
-        getEmbeddedGraphDb().getConfig().getGraphDbModule().getNodeManager().clearCache();
+        getEmbeddedGraphDb().getNodeManager().clearCache();
     }
 
     protected long propertyRecordsInUse()
@@ -244,7 +245,7 @@ public abstract class AbstractNeo4jTestCase
     
     protected PropertyStore propertyStore()
     {
-        XaDataSourceManager dsMgr = ((AbstractGraphDatabase)graphDb).getConfig().getTxModule().getXaDataSourceManager();
+        XaDataSourceManager dsMgr = graphDb.getXaDataSourceManager();
         return ( (NeoStoreXaConnection) dsMgr.getXaDataSource( "nioneodb" ).getXaConnection() ).getPropertyStore();
     }
 }

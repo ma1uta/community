@@ -50,7 +50,7 @@ import org.neo4j.kernel.impl.util.RelIdArray;
 import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdIterator;
 
-class NodeImpl extends ArrayBasedPrimitive
+public class NodeImpl extends ArrayBasedPrimitive
 {
     private static final RelIdArray[] NO_RELATIONSHIPS = new RelIdArray[0];
 
@@ -529,35 +529,6 @@ class NodeImpl extends ArrayBasedPrimitive
     }
     */
 
-    public Traverser traverse( NodeManager nodeManager, Order traversalOrder,
-        StopEvaluator stopEvaluator, ReturnableEvaluator returnableEvaluator,
-        RelationshipType relationshipType, Direction direction )
-    {
-        return OldTraverserWrapper.traverse( new NodeProxy( getId(), nodeManager ),
-                traversalOrder, stopEvaluator,
-                returnableEvaluator, relationshipType, direction );
-    }
-
-    public Traverser traverse( NodeManager nodeManager, Order traversalOrder,
-        StopEvaluator stopEvaluator, ReturnableEvaluator returnableEvaluator,
-        RelationshipType firstRelationshipType, Direction firstDirection,
-        RelationshipType secondRelationshipType, Direction secondDirection )
-    {
-        return OldTraverserWrapper.traverse( new NodeProxy( getId(), nodeManager ),
-                traversalOrder, stopEvaluator,
-                returnableEvaluator, firstRelationshipType, firstDirection,
-                secondRelationshipType, secondDirection );
-    }
-
-    public Traverser traverse( NodeManager nodeManager, Order traversalOrder,
-        StopEvaluator stopEvaluator, ReturnableEvaluator returnableEvaluator,
-        Object... relationshipTypesAndDirections )
-    {
-        return OldTraverserWrapper.traverse( new NodeProxy( getId(), nodeManager ),
-                traversalOrder, stopEvaluator,
-                returnableEvaluator, relationshipTypesAndDirections );
-    }
-
     public boolean hasRelationship( NodeManager nodeManager )
     {
         return getRelationships( nodeManager ).iterator().hasNext();
@@ -667,6 +638,6 @@ class NodeImpl extends ArrayBasedPrimitive
     @Override
     PropertyContainer asProxy( NodeManager nm )
     {
-        return new NodeProxy( getId(), nm );
+        return nm.newNodeProxyById(getId());
     }
 }

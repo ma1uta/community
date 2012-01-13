@@ -55,7 +55,7 @@ public class PersistenceManager
 
     private final PersistenceSource persistenceSource;
     private final TransactionManager transactionManager;
-    private final LockReleaser lockReleaser;
+    private LockReleaser lockReleaser;
 
     private final ArrayMap<Transaction,NeoStoreTransaction> txConnectionMap =
         new ArrayMap<Transaction,NeoStoreTransaction>( 5, true, true );
@@ -70,11 +70,6 @@ public class PersistenceManager
         this.persistenceSource = persistenceSource;
         this.syncHookFactory = syncHookFactory;
         this.lockReleaser = lockReleaser;
-    }
-
-    public PersistenceSource getPersistenceSource()
-    {
-        return persistenceSource;
     }
 
     public NodeRecord loadLightNode( long id )
@@ -306,6 +301,11 @@ public class PersistenceManager
             throw new TransactionFailureException( "Error fetching transaction "
                 + "for current thread", se );
         }
+    }
+
+    public void setLockReleaser(LockReleaser lockReleaser)
+    {
+        this.lockReleaser = lockReleaser;
     }
 
     private class TxCommitHook implements Synchronization

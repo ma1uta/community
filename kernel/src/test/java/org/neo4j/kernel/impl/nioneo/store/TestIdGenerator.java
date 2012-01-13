@@ -601,7 +601,7 @@ public class TestIdGenerator
     {
         String storeDir = "target/var/free-id-once";
         deleteRecursively( new File( storeDir ) );
-        GraphDatabaseService db = new EmbeddedGraphDatabase( storeDir );
+        EmbeddedGraphDatabase db = new EmbeddedGraphDatabase( storeDir );
         RelationshipType type = withName( "SOME_TYPE" );
         Node rootNode = db.getReferenceNode();
 
@@ -652,7 +652,7 @@ public class TestIdGenerator
         tx.finish();
 
         // Verify by loading everything from scratch
-        ((AbstractGraphDatabase)db).getConfig().getGraphDbModule().getNodeManager().clearCache();
+        db.getNodeManager().clearCache();
         for ( Node node : GlobalGraphOperations.at( db ).getAllNodes() )
         {
             lastOrNull( node.getRelationships() );

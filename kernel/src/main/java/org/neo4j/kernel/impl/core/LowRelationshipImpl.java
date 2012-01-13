@@ -19,8 +19,6 @@
  */
 package org.neo4j.kernel.impl.core;
 
-import org.neo4j.graphdb.RelationshipType;
-
 /**
  * Have this as a separate class extending RelationshipImpl because there might
  * be other ways of representing startNode/endNode/id/type state in a better way.
@@ -37,13 +35,14 @@ class LowRelationshipImpl extends RelationshipImpl
      *    2 bytes type      start/end high                   5 bytes of id
      * [tttt,tttt][tttt,tttt][ssss,eeee][iiii,iiii][iiii,iiii][iiii,iiii][iiii,iiii][iiii,iiii]
      */
+    // TODO Why are these stored here since they are in superclass as well?
     private final long idAndMore;
     private final int startNodeId;
     private final int endNodeId;
 
     LowRelationshipImpl( long id, long startNodeId, long endNodeId, int typeId, boolean newRel )
     {
-        super( startNodeId, endNodeId, newRel );
+        super( id, startNodeId, endNodeId, typeId, newRel );
         this.startNodeId = (int) startNodeId;
         this.endNodeId = (int) endNodeId;
         this.idAndMore = (((long)typeId) << 48) | ((startNodeId&0xF00000000L)<<12) | ((endNodeId&0xF00000000L)<<8) | id;
@@ -67,17 +66,12 @@ class LowRelationshipImpl extends RelationshipImpl
         return (long)(((long)endNodeId&0xFFFFFFFFL) | ((idAndMore&0xF0000000000L)>>8));
     }
     
-    private int getTypeId()
+    @Override
+    int getTypeId()
     {
         return (int)((idAndMore&0xFFFF000000000000L)>>48);
     }
     
-    @Override
-    public RelationshipType getType( NodeManager nodeManager )
-    {
-        return nodeManager.getRelationshipTypeById( getTypeId() );
-    }
-
     @Override
     public String toString()
     {

@@ -21,44 +21,38 @@ package org.neo4j.kernel;
 
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.index.IndexHits;
-import org.neo4j.graphdb.index.ReadableRelationshipIndex;
-import org.neo4j.graphdb.index.RelationshipAutoIndexer;
-import org.neo4j.graphdb.index.RelationshipIndex;
+import org.neo4j.graphdb.index.*;
+import org.neo4j.kernel.impl.core.NodeManager;
 
 class RelationshipAutoIndexerImpl extends AbstractAutoIndexerImpl<Relationship>
         implements RelationshipAutoIndexer
 {
+    public interface Configuration
+    {
+
+        boolean relationship_auto_indexing(boolean def);
+
+        String relationship_keys_indexable(String def);
+    }
+    
     static final String RELATIONSHIP_AUTO_INDEX = "relationship_auto_index";
+    private Configuration config;
+    private IndexManagerImpl indexManager;
+    private NodeManager nodeManager;
 
-    public RelationshipAutoIndexerImpl( EmbeddedGraphDbImpl gdb )
+    public RelationshipAutoIndexerImpl( Configuration config, IndexManagerImpl indexManager, NodeManager nodeManager)
     {
-        super( gdb );
-    }
-
-    @Override
-    protected String getAutoIndexConfigListName()
-    {
-        return Config.RELATIONSHIP_KEYS_INDEXABLE;
-    }
-
-    @Override
-    protected String getAutoIndexName()
-    {
-        return RELATIONSHIP_AUTO_INDEX;
-    }
-
-    @Override
-    protected String getEnableConfigName()
-    {
-        return Config.RELATIONSHIP_AUTO_INDEXING;
+        super( );
+        this.config = config;
+        this.indexManager = indexManager;
+        this.nodeManager = nodeManager;
     }
 
     @Override
     protected RelationshipIndex getIndexInternal()
     {
-        return ( (IndexManagerImpl) getGraphDbImpl().index() ).getOrCreateRelationshipIndex(
-                RELATIONSHIP_AUTO_INDEX, null );
+        return indexManager.getOrCreateRelationshipIndex(
+                RELATIONSHIP_AUTO_INDEX, null);
     }
 
     @Override
@@ -73,14 +67,21 @@ class RelationshipAutoIndexerImpl extends AbstractAutoIndexerImpl<Relationship>
         super.setEnabled( enabled );
         if ( enabled )
         {
-            getGraphDbImpl().getConfig().getGraphDbModule().getNodeManager().addRelationshipPropertyTracker(
+            nodeManager.addRelationshipPropertyTracker(
                     this );
         }
         else
         {
-            getGraphDbImpl().getConfig().getGraphDbModule().getNodeManager().removeRelationshipPropertyTracker(
+            nodeManager.removeRelationshipPropertyTracker(
                     this );
         }
+    }
+
+    @Override
+    public void start()
+    {
+        setEnabled(config.relationship_auto_indexing(false));
+        propertyKeysToInclude.addAll( parseConfigList( config.relationship_keys_indexable(null)) );
     }
 
     static class RelationshipReadOnlyIndexToIndexAdapter extends

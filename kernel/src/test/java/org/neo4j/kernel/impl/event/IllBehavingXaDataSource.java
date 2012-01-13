@@ -32,9 +32,9 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaResource;
 
 public class IllBehavingXaDataSource extends XaDataSource
 {
-    IllBehavingXaDataSource() throws InstantiationException
+    IllBehavingXaDataSource(byte[] branchId, String name) throws InstantiationException
     {
-        super( MapUtil.stringMap( "store_dir", "target/var" ) );
+        super( branchId, name );
     }
     
     @Override

@@ -49,21 +49,16 @@ public class TestJtaCompliance extends AbstractNeo4jTestCase
     public void setUpFramework()
     {
         getTransaction().finish();
-        TxModule txModule = getEmbeddedGraphDb().getConfig().getTxModule();
-        tm = txModule.getTxManager();
-        xaDsMgr = txModule.getXaDataSourceManager();
-        java.util.Map<String,Object> map1 = new java.util.HashMap<String,Object>();
-        map1.put( "xa_resource", new FakeXAResource( "XAResource1" ) );
+        tm = getEmbeddedGraphDb().getTxManager();
+        xaDsMgr = getEmbeddedGraphDb().getXaDataSourceManager();
+        java.util.Map<String,String> map1 = new java.util.HashMap<String,String>();
         map1.put( "store_dir", "target/var" );
-        java.util.Map<String,Object> map2 = new java.util.HashMap<String,Object>();
-        map2.put( "xa_resource", new FakeXAResource( "XAResource2" ) );
+        java.util.Map<String,String> map2 = new java.util.HashMap<String,String>();
         map2.put( "store_dir", "target/var" );
         try
         {
-            xaDsMgr.registerDataSource( "fakeRes1",
-                new DummyXaDataSource( map1 ), UTF8.encode( "0xDDDDDE" ) );
-            xaDsMgr.registerDataSource( "fakeRes2",
-                new DummyXaDataSource( map2 ), UTF8.encode( "0xDDDDDF" ) );
+            xaDsMgr.registerDataSource( new DummyXaDataSource( map1, "fakeRes1", UTF8.encode( "0xDDDDDE" ), new FakeXAResource( "XAResource1" ) ));
+            xaDsMgr.registerDataSource( new DummyXaDataSource( map2, "fakeRes2", UTF8.encode( "0xDDDDDF" ), new FakeXAResource( "XAResource2" ) ));
         }
         catch ( Exception e )
         {
@@ -714,11 +709,11 @@ public class TestJtaCompliance extends AbstractNeo4jTestCase
     {
         private XAResource xaResource = null;
 
-        public DummyXaDataSource( java.util.Map<?,?> map )
+        public DummyXaDataSource( java.util.Map<String,String> map, String name, byte[] branchId, XAResource xaResource )
             throws InstantiationException
         {
-            super( map );
-            this.xaResource = (XAResource) map.get( "xa_resource" );
+            super( branchId, name );
+            this.xaResource = xaResource;
         }
 
         public void close()
@@ -730,20 +725,6 @@ public class TestJtaCompliance extends AbstractNeo4jTestCase
             return new DummyXaConnection( xaResource );
         }
 
-        @Override
-        public byte[] getBranchId()
-        {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
-        @Override
-        public void setBranchId( byte[] branchId )
-        {
-            // TODO Auto-generated method stub
-
-        }
-        
         @Override
         public long getLastCommittedTxId()
         {

@@ -71,11 +71,11 @@ public abstract class XaDataSource
     /**
      * Constructor used by the Neo4j kernel to create datasources.
      *
-     * @param params
-     *            A map containing configuration parameters
      */
-    public XaDataSource( Map<?,?> params ) throws InstantiationException
+    public XaDataSource(byte branchId[], String name)
     {
+        this.branchId = branchId;
+        this.name = name;
     }
 
     /**
@@ -90,17 +90,6 @@ public abstract class XaDataSource
      * this method has been invoked is illegal.
      */
     public abstract void close();
-
-    /**
-     * Used by the container/transaction manager in place to assign a branch
-     * id for this data source.
-     *
-     * @param branchId the branch id
-     */
-    public void setBranchId( byte branchId[] )
-    {
-        this.branchId = branchId;
-    }
 
     /**
      * Returns any assigned or default branch id for this data source.
@@ -232,16 +221,6 @@ public abstract class XaDataSource
     public boolean isLogicalLogKept()
     {
         throw new UnsupportedOperationException( getClass().getName() );
-    }
-
-    /**
-     * Used by the container to assign a name to this resource.
-     *
-     * @param name name of this resource
-     */
-    public void setName( String name )
-    {
-        this.name = name;
     }
 
     /**
