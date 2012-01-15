@@ -735,7 +735,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     @Override
     public ArrayMap<Integer,PropertyData> relDelete( long id )
     {
-        RelationshipRecord record = getRelationshipRecord( id, true, false );
+        RelationshipRecord record = getRelationshipRecord( id, true, true );
         long nextProp = record.getFirstProp();
         ArrayMap<Integer, PropertyData> propertyMap = getAndDeletePropertyChain( nextProp );
         disconnectRelationship( record );
@@ -786,114 +786,233 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         }
         return result;
     }
+    
+    private static enum RelationshipConnector
+    {
+        START_PREV
+        {
+            @Override
+            long get( RelationshipRecord rel )
+            {
+                return rel.isFirstInStartNodeChain() ? Record.NO_NEXT_RELATIONSHIP.intValue() : rel.getStartNodePrevRel();
+            }
+
+            @Override
+            void set( RelationshipRecord rel, long id, boolean isFirst )
+            {
+                rel.setStartNodePrevRel( id );
+                rel.setFirstInStartNodeChain( isFirst );
+            }
+
+            @Override
+            RelationshipConnector otherSide()
+            {
+                return START_NEXT;
+            }
+
+            @Override
+            long compareNode( RelationshipRecord rel )
+            {
+                return rel.getStartNode();
+            }
+
+            @Override
+            RelationshipConnector start()
+            {
+                return this;
+            }
+
+            @Override
+            RelationshipConnector end()
+            {
+                return END_PREV;
+            }
+
+            @Override
+            boolean isFirstInChain( RelationshipRecord rel )
+            {
+                return rel.isFirstInStartNodeChain();
+            }
+        },
+        START_NEXT
+        {
+            @Override
+            long get( RelationshipRecord rel )
+            {
+                return rel.getStartNodeNextRel();
+            }
+
+            @Override
+            void set( RelationshipRecord rel, long id, boolean isFirst )
+            {
+                rel.setStartNodeNextRel( id );
+            }
+
+            @Override
+            RelationshipConnector otherSide()
+            {
+                return START_PREV;
+            }
+
+            @Override
+            long compareNode( RelationshipRecord rel )
+            {
+                return rel.getStartNode();
+            }
+
+            @Override
+            RelationshipConnector start()
+            {
+                return this;
+            }
+
+            @Override
+            RelationshipConnector end()
+            {
+                return END_NEXT;
+            }
+
+            @Override
+            boolean isFirstInChain( RelationshipRecord rel )
+            {
+                return rel.isFirstInStartNodeChain();
+            }
+        },
+        END_PREV
+        {
+            @Override
+            long get( RelationshipRecord rel )
+            {
+                return rel.isFirstInEndNodeChain() ? Record.NO_NEXT_RELATIONSHIP.intValue() : rel.getEndNodePrevRel();
+            }
+
+            @Override
+            void set( RelationshipRecord rel, long id, boolean isFirst )
+            {
+                rel.setEndNodePrevRel( id );
+                rel.setFirstInEndNodeChain( isFirst );
+            }
+
+            @Override
+            RelationshipConnector otherSide()
+            {
+                return END_NEXT;
+            }
+
+            @Override
+            long compareNode( RelationshipRecord rel )
+            {
+                return rel.getEndNode();
+            }
+
+            @Override
+            RelationshipConnector start()
+            {
+                return START_PREV;
+            }
+
+            @Override
+            RelationshipConnector end()
+            {
+                return this;
+            }
+
+            @Override
+            boolean isFirstInChain( RelationshipRecord rel )
+            {
+                return rel.isFirstInEndNodeChain();
+            }
+        },
+        END_NEXT
+        {
+            @Override
+            long get( RelationshipRecord rel )
+            {
+                return rel.getEndNodeNextRel();
+            }
+
+            @Override
+            void set( RelationshipRecord rel, long id, boolean isFirst )
+            {
+                rel.setEndNodeNextRel( id );
+            }
+
+            @Override
+            RelationshipConnector otherSide()
+            {
+                return END_PREV;
+            }
+
+            @Override
+            long compareNode( RelationshipRecord rel )
+            {
+                return rel.getEndNode();
+            }
+
+            @Override
+            RelationshipConnector start()
+            {
+                return START_NEXT;
+            }
+
+            @Override
+            RelationshipConnector end()
+            {
+                return this;
+            }
+
+            @Override
+            boolean isFirstInChain( RelationshipRecord rel )
+            {
+                return rel.isFirstInEndNodeChain();
+            }
+        };
+        
+        abstract long get( RelationshipRecord rel );
+        
+        abstract boolean isFirstInChain( RelationshipRecord rel );
+
+        abstract void set( RelationshipRecord rel, long id, boolean isFirt );
+        
+        abstract long compareNode( RelationshipRecord rel );
+        
+        abstract RelationshipConnector otherSide();
+        
+        abstract RelationshipConnector start();
+        
+        abstract RelationshipConnector end();
+    }
+    
+    private void disconnect( RelationshipRecord rel, RelationshipConnector pointer )
+    {
+        long otherRelId = pointer.otherSide().get( rel );
+        if ( otherRelId == Record.NO_NEXT_RELATIONSHIP.intValue() ) return;
+        
+        Relationship lockableRel = new LockableRelationship( otherRelId );
+        getWriteLock( lockableRel );
+        RelationshipRecord otherRel = getRelationshipRecord( otherRelId, false );
+        boolean changed = false;
+        long newId = pointer.get( rel );
+        boolean newIsFirst = pointer.isFirstInChain( rel );
+        if ( otherRel.getStartNode() == pointer.compareNode( rel ) )
+        {
+            pointer.start().set( otherRel, newId, newIsFirst );
+            changed = true;
+        }
+        if ( otherRel.getEndNode() == pointer.compareNode( rel ) )
+        {
+            pointer.end().set( otherRel, newId, newIsFirst );
+            changed = true;
+        }
+        if ( !changed ) throw new InvalidRecordException( otherRel + " don't match " + rel );
+    }
 
     private void disconnectRelationship( RelationshipRecord rel )
     {
-        // update first node prev rel
-        //                       ----------
-        // [prevrel.firstNext]--/   [rel]  \-->[nextrel]
-        if ( rel.getStartNodePrevRel() != Record.NO_NEXT_RELATIONSHIP.intValue() && !rel.isFirstInStartNodeChain() )
-        {   // This rel isn't the first in the first chain
-            Relationship lockableRel = new LockableRelationship(
-                rel.getStartNodePrevRel() );
-            getWriteLock( lockableRel );
-            RelationshipRecord prevRel = getRelationshipRecord( rel.getStartNodePrevRel(), false );
-            boolean changed = false;
-            long next = rel.getStartNodeNextRel();
-            if ( prevRel.getStartNode() == rel.getStartNode() )
-            {
-                prevRel.setStartNodeNextRel( next );
-                changed = true;
-            }
-            if ( prevRel.getEndNode() == rel.getStartNode() )
-            {
-                prevRel.setEndNodeNextRel( next );
-                changed = true;
-            }
-            if ( !changed )
-            {
-                throw new InvalidRecordException( prevRel + " don't match " + rel );
-            }
-        }
-        // update first node next rel
-        //              ----------
-        // [prevrel]<--/   [rel]  \--[nextrel.firstPrev]
-        if ( rel.getStartNodeNextRel() != Record.NO_NEXT_RELATIONSHIP.intValue() )
-        {   // This rel isn't the last in the first chain
-            Relationship lockableRel = new LockableRelationship(
-                rel.getStartNodeNextRel() );
-            getWriteLock( lockableRel );
-            RelationshipRecord nextRel = getRelationshipRecord( rel.getStartNodeNextRel(), false );
-            boolean changed = false;
-            if ( nextRel.getStartNode() == rel.getStartNode() )
-            {
-                nextRel.setStartNodePrevRel( rel.getStartNodePrevRel() );
-                nextRel.setFirstInStartNodeChain( rel.isFirstInStartNodeChain() );
-                changed = true;
-            }
-            if ( nextRel.getEndNode() == rel.getStartNode() )
-            {
-                nextRel.setEndNodePrevRel( rel.getStartNodePrevRel() );
-                nextRel.setFirstInEndNodeChain( rel.isFirstInStartNodeChain() );
-                changed = true;
-            }
-            if ( !changed )
-            {
-                throw new InvalidRecordException( nextRel + " don't match " + rel );
-            }
-        }
-        // update second node prev rel
-        //                        ----------
-        // [prevrel.secondNext]--/   [rel]  \-->[nextrel]
-        if ( rel.getEndNodePrevRel() != Record.NO_NEXT_RELATIONSHIP.intValue() && !rel.isFirstInEndNodeChain() )
-        {   // This rel isn't the first in the second chain
-            Relationship lockableRel = new LockableRelationship(
-                rel.getEndNodePrevRel() );
-            getWriteLock( lockableRel );
-            RelationshipRecord prevRel = getRelationshipRecord( rel.getEndNodePrevRel(), false );
-            boolean changed = false;
-            if ( prevRel.getStartNode() == rel.getEndNode() )
-            {
-                prevRel.setStartNodeNextRel( rel.getEndNodeNextRel() );
-                changed = true;
-            }
-            if ( prevRel.getEndNode() == rel.getEndNode() )
-            {
-                prevRel.setEndNodeNextRel( rel.getEndNodeNextRel() );
-                changed = true;
-            }
-            if ( !changed )
-            {
-                throw new InvalidRecordException( prevRel + " don't match " + rel );
-            }
-        }
-        // update second node next rel
-        //              ----------
-        // [prevrel]<--/   [rel]  \--[nextrel.secondPrev]
-        if ( rel.getEndNodeNextRel() != Record.NO_NEXT_RELATIONSHIP.intValue() )
-        {   // This rel isn't the last in the second chain
-            Relationship lockableRel = new LockableRelationship(
-                rel.getEndNodeNextRel() );
-            getWriteLock( lockableRel );
-            RelationshipRecord nextRel = getRelationshipRecord( rel.getEndNodeNextRel(), false );
-            boolean changed = false;
-            if ( nextRel.getStartNode() == rel.getEndNode() )
-            {
-                nextRel.setStartNodePrevRel( rel.getEndNodePrevRel() );
-                nextRel.setFirstInStartNodeChain( rel.isFirstInEndNodeChain() );
-                changed = true;
-            }
-            if ( nextRel.getEndNode() == rel.getEndNode() )
-            {
-                nextRel.setEndNodePrevRel( rel.getEndNodePrevRel() );
-                nextRel.setFirstInEndNodeChain( rel.isFirstInEndNodeChain() );
-                changed = true;
-            }
-            if ( !changed )
-            {
-                throw new InvalidRecordException( nextRel + " don't match " + rel );
-            }
-        }
+        disconnect( rel, RelationshipConnector.START_NEXT );
+        disconnect( rel, RelationshipConnector.START_PREV );
+        disconnect( rel, RelationshipConnector.END_NEXT );
+        disconnect( rel, RelationshipConnector.END_PREV );
     }
 
     private void getWriteLock( Relationship lockableRel )
@@ -902,16 +1021,6 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         lockReleaser.addLockToTransaction( lockableRel, LockType.WRITE );
     }
 
-//    public RelationshipLoadingPosition getRelationshipChainPosition( long nodeId )
-//    {
-//        NodeRecord nodeRecord = getCachedNodeRecord( nodeId );
-//        if ( nodeRecord != null && nodeRecord.isCreated() )
-//        {
-//            return new SingleChainPosition( Record.NO_NEXT_RELATIONSHIP.intValue() );
-//        }
-//        return ReadTransaction.getRelationshipChainPosition( nodeId, neoStore );
-//    }
-    
     @Override
     public RelationshipLoadingPosition.Definition getRelationshipChainPosition( long id )
     {
@@ -1048,8 +1157,25 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     public ArrayMap<Integer,PropertyData> relLoadProperties( long relId,
             boolean light )
     {
-        RelationshipRecord relRecord = getRelationshipRecord( relId, true, false );
+//        RelationshipRecord relRecord = getRelationshipRecord( relId, true, false );
+//        if ( relRecord != null && relRecord.isCreated() ) return null;
+//        return ReadTransaction.loadProperties( getPropertyStore(), relRecord.getFirstProp() );
+        RelationshipRecord relRecord = getCachedRelationshipRecord( relId );
         if ( relRecord != null && relRecord.isCreated() ) return null;
+        if ( relRecord != null )
+        {
+            if ( !relRecord.inUse() && !light )
+            {
+                throw new IllegalStateException( "Relationship[" + relId +
+                        "] has been deleted in this tx" );
+            }
+        }
+        relRecord = getRelationshipStore().getRecord( relId );
+        if ( !relRecord.inUse() )
+        {
+            throw new InvalidRecordException( "Relationship[" + relId +
+                "] not in use" );
+        }
         return ReadTransaction.loadProperties( getPropertyStore(), relRecord.getFirstProp() );
     }
 
@@ -1346,13 +1472,13 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             if ( primitive.getFirstProp() != Record.NO_NEXT_PROPERTY.intValue() )
             {
                 PropertyRecord prevProp = getPropertyRecord( primitive.getFirstProp(), true, true );
-                adder.add( this, primitive );
                 assert prevProp.getPrevProp() == Record.NO_PREVIOUS_PROPERTY.intValue();
                 prevProp.setPrevProp( host.getId() );
                 host.setNextProp( prevProp.getId() );
                 prevProp.setChanged();
             }
             primitive.setFirstProp( host.getId() );
+            adder.add( this, primitive );
             host.addPropertyBlock( block );
             host.setInUse( true );
         }
@@ -1397,7 +1523,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         while ( relId != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
             getWriteLock( new LockableRelationship( relId ) );
-            relId = relChain( relRecord, node.getId() ).getNext( relRecord );
+            relId = relChain( relRecord, node.getId() ).get( relRecord );
             connectRelationshipToSuperNode( node, relRecord );
             if ( relId == Record.NO_NEXT_RELATIONSHIP.intValue() ) break;
             relRecord = getRelationshipRecord( relId, true );
@@ -1717,13 +1843,13 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         return getNodeRecord( id, checkInUse, true );
     }
     
-    NodeRecord getNodeRecord( long id, boolean checkInUse, boolean cache )
+    NodeRecord getNodeRecord( long id, boolean checkInUse, boolean add )
     {
         NodeRecord node = getCachedNodeRecord( id );
         if ( node == null )
         {
             node = getNodeStore().getRecord( id );
-            if ( cache ) cacheNodeRecord( node );
+            if ( add ) cacheNodeRecord( node );
         }
         if ( checkInUse && !node.inUse() ) throw new IllegalStateException( "Node[" + id + "] is deleted" );
         return node;
@@ -1744,13 +1870,13 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         return getRelationshipRecord( id, checkInUse, true );
     }
     
-    RelationshipRecord getRelationshipRecord( long id, boolean checkInUse, boolean cache )
+    RelationshipRecord getRelationshipRecord( long id, boolean checkInUse, boolean add )
     {
         RelationshipRecord record = getCachedRelationshipRecord( id );
         if ( record == null )
         {
             record = getRelationshipStore().getRecord( id );
-            if ( cache ) cacheRelationshipRecord( record );
+            if ( add ) cacheRelationshipRecord( record );
         }
         if ( checkInUse && !record.inUse() ) throw new IllegalStateException( "Relationship[" + id + "] has been deleted" );
         return record;
@@ -2127,74 +2253,10 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
                (nodeId == rel.getEndNode() && rel.isFirstInEndNodeChain());
     }
     
-    private static enum Chain
+    private static RelationshipConnector relChain( RelationshipRecord rel, long nodeId )
     {
-        FIRST
-        {
-            @Override
-            long getPrev( RelationshipRecord rel )
-            {
-                return rel.getStartNodePrevRel();
-            }
-
-            @Override
-            void setPrev( RelationshipRecord rel, long id )
-            {
-                rel.setStartNodePrevRel( id );
-            }
-
-            @Override
-            long getNext( RelationshipRecord rel )
-            {
-                return rel.getStartNodeNextRel();
-            }
-
-            @Override
-            void setNext( RelationshipRecord rel, long id )
-            {
-                rel.setStartNodeNextRel( id );
-            }
-        },
-        SECOND
-        {
-            @Override
-            long getPrev( RelationshipRecord rel )
-            {
-                return rel.getEndNodePrevRel();
-            }
-
-            @Override
-            void setPrev( RelationshipRecord rel, long id )
-            {
-                rel.setEndNodePrevRel( id );
-            }
-
-            @Override
-            long getNext( RelationshipRecord rel )
-            {
-                return rel.getEndNodeNextRel();
-            }
-
-            @Override
-            void setNext( RelationshipRecord rel, long id )
-            {
-                rel.setEndNodeNextRel( id );
-            }
-        };
-        
-        abstract long getPrev( RelationshipRecord rel );
-        
-        abstract void setPrev( RelationshipRecord rel, long id );
-        
-        abstract long getNext( RelationshipRecord rel );
-        
-        abstract void setNext( RelationshipRecord rel, long id );
-    }
-    
-    private static Chain relChain( RelationshipRecord rel, long nodeId )
-    {
-        if ( rel.getStartNode() == nodeId ) return Chain.FIRST;
-        if ( rel.getEndNode() == nodeId ) return Chain.SECOND;
+        if ( rel.getStartNode() == nodeId ) return RelationshipConnector.START_NEXT;
+        if ( rel.getEndNode() == nodeId ) return RelationshipConnector.END_NEXT;
         throw new RuntimeException( nodeId + " neither first not second in " + rel );
     }
 

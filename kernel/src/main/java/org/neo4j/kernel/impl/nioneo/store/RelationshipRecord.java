@@ -90,9 +90,9 @@ public class RelationshipRecord extends PrimitiveRecord
         return startNodeNextRel;
     }
 
-    public void setStartNodeNextRel( long firstNextRel )
+    public void setStartNodeNextRel( long rel )
     {
-        this.startNodeNextRel = firstNextRel;
+        this.startNodeNextRel = rel;
     }
 
     public long getEndNodePrevRel()

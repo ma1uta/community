@@ -42,7 +42,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
@@ -55,11 +54,8 @@ import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.core.RelationshipLoadingPosition;
-import org.neo4j.kernel.impl.core.SingleChainPosition;
-import org.neo4j.kernel.impl.core.SuperNodeChainPosition;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaConnection;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
-import org.neo4j.kernel.impl.persistence.NeoStoreTransaction;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.PlaceboTm;
 import org.neo4j.kernel.impl.transaction.XidImpl;
@@ -354,32 +350,9 @@ public class TestNeoStore extends AbstractNeo4jTestCase
 
     private RelationshipLoadingPosition getPosition( NeoStoreXaConnection xaCon, long nodeId )
     {
-        NodeRecord node = xaCon.getWriteTransaction().nodeLoadLight( nodeId );
-        if ( !node.isSuperNode() ) return new SingleChainPosition( node.getFirstRel() );
-        
-        Map<Integer, RelationshipGroupRecord> rawGroups = xaCon.getWriteTransaction().loadRelationshipGroups( nodeId, node.getFirstRel() );
-        Map<String, RelationshipGroupRecord> groups = new HashMap<String, RelationshipGroupRecord>();
-        RelationshipType[] types = new RelationshipType[rawGroups.size()];
-        int i = 0;
-        Map<Integer, RelationshipType> allTypes = loadTypes( xaCon.getWriteTransaction() );
-        for ( Map.Entry<Integer, RelationshipGroupRecord> entry : rawGroups.entrySet() )
-        {
-            RelationshipType type = allTypes.get( entry.getKey() );
-            groups.put( type.name(), entry.getValue() );
-            types[i++] = type;
-        }
-        return new SuperNodeChainPosition( types, groups );
+        return xaCon.getWriteTransaction().getRelationshipChainPosition( nodeId ).build( getNodeManager() );
     }
 
-    private Map<Integer, RelationshipType> loadTypes( NeoStoreTransaction tx )
-    {
-        NameData[] data = tx.loadRelationshipTypes();
-        Map<Integer, RelationshipType> result = new HashMap<Integer, RelationshipType>();
-        for ( NameData d : data ) result.put( d.getId(), DynamicRelationshipType.withName( d.getName() ) );
-        return result;
-    }
-
-    @SuppressWarnings( "unchecked" )
     private Iterable<RelationshipRecord> getMore( NeoStoreXaConnection xaCon, long node, RelationshipLoadingPosition pos )
     {
         Map<DirectionWrapper, Iterable<RelationshipRecord>> rels =

@@ -115,7 +115,7 @@ public class PersistenceManager
     {
         return getReadOnlyResourceIfPossible().relLoadProperties( relId, light );
     }
-    
+
     public RelationshipRecord loadLightRelationship( long id )
     {
         return getReadOnlyResourceIfPossible().relLoadLight( id );
