@@ -103,14 +103,7 @@ class ReadTransaction implements NeoStoreTransaction
         return getRelationshipStore().getLightRel( id );
     }
 
-    @Override
-    public Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( long node, long firstGroup )
-    {
-        return loadRelationshipGroups( node, firstGroup, getRelationshipGroupStore() );
-    }
-
-    static Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( long node, long firstGroup,
-            RelationshipGroupStore store )
+    static Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( long firstGroup, RelationshipGroupStore store )
     {
         long groupId = firstGroup;
         long previousGroupId = Record.NO_NEXT_RELATIONSHIP.intValue();
@@ -129,7 +122,7 @@ class ReadTransaction implements NeoStoreTransaction
     private Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( NodeRecord node )
     {
         assert node.isSuperNode();
-        return loadRelationshipGroups( node.getId(), node.getFirstRel() );
+        return loadRelationshipGroups( node.getFirstRel(), getRelationshipGroupStore() );
     }
     
     @Override
@@ -591,7 +584,7 @@ class ReadTransaction implements NeoStoreTransaction
         {
             long firstGroup = node.getFirstRel();
             if ( firstGroup == Record.NO_NEXT_RELATIONSHIP.intValue() ) return RelationshipLoadingPosition.EMPTY_DEFINITION;
-            Map<Integer, RelationshipGroupRecord> groups = loadRelationshipGroups( id, firstGroup, groupStore );
+            Map<Integer, RelationshipGroupRecord> groups = loadRelationshipGroups( firstGroup, groupStore );
             return new SuperNodeChainPosition.Definition( groups );
         }
         else

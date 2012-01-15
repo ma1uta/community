@@ -161,12 +161,22 @@ abstract class ArrayBasedPrimitive extends Primitive
             {
                 PropertyData[] compactedNewArray = new PropertyData[newArraySize];
                 System.arraycopy( newArray, 0, compactedNewArray, 0, newArraySize );
+                assert !anyNullItem( compactedNewArray );
                 properties = compactedNewArray;
             }
             else
             {
+                assert !anyNullItem( newArray );
                 properties = newArray;
             }
         }
+    }
+
+    private boolean anyNullItem( PropertyData[] array )
+    {
+        for ( PropertyData item : array )
+            if ( item == null )
+                return true;
+        return false;
     }
 }

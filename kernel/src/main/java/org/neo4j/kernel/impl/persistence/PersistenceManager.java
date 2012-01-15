@@ -42,7 +42,6 @@ import org.neo4j.kernel.impl.core.TxEventSyncHookFactory;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
-import org.neo4j.kernel.impl.nioneo.store.RelationshipGroupRecord;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
 import org.neo4j.kernel.impl.nioneo.xa.NioNeoDbPersistenceSource;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
@@ -423,11 +422,6 @@ public class PersistenceManager
     public Integer[] getRelationshipTypes( long id )
     {
         return getReadOnlyResourceIfPossible().getRelationshipTypes( id );
-    }
-
-    public Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( long id, long firstRel )
-    {
-        return getReadOnlyResourceIfPossible().loadRelationshipGroups( id, firstRel );
     }
 
     public RelationshipLoadingPosition.Definition getRelationshipChainPosition( long id )

@@ -210,8 +210,7 @@ class NodeImpl extends ArrayBasedPrimitive
     public Iterable<Relationship> getRelationships( NodeManager nodeManager )
     {
         return new IntArrayIterator( getAllRelationships( nodeManager, DirectionWrapper.BOTH ), this,
-            DirectionWrapper.BOTH, nodeManager, new RelationshipType[0], !hasMoreRelationshipsToLoad(
-                    DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES ) );
+            DirectionWrapper.BOTH, nodeManager, new RelationshipType[0], !hasMoreRelationshipsToLoad() );
     }
 
     public Iterable<Relationship> getRelationships( NodeManager nodeManager, Direction dir )
@@ -331,8 +330,7 @@ class NodeImpl extends ArrayBasedPrimitive
     void removeRelationship( NodeManager nodeManager, RelationshipType type, long relId, Direction direction )
     {
         SetAndDirectionCounter relationshipSet = nodeManager.getOrCreateCowRelationshipRemoveMap( this, type.name() );
-        relationshipSet.set.add( relId );
-        relationshipSet.incrementCount( direction );
+        relationshipSet.add( relId, direction );
     }
 
     private void ensureRelationshipMapNotNull( NodeManager nodeManager )
@@ -349,8 +347,8 @@ class NodeImpl extends ArrayBasedPrimitive
         synchronized ( this )
         {
             if ( relationships == null )
-            {   // We got the relChainPosition in the constructor
-                this.relChainPosition = initializeRelChainPosition( nodeManager, this.relChainPosition );
+            {
+                this.relChainPosition = nodeManager.getRelationshipChainPosition( this );
                 ArrayMap<String,RelIdArray> tmpRelMap = new ArrayMap<String,RelIdArray>();
                 rels = getInitialRelationships( nodeManager, tmpRelMap );
                 this.relationships = toRelIdArray( tmpRelMap );
@@ -360,11 +358,6 @@ class NodeImpl extends ArrayBasedPrimitive
         {
             nodeManager.putAllInRelCache( rels.other() );
         }
-    }
-
-    protected RelationshipLoadingPosition initializeRelChainPosition( NodeManager nm, RelationshipLoadingPosition cachedPosition )
-    {
-        return nm.getRelationshipChainPosition( this ).build( nm );
     }
 
     private RelIdArray[] toRelIdArray( ArrayMap<String, RelIdArray> tmpRelMap )
@@ -386,7 +379,7 @@ class NodeImpl extends ArrayBasedPrimitive
     protected Pair<ArrayMap<String,RelIdArray>,Map<Long,RelationshipImpl>> getInitialRelationships(
             NodeManager nodeManager, ArrayMap<String,RelIdArray> tmpRelMap )
     {
-        if ( !hasMoreRelationshipsToLoad( DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES ) )
+        if ( !hasMoreRelationshipsToLoad() )
         {
             return null;
         }
@@ -651,7 +644,7 @@ class NodeImpl extends ArrayBasedPrimitive
 
     private void moreRelationshipsLoaded()
     {
-        if ( relationships != null && !hasMoreRelationshipsToLoad( DirectionWrapper.BOTH, NO_RELATIONSHIP_TYPES ) )
+        if ( relationships != null && !hasMoreRelationshipsToLoad() )
         {
             // Shrink arrays
             for ( int i = 0; i < relationships.length; i++ )

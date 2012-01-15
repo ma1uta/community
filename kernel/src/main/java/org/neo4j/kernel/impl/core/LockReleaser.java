@@ -146,9 +146,9 @@ public class LockReleaser
     
     static class SetAndDirectionCounter
     {
-        Collection<Long> set = new HashSet<Long>();
-        AtomicInteger totalCount = new AtomicInteger();
-        Map<Direction, MutableInteger> counters =
+        final Collection<Long> set = new HashSet<Long>();
+        final AtomicInteger totalCount = new AtomicInteger();
+        private final Map<Direction, MutableInteger> counters =
                 new EnumMap<Direction, MutableInteger>( Direction.class );
         {
             counters.put( Direction.OUTGOING, new MutableInteger() );
@@ -156,16 +156,18 @@ public class LockReleaser
             counters.put( Direction.BOTH, new MutableInteger() );
         }
         
+        void add( long id, Direction direction )
+        {
+            set.add( id );
+            
+            counters.get( direction ).value++;
+            totalCount.incrementAndGet();
+        }
+        
         int getCount( Direction direction )
         {
             return direction == Direction.BOTH ? totalCount.get() :
                     counters.get( direction ).value + counters.get( Direction.BOTH ).value;
-        }
-        
-        void incrementCount( Direction direction )
-        {
-            counters.get( direction ).value++;
-            totalCount.incrementAndGet();
         }
     }
 

@@ -1070,9 +1070,9 @@ public class NodeManager
         persistenceManager.relRemoveProperty( rel.getId(), property );
     }
     
-    RelationshipLoadingPosition.Definition getRelationshipChainPosition( NodeImpl node )
+    RelationshipLoadingPosition getRelationshipChainPosition( NodeImpl node )
     {
-        return persistenceManager.getRelationshipChainPosition( node.getId() );
+        return persistenceManager.getRelationshipChainPosition( node.getId() ).build( this );
     }
     
     public ArrayMap<String, SetAndDirectionCounter> getCowRelationshipRemoveMap( NodeImpl node )

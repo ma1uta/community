@@ -29,7 +29,6 @@ import org.neo4j.kernel.impl.core.RelationshipLoadingPosition;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
 import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
-import org.neo4j.kernel.impl.nioneo.store.RelationshipGroupRecord;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.util.ArrayMap;
@@ -292,8 +291,6 @@ public interface NeoStoreTransaction
      * @param name The name of the relationship type.
      */
     public void createRelationshipType( int id, String name );
-
-    public Map<Integer, RelationshipGroupRecord> loadRelationshipGroups( long node, long firstGroup );
 
     /*
      * List<Iterable<RelationshipRecord>> is a list with three items:

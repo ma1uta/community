@@ -32,7 +32,7 @@ public class NeoStoreRecord extends PrimitiveRecord
     {
         return getClass().getSimpleName() + "[" +
                 "used=" + inUse() +
-                ",nextProp=" + getFirstProp() +
+                ",prop=" + getFirstProp() +
                 "]";
     }
 }
