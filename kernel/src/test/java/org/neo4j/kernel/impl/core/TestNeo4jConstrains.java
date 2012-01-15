@@ -138,10 +138,7 @@ public class TestNeo4jConstrains extends AbstractNeo4jTestCase
         Relationship rel1 = node0.createRelationshipTo( node2, MyRelTypes.TEST );
         node1.delete();
         rel0.delete();
-        Transaction tx = getTransaction();
-        tx.success();
-        tx.finish();
-        setTransaction( getGraphDb().beginTx() );
+        newTransaction();
         node2.delete();
         rel1.delete();
         node0.delete();

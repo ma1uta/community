@@ -41,9 +41,9 @@ public class SuperNodeChainPosition implements RelationshipLoadingPosition
         }
         
         @Override
-        public RelationshipLoadingPosition build( NodeManager nm )
+        public RelationshipLoadingPosition build( RelationshipGroupTranslator translator )
         {
-            Pair<RelationshipType[], Map<String, RelationshipGroupRecord>> translation = nm.translateRelationshipGroups( groups );
+            Pair<RelationshipType[], Map<String, RelationshipGroupRecord>> translation = translator.translateRelationshipGroups( groups );
             return new SuperNodeChainPosition( translation.first(), translation.other() );
         }
     }

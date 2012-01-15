@@ -1392,7 +1392,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         DirectionWrapper dir = wrapDirection( rel, node );
         long nextRel = dir.getNextRel( group );
         setCorrectNextRel( node, rel, nextRel );
-        // TODO connect( node.getId(), nextRel, rel );
+        connect( node.getId(), nextRel, rel );
         dir.setNextRel( group, rel.getId() );
     }
     
@@ -1484,22 +1484,26 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
 
     private void connect( NodeRecord node, RelationshipRecord rel )
     {
+        connect( node.getId(), node.getFirstRel(), rel );
+    }
+    
+    private void connect( long nodeId, long firstRelId, RelationshipRecord rel )
+    {
         long newCount = 1;
-        long firstRelId = node.getFirstRel();
         if ( firstRelId != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
             Relationship lockableRel = new LockableRelationship( firstRelId );
             getWriteLock( lockableRel );
             RelationshipRecord firstRel = getRelationshipRecord( firstRelId, false );
             boolean changed = false;
-            if ( firstRel.getStartNode() == node.getId() )
+            if ( firstRel.getStartNode() == nodeId )
             {
                 newCount = firstRel.getStartNodePrevRel()+1;
                 firstRel.setStartNodePrevRel( rel.getId() );
                 firstRel.setFirstInStartNodeChain( false );
                 changed = true;
             }
-            if ( firstRel.getEndNode() == node.getId() )
+            if ( firstRel.getEndNode() == nodeId )
             {
                 newCount = firstRel.getEndNodePrevRel()+1;
                 firstRel.setEndNodePrevRel( rel.getId() );
@@ -1508,17 +1512,17 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             }
             if ( !changed )
             {
-                throw new InvalidRecordException( node.getId() + " dont match " + firstRel );
+                throw new InvalidRecordException( nodeId + " dont match " + firstRel );
             }
         }
         
         // Set the relationship count
-        if ( rel.getStartNode() == node.getId() )
+        if ( rel.getStartNode() == nodeId )
         {
             rel.setStartNodePrevRel( newCount );
             rel.setFirstInStartNodeChain( true );
         }
-        if ( rel.getEndNode() == node.getId() )
+        if ( rel.getEndNode() == nodeId )
         {
             rel.setEndNodePrevRel( newCount );
             rel.setFirstInEndNodeChain( true );

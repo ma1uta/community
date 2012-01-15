@@ -22,11 +22,13 @@ package org.neo4j.kernel.impl.nioneo.store;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.neo4j.graphdb.DynamicRelationshipType.withName;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -45,6 +47,7 @@ import org.junit.Test;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.collection.CombiningIterable;
 import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.CommonFactories;
@@ -53,6 +56,7 @@ import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.core.PropertyIndex;
+import org.neo4j.kernel.impl.core.RelationshipGroupTranslator;
 import org.neo4j.kernel.impl.core.RelationshipLoadingPosition;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaConnection;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
@@ -260,10 +264,17 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         PropertyData n2prop3 = xaCon.getWriteTransaction().nodeAddProperty(
                 node2, index( "prop3" ), false );
 
+        GroupTranslator groupTranslator = new GroupTranslator();
         int relType1 = (int) ds.nextId( RelationshipType.class );
-        xaCon.getWriteTransaction().createRelationshipType( relType1, "relationshiptype1" );
+        String typeName1 = "relationshiptype1";
+        xaCon.getWriteTransaction().createRelationshipType( relType1, typeName1 );
+        groupTranslator.add( relType1, typeName1 );
+        
         int relType2 = (int) ds.nextId( RelationshipType.class );
-        xaCon.getWriteTransaction().createRelationshipType( relType2, "relationshiptype2" );
+        String typeName2 = "relationshiptype2";
+        xaCon.getWriteTransaction().createRelationshipType( relType2, typeName2 );
+        groupTranslator.add( relType2, typeName2 );
+        
         long rel1 = ds.nextId( Relationship.class );
         xaCon.getWriteTransaction().relationshipCreate( rel1, relType1, node1, node2 );
         long rel2 = ds.nextId( Relationship.class );
@@ -289,9 +300,9 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         startTx();
         // validate node
         validateNodeRel1( node1, n1prop1, n1prop2, n1prop3, rel1, rel2,
-                relType1, relType2 );
+                relType1, relType2, groupTranslator );
         validateNodeRel2( node2, n2prop1, n2prop2, n2prop3, rel1, rel2,
-                relType1, relType2 );
+                relType1, relType2, groupTranslator );
         // validate rels
         validateRel1( rel1, r1prop1, r1prop2, r1prop3, node1, node2, relType1 );
         validateRel2( rel2, r2prop1, r2prop2, r2prop3, node2, node1, relType2 );
@@ -304,11 +315,11 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         initializeStores();
         startTx();
         // validate and delete rels
-        deleteRel1( rel1, r1prop1, r1prop2, r1prop3, node1, node2, relType1 );
-        deleteRel2( rel2, r2prop1, r2prop2, r2prop3, node2, node1, relType2 );
+        deleteRel1( rel1, r1prop1, r1prop2, r1prop3, node1, node2, relType1, groupTranslator );
+        deleteRel2( rel2, r2prop1, r2prop2, r2prop3, node2, node1, relType2, groupTranslator );
         // validate and delete nodes
-        deleteNode1( node1, n1prop1, n1prop2, n1prop3 );
-        deleteNode2( node2, n2prop1, n2prop2, n2prop3 );
+        deleteNode1( node1, n1prop1, n1prop2, n1prop3, groupTranslator );
+        deleteNode2( node2, n2prop1, n2prop2, n2prop3, groupTranslator );
         commitTx();
         ds.close();
 
@@ -337,7 +348,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         }
         for ( int i = 0; i < 3; i++ )
         {
-            RelationshipLoadingPosition pos = getPosition( xaCon, nodeIds[i] );
+            RelationshipLoadingPosition pos = getPosition( xaCon, nodeIds[i], groupTranslator );
             for ( RelationshipRecord rel : getMore( xaCon, nodeIds[i], pos ) )
             {
                 xaCon.getWriteTransaction().relDelete( rel.getId() );
@@ -348,9 +359,9 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         ds.close();
     }
 
-    private RelationshipLoadingPosition getPosition( NeoStoreXaConnection xaCon, long nodeId )
+    private RelationshipLoadingPosition getPosition( NeoStoreXaConnection xaCon, long nodeId, RelationshipGroupTranslator translator )
     {
-        return xaCon.getWriteTransaction().getRelationshipChainPosition( nodeId ).build( getNodeManager() );
+        return xaCon.getWriteTransaction().getRelationshipChainPosition( nodeId ).build( translator );
     }
 
     private Iterable<RelationshipRecord> getMore( NeoStoreXaConnection xaCon, long node, RelationshipLoadingPosition pos )
@@ -380,7 +391,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
      */
     private void validateNodeRel1( long node, PropertyData prop1,
             PropertyData prop2, PropertyData prop3, long rel1, long rel2,
-            int relType1, int relType2 ) throws IOException
+            int relType1, int relType2, RelationshipGroupTranslator groupTranslator ) throws IOException
     {
         assertTrue( xaCon.getWriteTransaction().nodeLoadLight( node ).inUse() );
         ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node, false );
@@ -420,7 +431,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         }
         assertEquals( 3, count );
         count = 0;
-        RelationshipLoadingPosition pos = getPosition( xaCon, node );
+        RelationshipLoadingPosition pos = getPosition( xaCon, node, groupTranslator );
         while ( true )
         {
             Iterable<RelationshipRecord> relData = getMore( xaCon, node, pos );
@@ -452,7 +463,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
 
     private void validateNodeRel2( long node, PropertyData prop1,
             PropertyData prop2, PropertyData prop3,
-        long rel1, long rel2, int relType1, int relType2 ) throws IOException
+        long rel1, long rel2, int relType1, int relType2, RelationshipGroupTranslator groupTranslator ) throws IOException
     {
         assertTrue( xaCon.getWriteTransaction().nodeLoadLight( node ).inUse() );
         ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node,
@@ -494,7 +505,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         assertEquals( 3, count );
         count = 0;
 
-        RelationshipLoadingPosition pos = getPosition( xaCon, node );
+        RelationshipLoadingPosition pos = getPosition( xaCon, node, groupTranslator );
         while ( true )
         {
             Iterable<RelationshipRecord> relData = getMore( xaCon, node, pos );
@@ -649,8 +660,8 @@ public class TestNeoStore extends AbstractNeo4jTestCase
     }
 
     private void deleteRel1( long rel, PropertyData prop1, PropertyData prop2,
-            PropertyData prop3,
-        long firstNode, long secondNode, int relType ) throws IOException
+            PropertyData prop3, long firstNode, long secondNode, int relType, RelationshipGroupTranslator groupTranslator )
+                    throws IOException
     {
         ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().relLoadProperties( rel,
                 false );
@@ -693,10 +704,10 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         assertEquals( secondNode, relData.getEndNode() );
         assertEquals( relType, relData.getType() );
         xaCon.getWriteTransaction().relDelete( rel );
-        RelationshipLoadingPosition firstPos = getPosition( xaCon, firstNode );
+        RelationshipLoadingPosition firstPos = getPosition( xaCon, firstNode, groupTranslator );
         Iterator<RelationshipRecord> first = getMore( xaCon, firstNode, firstPos ).iterator();
         first.next();
-        RelationshipLoadingPosition secondPos = getPosition( xaCon, secondNode );
+        RelationshipLoadingPosition secondPos = getPosition( xaCon, secondNode, groupTranslator );
         Iterator<RelationshipRecord> second = getMore( xaCon, secondNode, secondPos ).iterator();
         second.next();
         assertTrue( first.hasNext() );
@@ -704,8 +715,8 @@ public class TestNeoStore extends AbstractNeo4jTestCase
     }
 
     private void deleteRel2( long rel, PropertyData prop1, PropertyData prop2,
-            PropertyData prop3,
-            long firstNode, long secondNode, int relType ) throws IOException
+            PropertyData prop3, long firstNode, long secondNode, int relType, GroupTranslator groupTranslator )
+                    throws IOException
     {
         ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().relLoadProperties( rel,
                 false );
@@ -748,16 +759,16 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         assertEquals( secondNode, relData.getEndNode() );
         assertEquals( relType, relData.getType() );
         xaCon.getWriteTransaction().relDelete( rel );
-        RelationshipLoadingPosition firstPos = getPosition( xaCon, firstNode );
+        RelationshipLoadingPosition firstPos = getPosition( xaCon, firstNode, groupTranslator );
         Iterator<RelationshipRecord> first = getMore( xaCon, firstNode, firstPos ).iterator();
-        RelationshipLoadingPosition secondPos = getPosition( xaCon, secondNode );
+        RelationshipLoadingPosition secondPos = getPosition( xaCon, secondNode, groupTranslator );
         Iterator<RelationshipRecord> second = getMore( xaCon, secondNode, secondPos ).iterator();
         assertTrue( first.hasNext() );
         assertTrue( second.hasNext() );
     }
 
     private void deleteNode1( long node, PropertyData prop1,
-            PropertyData prop2, PropertyData prop3 )
+            PropertyData prop2, PropertyData prop3, RelationshipGroupTranslator groupTranslator )
         throws IOException
     {
         ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node, false );
@@ -795,14 +806,14 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         }
         assertEquals( 3, count );
         assertEquals( 3, xaCon.getWriteTransaction().nodeLoadProperties( node, false ).size() );
-        RelationshipLoadingPosition pos = getPosition( xaCon, node );
+        RelationshipLoadingPosition pos = getPosition( xaCon, node, groupTranslator );
         Iterator<RelationshipRecord> rels = getMore( xaCon, node, pos ).iterator();
         assertTrue( rels.hasNext() );
         xaCon.getWriteTransaction().nodeDelete( node );
     }
 
     private void deleteNode2( long node, PropertyData prop1,
-            PropertyData prop2, PropertyData prop3 )
+            PropertyData prop2, PropertyData prop3, RelationshipGroupTranslator groupTranslator )
         throws IOException
     {
         ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node, false );
@@ -840,7 +851,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         }
         assertEquals( 3, count );
         assertEquals( 3, xaCon.getWriteTransaction().nodeLoadProperties( node, false ).size() );
-        RelationshipLoadingPosition pos = getPosition( xaCon, node );
+        RelationshipLoadingPosition pos = getPosition( xaCon, node, groupTranslator );
         Iterator<RelationshipRecord> rels = getMore( xaCon, node, pos ).iterator();
         assertTrue( rels.hasNext() );
         xaCon.getWriteTransaction().nodeDelete( node );
@@ -860,7 +871,10 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         initializeStores();
         startTx();
         int relType1 = (int) ds.nextId( RelationshipType.class );
-        xaCon.getWriteTransaction().createRelationshipType( relType1, "relationshiptype1" );
+        String typeName = "relationshiptype1";
+        xaCon.getWriteTransaction().createRelationshipType( relType1, typeName );
+        GroupTranslator groupTranslator = new GroupTranslator();
+        groupTranslator.add( relType1, typeName );
         long nodeIds[] = new long[3];
         for ( int i = 0; i < 3; i++ )
         {
@@ -878,7 +892,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         startTx();
         for ( int i = 0; i < 3; i+=2 )
         {
-            RelationshipLoadingPosition pos = getPosition( xaCon, nodeIds[i] );
+            RelationshipLoadingPosition pos = getPosition( xaCon, nodeIds[i], groupTranslator );
             for ( RelationshipRecord rel : getMore( xaCon, nodeIds[i], pos ) )
             {
                 xaCon.getWriteTransaction().relDelete( rel.getId() );
@@ -896,7 +910,10 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         initializeStores();
         startTx();
         int relType1 = (int) ds.nextId( RelationshipType.class );
-        xaCon.getWriteTransaction().createRelationshipType( relType1, "relationshiptype1" );
+        String typeName = "relationshiptype1";
+        xaCon.getWriteTransaction().createRelationshipType( relType1, typeName );
+        GroupTranslator groupTranslator = new GroupTranslator();
+        groupTranslator.add( relType1, typeName );
         long nodeIds[] = new long[3];
         for ( int i = 0; i < 3; i++ )
         {
@@ -916,7 +933,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         startTx();
         for ( int i = 0; i < 3; i++ )
         {
-            RelationshipLoadingPosition pos = getPosition( xaCon, nodeIds[i] );
+            RelationshipLoadingPosition pos = getPosition( xaCon, nodeIds[i], groupTranslator );
             for ( RelationshipRecord rel : getMore( xaCon, nodeIds[i], pos ) )
             {
                 xaCon.getWriteTransaction().relDelete( rel.getId() );
@@ -1034,5 +1051,30 @@ public class TestNeoStore extends AbstractNeo4jTestCase
                 IdGeneratorFactory.class, CommonFactories.defaultIdGeneratorFactory() ) );
         assertEquals( 12, neoStore.getVersion() );
         neoStore.close();
+    }
+    
+    class GroupTranslator implements RelationshipGroupTranslator
+    {
+        private final Map<Integer, RelationshipType> types = new HashMap<Integer, RelationshipType>();
+        
+        void add( int typeId, String name )
+        {
+            types.put( typeId, withName( name ) );
+        }
+        
+        @Override
+        public Pair<RelationshipType[], Map<String, RelationshipGroupRecord>> translateRelationshipGroups(
+                Map<Integer, RelationshipGroupRecord> rawGroups )
+        {
+            Collection<RelationshipType> types = new ArrayList<RelationshipType>();
+            Map<String, RelationshipGroupRecord> map = new HashMap<String, RelationshipGroupRecord>();
+            for ( Map.Entry<Integer, RelationshipGroupRecord> entry : rawGroups.entrySet() )
+            {
+                RelationshipType type = this.types.get( entry.getKey() );
+                types.add( type );
+                map.put( type.name(), entry.getValue() );
+            }
+            return Pair.of( types.toArray( new RelationshipType[types.size()] ), map );
+        }
     }
 }

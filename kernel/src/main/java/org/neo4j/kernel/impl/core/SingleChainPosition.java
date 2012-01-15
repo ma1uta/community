@@ -59,7 +59,7 @@ public class SingleChainPosition implements RelationshipLoadingPosition, Relatio
     }
 
     @Override
-    public RelationshipLoadingPosition build( NodeManager nm )
+    public RelationshipLoadingPosition build( RelationshipGroupTranslator translator )
     {
         return this;
     }

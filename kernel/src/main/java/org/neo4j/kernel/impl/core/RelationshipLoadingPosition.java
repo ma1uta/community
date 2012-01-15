@@ -60,13 +60,13 @@ public interface RelationshipLoadingPosition
     
     public interface Definition
     {
-        RelationshipLoadingPosition build( NodeManager nm );
+        RelationshipLoadingPosition build( RelationshipGroupTranslator translator );
     }
     
     public static final Definition EMPTY_DEFINITION = new Definition()
     {
         @Override
-        public RelationshipLoadingPosition build( NodeManager nm )
+        public RelationshipLoadingPosition build( RelationshipGroupTranslator translator )
         {
             return EMPTY;
         }

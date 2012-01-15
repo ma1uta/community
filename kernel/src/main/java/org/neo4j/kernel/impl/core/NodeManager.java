@@ -70,7 +70,7 @@ import org.neo4j.kernel.impl.util.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArray;
 import org.neo4j.kernel.impl.util.RelIdArrayWithLoops;
 
-public class NodeManager
+public class NodeManager implements RelationshipGroupTranslator
 {
     private static Logger log = Logger.getLogger( NodeManager.class.getName() );
 
@@ -1361,7 +1361,7 @@ public class NodeManager
         };
     }
 
-    Pair<RelationshipType[], Map<String, RelationshipGroupRecord>> translateRelationshipGroups( Map<Integer, RelationshipGroupRecord> rawGroups )
+    public Pair<RelationshipType[], Map<String, RelationshipGroupRecord>> translateRelationshipGroups( Map<Integer, RelationshipGroupRecord> rawGroups )
     {
         Map<String, RelationshipGroupRecord> groups = new HashMap<String, RelationshipGroupRecord>();
         RelationshipType[] types = new RelationshipType[rawGroups.size()];
@@ -1369,6 +1369,7 @@ public class NodeManager
         for ( Map.Entry<Integer, RelationshipGroupRecord> entry : rawGroups.entrySet() )
         {
             RelationshipType type = getRelationshipTypeById( entry.getKey() );
+            assert type != null;
             groups.put( type.name(), entry.getValue() );
             types[i++] = type;
         }
