@@ -1,5 +1,3 @@
-package org.neo4j.cypher
-
 /**
  * Copyright (c) 2002-2011 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
@@ -19,26 +17,17 @@ package org.neo4j.cypher
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+package org.neo4j.cypher.internal.parser.v15
 
 import org.neo4j.cypher.commands._
 
-class CypherParser {
-
-  val v15 = new internal.parser.v15.CypherParser
-  val v16 = new internal.parser.v16.CypherParser
-
-  @throws(classOf[SyntaxException])
-  def parse(queryText: String): Query = if (queryText.startsWith("cypher")) {
-    val q = queryText.slice(11, queryText.length())
-    val v = queryText.slice(7, 10)
-
-    v match {
-      case "1.5" => v15.parse(q)
-      case "1.6" => v16.parse(q)
-      case _ => throw new SyntaxException("Only versions supported are 1.5 and 1.6")
-    }
+trait ConsoleMode extends ReturnItems {
+  override def returnValues: Parser[Expression] = (nullableProperty | value | entityValue) ^^ {
+    case Property(v,p) => Nullable(Property(v,p))
+    case x => x
   }
-  else {
-    v16.parse(queryText)
-  }
+}
+
+class ConsoleCypherParser extends CypherParser with ConsoleMode {
+
 }

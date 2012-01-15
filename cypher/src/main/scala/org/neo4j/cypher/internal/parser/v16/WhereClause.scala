@@ -1,4 +1,4 @@
-package org.neo4j.cypher
+package org.neo4j.cypher.internal.parser.v16
 
 /**
  * Copyright (c) 2002-2011 "Neo Technology,"
@@ -21,24 +21,19 @@ package org.neo4j.cypher
  */
 
 import org.neo4j.cypher.commands._
+import scala.util.parsing.combinator._
 
-class CypherParser {
-
-  val v15 = new internal.parser.v15.CypherParser
-  val v16 = new internal.parser.v16.CypherParser
-
-  @throws(classOf[SyntaxException])
-  def parse(queryText: String): Query = if (queryText.startsWith("cypher")) {
-    val q = queryText.slice(11, queryText.length())
-    val v = queryText.slice(7, 10)
-
-    v match {
-      case "1.5" => v15.parse(q)
-      case "1.6" => v16.parse(q)
-      case _ => throw new SyntaxException("Only versions supported are 1.5 and 1.6")
-    }
-  }
-  else {
-    v16.parse(queryText)
-  }
+trait WhereClause extends JavaTokenParsers with Tokens with Predicates {
+  def where: Parser[Predicate] = ignoreCase("where") ~> predicate
 }
+
+
+
+
+
+
+
+
+
+
+
