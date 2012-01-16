@@ -1049,7 +1049,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     @Override
     public void nodeRemoveProperty( long nodeId, PropertyData propertyData )
     {
-        NodeRecord nodeRecord = getNodeRecord( nodeId, true ); // TODO really need to add it here?
+        NodeRecord nodeRecord = getNodeRecord( nodeId, true, false ); // TODO really need to add it here?
         assert assertPropertyChain( nodeRecord );
         removeProperty( nodeRecord, propertyData, RecordAdder.NODE );
         // propRecord.removeBlock( propertyData.getIndex() );
@@ -1219,7 +1219,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     public PropertyData relAddProperty( long relId,
             PropertyIndex index, Object value )
     {
-        RelationshipRecord relRecord = getRelationshipRecord( relId, true ); // TODO really need to add here?
+        RelationshipRecord relRecord = getRelationshipRecord( relId, true, false ); // TODO really need to add here?
         assert assertPropertyChain( relRecord );
         PropertyBlock block = new PropertyBlock();
         block.setCreated();
@@ -1233,7 +1233,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     public PropertyData nodeAddProperty( long nodeId, PropertyIndex index,
         Object value )
     {
-        NodeRecord nodeRecord = getNodeRecord( nodeId, true ); // TODO really need to add here?
+        NodeRecord nodeRecord = getNodeRecord( nodeId, true, false ); // TODO really need to add here?
         assert assertPropertyChain( nodeRecord );
         PropertyBlock block = new PropertyBlock();
         block.setCreated();
