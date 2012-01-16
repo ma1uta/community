@@ -735,16 +735,6 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     @Override
     public ArrayMap<Integer,PropertyData> relDelete( long id )
     {
-        // BRANCH master
-//        RelationshipRecord record = getRelationshipRecord( id, true );
-//        long nextProp = record.getFirstProp();
-//        ArrayMap<Integer, PropertyData> propertyMap = getAndDeletePropertyChain( nextProp );
-//        disconnectRelationship( record );
-//        updateNodes( record );
-//        record.setInUse( false );
-//        return propertyMap;        
-        // BRANCH master - end
-        
         RelationshipRecord record = getRelationshipRecord( id, true );
         long nextProp = record.getFirstProp();
         ArrayMap<Integer, PropertyData> propertyMap = getAndDeletePropertyChain( nextProp );
@@ -1323,7 +1313,8 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         if ( relId != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
             RelationshipRecord rel = getRelationshipRecord( relId, true, false );
-            if ( relCount( node.getId(), rel ) >= neoStore.getSuperNodeThreshold() ) convertToSuperNode( node, rel );
+            if ( relCount( node.getId(), rel ) >= neoStore.getSuperNodeThreshold() )
+                convertToSuperNode( node, rel );
         }
     }
 
@@ -1367,15 +1358,15 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         
         if ( !secondNode.isSuperNode() )
         {
-//            if ( firstNode.getId() != secondNode.getId() )
-//            {
+            if ( firstNode.getId() != secondNode.getId() )
+            {
                 connect( secondNode, rel );
-//            }
-//            else
-//            {
-//                rel.setFirstInSecondChain( true );
-//                rel.setSecondPrevRel( rel.getFirstPrevRel() );
-//            }
+            }
+            else
+            {
+                rel.setFirstInEndNodeChain( true );
+                rel.setEndNodePrevRel( rel.getStartNodePrevRel() );
+            }
         }
         else if ( firstNode.getId() != secondNode.getId() )
         {

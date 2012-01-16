@@ -19,6 +19,7 @@
  */
 package org.neo4j.kernel.impl.core;
 
+import static java.util.Arrays.asList;
 import static org.neo4j.kernel.impl.util.DirectionWrapper.wrapDirection;
 import static org.neo4j.kernel.impl.util.RelIdArray.empty;
 
@@ -310,7 +311,7 @@ class NodeImpl extends ArrayBasedPrimitive
     @Override
     public String toString()
     {
-        return "NodeImpl#" + this.getId();
+        return getClass().getSimpleName() + "#" + this.getId();
     }
 
     // caller is responsible for acquiring lock
