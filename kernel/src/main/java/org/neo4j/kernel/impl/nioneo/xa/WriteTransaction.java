@@ -589,8 +589,8 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
                 removeRelationshipFromCache( command.getKey() );
                 if ( true /* doesn't work: command.isRemove(), the log doesn't contain the nodes */)
                 {
-                    removeNodeFromCache( command.getFirstNode() );
-                    removeNodeFromCache( command.getSecondNode() );
+                    removeNodeFromCache( command.getStartNode() );
+                    removeNodeFromCache( command.getEndNode() );
                 }
             }
             // nodes
@@ -842,49 +842,49 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     
     private void updateNodesForDeletedRelationship( RelationshipRecord rel )
     {
-        NodeRecord firstNode = getNodeRecord( rel.getStartNode(), false );
-        NodeRecord secondNode = getNodeRecord( rel.getEndNode(), false );
+        NodeRecord startNode = getNodeRecord( rel.getStartNode(), false );
+        NodeRecord endNode = getNodeRecord( rel.getEndNode(), false );
         
-        boolean loop = firstNode.getId() == secondNode.getId();
-        if ( !firstNode.isSuperNode() )
+        boolean loop = startNode.getId() == endNode.getId();
+        if ( !startNode.isSuperNode() )
         {
-            if ( rel.isFirstInStartNodeChain() ) firstNode.setFirstRel( rel.getStartNodeNextRel() );
-            decrementRelationshipCount( firstNode.getId(), rel, firstNode.getFirstRel() );
+            if ( rel.isFirstInStartNodeChain() ) startNode.setFirstRel( rel.getStartNodeNextRel() );
+            decrementRelationshipCount( startNode.getId(), rel, startNode.getFirstRel() );
         }
         else
         {
-            Map<Integer, RelationshipGroupRecord> groups = getRelationshipGroups( firstNode );
+            Map<Integer, RelationshipGroupRecord> groups = getRelationshipGroups( startNode );
             RelationshipGroupRecord group = groups.get( rel.getType() );
             assert group != null;
-            DirectionWrapper dir = wrapDirection( rel, firstNode );
+            DirectionWrapper dir = wrapDirection( rel, startNode );
             if ( rel.isFirstInStartNodeChain() )
             {
                 dir.setNextRel( group, rel.getStartNodeNextRel() );
-                if ( groupIsEmpty( group ) ) deleteGroup( firstNode, group, groups );
+                if ( groupIsEmpty( group ) ) deleteGroup( startNode, group, groups );
             }
-            decrementRelationshipCount( firstNode.getId(), rel, dir.getNextRel( group ) );
+            decrementRelationshipCount( startNode.getId(), rel, dir.getNextRel( group ) );
         }
         
-        if ( !secondNode.isSuperNode() )
+        if ( !endNode.isSuperNode() )
         {
-            if ( rel.isFirstInEndNodeChain() ) secondNode.setFirstRel( rel.getEndNodeNextRel() );
-            if ( !loop ) decrementRelationshipCount( secondNode.getId(), rel, secondNode.getFirstRel() );
+            if ( rel.isFirstInEndNodeChain() ) endNode.setFirstRel( rel.getEndNodeNextRel() );
+            if ( !loop ) decrementRelationshipCount( endNode.getId(), rel, endNode.getFirstRel() );
         }
         else
         {
-            Map<Integer, RelationshipGroupRecord> groups = getRelationshipGroups( secondNode );
+            Map<Integer, RelationshipGroupRecord> groups = getRelationshipGroups( endNode );
             RelationshipGroupRecord group = groups.get( rel.getType() );
-            DirectionWrapper dir = wrapDirection( rel, secondNode );
+            DirectionWrapper dir = wrapDirection( rel, endNode );
             assert group != null || loop : "Group has been deleted";
             if ( group != null )
             {
                 if ( rel.isFirstInEndNodeChain() )
                 {
                     dir.setNextRel( group, rel.getEndNodeNextRel() );
-                    if ( groupIsEmpty( group ) ) deleteGroup( secondNode, group, groups );
+                    if ( groupIsEmpty( group ) ) deleteGroup( endNode, group, groups );
                 }
-            } // Else this is a loop-rel and the group was deleted when dealing with the first node
-            if ( !loop ) decrementRelationshipCount( secondNode.getId(), rel, dir.getNextRel( group ) );
+            } // Else this is a loop-rel and the group was deleted when dealing with the start node
+            if ( !loop ) decrementRelationshipCount( endNode.getId(), rel, dir.getNextRel( group ) );
         }
     }
 
@@ -918,10 +918,10 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
                group.getNextLoop() == Record.NO_NEXT_RELATIONSHIP.intValue();
     }
 
-    private DirectionWrapper wrapDirection( RelationshipRecord rel, NodeRecord firstNode )
+    private DirectionWrapper wrapDirection( RelationshipRecord rel, NodeRecord startNode )
     {
-        boolean isOut = rel.getStartNode() == firstNode.getId();
-        boolean isIn = rel.getEndNode() == firstNode.getId();
+        boolean isOut = rel.getStartNode() == startNode.getId();
+        boolean isIn = rel.getEndNode() == startNode.getId();
         assert isOut|isIn;
         if ( isOut&isIn ) return DirectionWrapper.BOTH;
         return isOut ? DirectionWrapper.OUTGOING : DirectionWrapper.INCOMING;
@@ -1293,17 +1293,17 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     }
 
     @Override
-    public void relationshipCreate( long id, int type, long firstNodeId, long secondNodeId )
+    public void relationshipCreate( long id, int type, long startNodeId, long endNodeId )
     {
-        NodeRecord firstNode = getNodeRecord( firstNodeId, true );
-        NodeRecord secondNode = getNodeRecord( secondNodeId, true );
-        convertToSuperNodeIfNecessary( firstNode );
-        convertToSuperNodeIfNecessary( secondNode );
-        RelationshipRecord record = new RelationshipRecord( id, firstNodeId, secondNodeId, type );
+        NodeRecord startNode = getNodeRecord( startNodeId, true );
+        NodeRecord endNode = getNodeRecord( endNodeId, true );
+        convertToSuperNodeIfNecessary( startNode );
+        convertToSuperNodeIfNecessary( endNode );
+        RelationshipRecord record = new RelationshipRecord( id, startNodeId, endNodeId, type );
         record.setInUse( true );
         record.setCreated();
         cacheRelationshipRecord( record );
-        connectRelationship( firstNode, secondNode, record );
+        connectRelationship( startNode, endNode, record );
     }
 
     private void convertToSuperNodeIfNecessary( NodeRecord node )
@@ -1320,6 +1320,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
 
     private void convertToSuperNode( NodeRecord node, RelationshipRecord firstRel )
     {
+        cacheRelationshipRecord( firstRel );
         node.setSuperNode( true );
         node.setFirstRel( Record.NO_NEXT_RELATIONSHIP.intValue() );
         long relId = firstRel.getId();
@@ -1336,31 +1337,25 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         upgradedSuperNodes.add( node );
     }
 
-    private void connectRelationship( NodeRecord firstNode,
-        NodeRecord secondNode, RelationshipRecord rel )
+    private void connectRelationship( NodeRecord startNode,
+        NodeRecord endNode, RelationshipRecord rel )
     {
         // Assertion interpreted: if node is a normal node and we're trying to create a
         // relationship that we already have as first rel for that node --> error
-        assert firstNode.getFirstRel() != rel.getId() || firstNode.isSuperNode();
-        assert secondNode.getFirstRel() != rel.getId() || secondNode.isSuperNode();
+        assert startNode.getFirstRel() != rel.getId() || startNode.isSuperNode();
+        assert endNode.getFirstRel() != rel.getId() || endNode.isSuperNode();
         
-        if ( !firstNode.isSuperNode() ) rel.setStartNodeNextRel( firstNode.getFirstRel() );
-        if ( !secondNode.isSuperNode() ) rel.setEndNodeNextRel( secondNode.getFirstRel() );
+        if ( !startNode.isSuperNode() ) rel.setStartNodeNextRel( startNode.getFirstRel() );
+        if ( !endNode.isSuperNode() ) rel.setEndNodeNextRel( endNode.getFirstRel() );
         
-        if ( !firstNode.isSuperNode() )
-        {
-            connect( firstNode, rel );
-        }
-        else
-        {
-            connectRelationshipToSuperNode( firstNode, rel );
-        }
+        if ( !startNode.isSuperNode() ) connect( startNode, rel );
+        else connectRelationshipToSuperNode( startNode, rel );
         
-        if ( !secondNode.isSuperNode() )
+        if ( !endNode.isSuperNode() )
         {
-            if ( firstNode.getId() != secondNode.getId() )
+            if ( startNode.getId() != endNode.getId() )
             {
-                connect( secondNode, rel );
+                connect( endNode, rel );
             }
             else
             {
@@ -1368,13 +1363,13 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
                 rel.setEndNodePrevRel( rel.getStartNodePrevRel() );
             }
         }
-        else if ( firstNode.getId() != secondNode.getId() )
+        else if ( startNode.getId() != endNode.getId() )
         {
-            connectRelationshipToSuperNode( secondNode, rel );
+            connectRelationshipToSuperNode( endNode, rel );
         }
         
-        if ( !firstNode.isSuperNode() ) firstNode.setFirstRel( rel.getId() );
-        if ( !secondNode.isSuperNode() ) secondNode.setFirstRel( rel.getId() );
+        if ( !startNode.isSuperNode() ) startNode.setFirstRel( rel.getId() );
+        if ( !endNode.isSuperNode() ) endNode.setFirstRel( rel.getId() );
     }
 
     private void connectRelationshipToSuperNode( NodeRecord node, RelationshipRecord rel )
@@ -1503,7 +1498,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             }
             if ( !changed )
             {
-                throw new InvalidRecordException( nodeId + " dont match " + firstRel );
+                throw new InvalidRecordException( nodeId + " doesn't match " + firstRel );
             }
         }
         
@@ -2058,7 +2053,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     {
         if ( rel.getStartNode() == nodeId ) return RelationshipConnection.START_NEXT;
         if ( rel.getEndNode() == nodeId ) return RelationshipConnection.END_NEXT;
-        throw new RuntimeException( nodeId + " neither first not second in " + rel );
+        throw new RuntimeException( nodeId + " neither start not end node in " + rel );
     }
 
     @Override

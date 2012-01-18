@@ -19,7 +19,6 @@
  */
 package org.neo4j.kernel.impl.core;
 
-import static java.util.Arrays.asList;
 import static org.neo4j.kernel.impl.util.DirectionWrapper.wrapDirection;
 import static org.neo4j.kernel.impl.util.RelIdArray.empty;
 

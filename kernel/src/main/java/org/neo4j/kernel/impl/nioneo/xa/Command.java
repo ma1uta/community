@@ -438,12 +438,12 @@ public abstract class Command extends XaCommand
             return !record.inUse();
         }
 
-        long getFirstNode()
+        long getStartNode()
         {
             return record.getStartNode();
         }
 
-        long getSecondNode()
+        long getEndNode()
         {
             return record.getEndNode();
         }
