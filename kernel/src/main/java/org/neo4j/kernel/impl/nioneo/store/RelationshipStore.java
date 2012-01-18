@@ -37,15 +37,15 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
     public static final String FILE_NAME = ".relationshipstore.db";
 
     /*
-     * 1: inUse/high order bits from first node and next prop
-     * 4: first node low order bits
-     * 4: second node low order bits
-     * 4: 1:st in first chain, rest of high order bits, 1:st in second chain, type
-     * 4: first prev rel low order bits
-     * 4: first next rel low order bits
-     * 4: second prev rel low order bits
-     * 4: second next rel low order bits
-     * 4: next prop low order bits
+     * 1: inUse, high order bits from first node and next prop
+     * 4: start node low order bits
+     * 4: end node low order bits
+     * 4: 1:st in start node chain, rest of high order bits, 1:st in end node chain, type
+     * 4: start node prev rel low order bits
+     * 4: start node next rel low order bits
+     * 4: end node prev rel low order bits
+     * 4: end node next rel low order bits
+     * 4: first prop low order bits
      * --
      * 33
      */
@@ -224,45 +224,45 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
             long firstNode = record.getStartNode();
             short firstNodeMod = (short)((firstNode & 0x700000000L) >> 31);
 
-            long secondNode = record.getEndNode();
-            long secondNodeMod = (secondNode & 0x700000000L) >> 4;
+            long endNode = record.getEndNode();
+            long endNodeMod = (endNode & 0x700000000L) >> 4;
 
-            long firstPrevRel = record.getStartNodePrevRel();
-            long firstPrevRelMod = firstPrevRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (firstPrevRel & 0x700000000L) >> 7;
+            long startNodePrevRel = record.getStartNodePrevRel();
+            long startNodePrevRelMod = startNodePrevRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (startNodePrevRel & 0x700000000L) >> 7;
 
-            long firstNextRel = record.getStartNodeNextRel();
-            long firstNextRelMod = firstNextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (firstNextRel & 0x700000000L) >> 10;
+            long startNodeNextRel = record.getStartNodeNextRel();
+            long startNodeNextRelMod = startNodeNextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (startNodeNextRel & 0x700000000L) >> 10;
 
-            long secondPrevRel = record.getEndNodePrevRel();
-            long secondPrevRelMod = secondPrevRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (secondPrevRel & 0x700000000L) >> 13;
+            long endNodePrevRel = record.getEndNodePrevRel();
+            long endNodePrevRelMod = endNodePrevRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (endNodePrevRel & 0x700000000L) >> 13;
 
-            long secondNextRel = record.getEndNodeNextRel();
-            long secondNextRelMod = secondNextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (secondNextRel & 0x700000000L) >> 16;
+            long endNodeNextRel = record.getEndNodeNextRel();
+            long endNodeNextRelMod = endNodeNextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (endNodeNextRel & 0x700000000L) >> 16;
 
-            long nextProp = record.getFirstProp();
-            long nextPropMod = nextProp == Record.NO_NEXT_PROPERTY.intValue() ? 0 : (nextProp & 0xF00000000L) >> 28;
+            long firstProp = record.getFirstProp();
+            long firstPropMod = firstProp == Record.NO_NEXT_PROPERTY.intValue() ? 0 : (firstProp & 0xF00000000L) >> 28;
             
-            long firstInFirstChain = record.isFirstInStartNodeChain() ? 0x80000000 : 0;
-            long firstInSecondChain = record.isFirstInEndNodeChain() ? 0x8000 : 0;
+            long firstInStartNodeChain = record.isFirstInStartNodeChain() ? 0x80000000 : 0;
+            long firstInEndNodeChain = record.isFirstInEndNodeChain() ? 0x8000 : 0;
 
             // [    ,   x] in use flag
-            // [    ,xxx ] first node high order bits
+            // [    ,xxx ] start node high order bits
             // [xxxx,    ] next prop high order bits
-            short inUseUnsignedByte = (short)((record.inUse() ? Record.IN_USE : Record.NOT_IN_USE).byteValue() | firstNodeMod | nextPropMod);
+            short inUseUnsignedByte = (short)((record.inUse() ? Record.IN_USE : Record.NOT_IN_USE).byteValue() | firstNodeMod | firstPropMod);
 
-            // [x   ,    ][    ,    ][    ,    ][    ,    ] 1: first in first chain, 0: not first in first chain
-            // [ xxx,    ][    ,    ][    ,    ][    ,    ] second node high order bits,     0x70000000
-            // [    ,xxx ][    ,    ][    ,    ][    ,    ] first prev rel high order bits,  0xE000000
-            // [    ,   x][xx  ,    ][    ,    ][    ,    ] first next rel high order bits,  0x1C00000
-            // [    ,    ][  xx,x   ][    ,    ][    ,    ] second prev rel high order bits, 0x380000
-            // [    ,    ][    , xxx][    ,    ][    ,    ] second next rel high order bits, 0x70000
-            // [    ,    ][    ,    ][x   ,    ][    ,    ] 1: first in second chain, 0: not first in second chain
+            // [x   ,    ][    ,    ][    ,    ][    ,    ] 1: first in start node chain, 0: not first
+            // [ xxx,    ][    ,    ][    ,    ][    ,    ] end node high order bits,     0x70000000
+            // [    ,xxx ][    ,    ][    ,    ][    ,    ] start node prev rel high order bits,  0xE000000
+            // [    ,   x][xx  ,    ][    ,    ][    ,    ] start node next rel high order bits,  0x1C00000
+            // [    ,    ][  xx,x   ][    ,    ][    ,    ] end node prev rel high order bits, 0x380000
+            // [    ,    ][    , xxx][    ,    ][    ,    ] end node next rel high order bits, 0x70000
+            // [    ,    ][    ,    ][x   ,    ][    ,    ] 1: first in end node chain, 0: not first
             // [    ,    ][    ,    ][ xxx,xxxx][xxxx,xxxx] type
-            int typeInt = (int)(firstInFirstChain | secondNodeMod | firstPrevRelMod | firstNextRelMod | secondPrevRelMod | secondNextRelMod | firstInSecondChain | record.getType());
+            int typeInt = (int)(firstInStartNodeChain | endNodeMod | startNodePrevRelMod | startNodeNextRelMod | endNodePrevRelMod | endNodeNextRelMod | firstInEndNodeChain | record.getType());
             
-            buffer.put( (byte)inUseUnsignedByte ).putInt( (int) firstNode ).putInt( (int) secondNode )
-                .putInt( typeInt ).putInt( (int) firstPrevRel ).putInt( (int) firstNextRel )
-                .putInt( (int) secondPrevRel ).putInt( (int) secondNextRel ).putInt( (int) nextProp );
+            buffer.put( (byte)inUseUnsignedByte ).putInt( (int) firstNode ).putInt( (int) endNode )
+                .putInt( typeInt ).putInt( (int) startNodePrevRel ).putInt( (int) startNodeNextRel )
+                .putInt( (int) endNodePrevRel ).putInt( (int) endNodeNextRel ).putInt( (int) firstProp );
         }
         else
         {
@@ -296,71 +296,54 @@ public class RelationshipStore extends AbstractStore implements Store, RecordSto
             }
         }
 
-        long firstNode = buffer.getUnsignedInt();
-        long firstNodeMod = (inUseByte & 0xEL) << 31;
+        long startNode = buffer.getUnsignedInt();
+        long startNodeMod = (inUseByte & 0xEL) << 31;
 
-        long secondNode = buffer.getUnsignedInt();
+        long endNode = buffer.getUnsignedInt();
 
-        // [x   ,    ][    ,    ][    ,    ][    ,    ] 1: first in first chain, 0: not first in first chain
-        // [ xxx,    ][    ,    ][    ,    ][    ,    ] second node high order bits,     0x70000000
-        // [    ,xxx ][    ,    ][    ,    ][    ,    ] first prev rel high order bits,  0xE000000
-        // [    ,   x][xx  ,    ][    ,    ][    ,    ] first next rel high order bits,  0x1C00000
-        // [    ,    ][  xx,x   ][    ,    ][    ,    ] second prev rel high order bits, 0x380000
-        // [    ,    ][    , xxx][    ,    ][    ,    ] second next rel high order bits, 0x70000
-        // [    ,    ][    ,    ][x   ,    ][    ,    ] 1: first in second chain, 0: not first in second chain
+        // [x   ,    ][    ,    ][    ,    ][    ,    ] 1: first in start node chain, 0: not first
+        // [ xxx,    ][    ,    ][    ,    ][    ,    ] end node high order bits,     0x70000000
+        // [    ,xxx ][    ,    ][    ,    ][    ,    ] start node prev rel high order bits,  0xE000000
+        // [    ,   x][xx  ,    ][    ,    ][    ,    ] start node next rel high order bits,  0x1C00000
+        // [    ,    ][  xx,x   ][    ,    ][    ,    ] end node prev rel high order bits, 0x380000
+        // [    ,    ][    , xxx][    ,    ][    ,    ] end node next rel high order bits, 0x70000
+        // [    ,    ][    ,    ][x   ,    ][    ,    ] 1: first in end node chain, 0: not first
         // [    ,    ][    ,    ][ xxx,xxxx][xxxx,xxxx] type
         long typeInt = buffer.getInt();
-        long secondNodeMod = (typeInt & 0x70000000L) << 4;
+        long endNodeMod = (typeInt & 0x70000000L) << 4;
         int type = (int)(typeInt & 0x7FFF);
 
         RelationshipRecord record = new RelationshipRecord( id,
-            longFromIntAndMod( firstNode, firstNodeMod ),
-            longFromIntAndMod( secondNode, secondNodeMod ), type );
+            longFromIntAndMod( startNode, startNodeMod ),
+            longFromIntAndMod( endNode, endNodeMod ), type );
         record.setInUse( inUse );
         
         record.setFirstInStartNodeChain( (typeInt & 0x80000000) != 0 );
         record.setFirstInEndNodeChain( (typeInt & 0x8000) != 0 );
 
-        long firstPrevRel = buffer.getUnsignedInt();
-        long firstNextRel = buffer.getUnsignedInt();
-        long secondPrevRel = buffer.getUnsignedInt();
-        long secondNextRel = buffer.getUnsignedInt();
-        long nextProp = buffer.getUnsignedInt();
+        long startNodePrevRel = buffer.getUnsignedInt();
+        long startNodeNextRel = buffer.getUnsignedInt();
+        long endNodePrevRel = buffer.getUnsignedInt();
+        long endNodeNextRel = buffer.getUnsignedInt();
+        long firstProp = buffer.getUnsignedInt();
         
-        long firstPrevRelMod = (typeInt & 0xE000000L) << 7;
-        record.setStartNodePrevRel( longFromIntAndMod( firstPrevRel, firstPrevRelMod ) );
+        long startNodePrevRelMod = (typeInt & 0xE000000L) << 7;
+        record.setStartNodePrevRel( longFromIntAndMod( startNodePrevRel, startNodePrevRelMod ) );
 
-        long firstNextRelMod = (typeInt & 0x1C00000L) << 10;
-        record.setStartNodeNextRel( longFromIntAndMod( firstNextRel, firstNextRelMod ) );
+        long startNodeNextRelMod = (typeInt & 0x1C00000L) << 10;
+        record.setStartNodeNextRel( longFromIntAndMod( startNodeNextRel, startNodeNextRelMod ) );
 
-        long secondPrevRelMod = (typeInt & 0x380000L) << 13;
-        record.setEndNodePrevRel( longFromIntAndMod( secondPrevRel, secondPrevRelMod ) );
+        long endNodePrevRelMod = (typeInt & 0x380000L) << 13;
+        record.setEndNodePrevRel( longFromIntAndMod( endNodePrevRel, endNodePrevRelMod ) );
 
-        long secondNextRelMod = (typeInt & 0x70000L) << 16;
-        record.setEndNodeNextRel( longFromIntAndMod( secondNextRel, secondNextRelMod ) );
+        long endNodeNextRelMod = (typeInt & 0x70000L) << 16;
+        record.setEndNodeNextRel( longFromIntAndMod( endNodeNextRel, endNodeNextRelMod ) );
 
-        long nextPropMod = (inUseByte & 0xF0L) << 28;
-        record.setFirstProp( longFromIntAndMod( nextProp, nextPropMod ) );
+        long firstPropMod = (inUseByte & 0xF0L) << 28;
+        record.setFirstProp( longFromIntAndMod( firstProp, firstPropMod ) );
         
         return record;
     }
-
-//    private RelationshipRecord getFullRecord( long id, PersistenceWindow window )
-//    {
-//        Buffer buffer = window.getOffsettedBuffer( id );
-//        byte inUse = buffer.get();
-//        boolean inUseFlag = ((inUse & Record.IN_USE.byteValue()) ==
-//            Record.IN_USE.byteValue());
-//        RelationshipRecord record = new RelationshipRecord( id,
-//            buffer.getInt(), buffer.getInt(), buffer.getInt() );
-//        record.setInUse( inUseFlag );
-//        record.setFirstPrevRel( buffer.getInt() );
-//        record.setFirstNextRel( buffer.getInt() );
-//        record.setSecondPrevRel( buffer.getInt() );
-//        record.setSecondNextRel( buffer.getInt() );
-//        record.setNextProp( buffer.getInt() );
-//        return record;
-//    }
 
     public RelationshipRecord getChainRecord( long relId )
     {
