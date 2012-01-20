@@ -23,7 +23,6 @@ import org.neo4j.graphdb.event.KernelEventHandler;
 import org.neo4j.graphdb.event.TransactionEventHandler;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
-import org.neo4j.kernel.info.DiagnosticsManager;
 import org.neo4j.tooling.GlobalGraphOperations;
 
 /**

@@ -26,8 +26,6 @@ import java.util.HashMap;
 import java.util.Properties;
 
 import org.neo4j.kernel.CommonFactories;
-import org.neo4j.kernel.IdGeneratorFactory;
-import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.storemigration.ConfigMapUpgradeConfiguration;
 import org.neo4j.kernel.impl.storemigration.CurrentDatabase;

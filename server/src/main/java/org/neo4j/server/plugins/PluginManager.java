@@ -28,7 +28,6 @@ import java.util.Set;
 
 import org.apache.commons.configuration.Configuration;
 import org.neo4j.helpers.Pair;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseSPI;
 import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.server.logging.Logger;

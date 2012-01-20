@@ -19,6 +19,28 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
+import static java.util.Arrays.asList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
+import static org.neo4j.kernel.CommonFactories.defaultFileSystemAbstraction;
+import static org.neo4j.kernel.CommonFactories.defaultIdGeneratorFactory;
+import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.arrayAsCollection;
+import static org.neo4j.test.TargetDirectory.forTest;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.Future;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,23 +53,6 @@ import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.test.ImpermanentGraphDatabase;
 import org.neo4j.test.OtherThreadExecutor;
 import org.neo4j.test.TargetDirectory;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.util.*;
-import java.util.concurrent.Future;
-
-import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
-import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
-import static org.neo4j.helpers.collection.MapUtil.genericMap;
-import static org.neo4j.kernel.CommonFactories.defaultFileSystemAbstraction;
-import static org.neo4j.kernel.CommonFactories.defaultIdGeneratorFactory;
-import static org.neo4j.kernel.impl.util.IoPrimitiveUtils.arrayAsCollection;
-import static org.neo4j.test.TargetDirectory.forTest;
 
 public class TestGraphProperties
 {

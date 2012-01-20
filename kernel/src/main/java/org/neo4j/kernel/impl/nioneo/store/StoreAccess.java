@@ -20,7 +20,6 @@
 
 package org.neo4j.kernel.impl.nioneo.store;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,7 +29,6 @@ import org.neo4j.kernel.Config;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
 import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
-import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * Not thread safe (since DiffRecordStore is not thread safe), intended for

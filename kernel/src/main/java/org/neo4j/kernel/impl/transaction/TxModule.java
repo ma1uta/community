@@ -19,18 +19,8 @@
  */
 package org.neo4j.kernel.impl.transaction;
 
-import java.util.Map;
-
-import javax.transaction.TransactionManager;
-
-import org.neo4j.graphdb.TransactionFailureException;
-import org.neo4j.helpers.Service;
-import org.neo4j.kernel.CommonFactories;
-import org.neo4j.kernel.DependencyResolver;
 import org.neo4j.kernel.impl.core.KernelPanicEventGenerator;
-import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
-import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * Can reads a XA data source configuration file and registers all the data

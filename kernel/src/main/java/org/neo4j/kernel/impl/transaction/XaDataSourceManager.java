@@ -19,18 +19,23 @@
  */
 package org.neo4j.kernel.impl.transaction;
 
-import org.neo4j.graphdb.TransactionFailureException;
-import org.neo4j.helpers.UTF8;
-import org.neo4j.helpers.collection.MapUtil;
-import org.neo4j.kernel.DependencyResolver;
-import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
-import org.neo4j.kernel.impl.transaction.xaframework.XaResource;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
+
+import org.neo4j.graphdb.TransactionFailureException;
+import org.neo4j.helpers.UTF8;
+import org.neo4j.kernel.DependencyResolver;
+import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
+import org.neo4j.kernel.impl.transaction.xaframework.XaResource;
 
 /**
  * All datasources that have been defined in the XA data source configuration

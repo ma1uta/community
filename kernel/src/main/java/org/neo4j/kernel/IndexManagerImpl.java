@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.PropertyContainer;
@@ -38,7 +37,6 @@ import org.neo4j.graphdb.index.RelationshipAutoIndexer;
 import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.collection.MapUtil;
-import org.neo4j.kernel.impl.core.NodeManager;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.index.IndexXaConnection;
 import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;

@@ -19,6 +19,8 @@
  */
 package org.neo4j.jmx.impl;
 
+import static java.lang.management.ManagementFactory.getPlatformMBeanServer;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -30,11 +32,8 @@ import javax.management.MBeanServer;
 import javax.management.remote.JMXServiceURL;
 
 import org.neo4j.helpers.Service;
-import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.KernelData;
 import org.neo4j.kernel.KernelExtension;
-
-import static java.lang.management.ManagementFactory.getPlatformMBeanServer;
 
 @Service.Implementation( KernelExtension.class )
 public final class JmxExtension extends KernelExtension<JmxExtension.JmxData>

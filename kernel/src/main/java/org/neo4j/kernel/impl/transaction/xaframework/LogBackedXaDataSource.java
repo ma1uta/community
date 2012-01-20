@@ -21,10 +21,8 @@ package org.neo4j.kernel.impl.transaction.xaframework;
 
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
-import java.util.Map;
 
 import org.neo4j.helpers.Pair;
-import org.neo4j.kernel.impl.nioneo.store.StoreFactory;
 
 public abstract class LogBackedXaDataSource extends XaDataSource
 {

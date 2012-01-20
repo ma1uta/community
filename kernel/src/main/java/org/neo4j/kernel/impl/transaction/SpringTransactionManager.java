@@ -29,7 +29,6 @@ import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
 
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 
 public class SpringTransactionManager implements TransactionManager

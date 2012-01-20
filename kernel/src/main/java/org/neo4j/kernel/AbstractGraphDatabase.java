@@ -19,16 +19,50 @@
  */
 package org.neo4j.kernel;
 
-import org.neo4j.graphdb.*;
+import static org.neo4j.helpers.Exceptions.launderedException;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
+
+import javax.transaction.TransactionManager;
+
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.event.KernelEventHandler;
 import org.neo4j.graphdb.event.TransactionEventHandler;
-import org.neo4j.graphdb.index.IndexImplementation;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.index.IndexProvider;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Service;
 import org.neo4j.kernel.impl.cache.AdaptiveCacheManager;
-import org.neo4j.kernel.impl.core.*;
+import org.neo4j.kernel.impl.core.DefaultRelationshipTypeCreator;
+import org.neo4j.kernel.impl.core.GraphDbModule;
+import org.neo4j.kernel.impl.core.KernelPanicEventGenerator;
+import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
+import org.neo4j.kernel.impl.core.LockReleaser;
+import org.neo4j.kernel.impl.core.NodeImpl;
+import org.neo4j.kernel.impl.core.NodeManager;
+import org.neo4j.kernel.impl.core.NodeProxy;
+import org.neo4j.kernel.impl.core.PropertyIndexManager;
+import org.neo4j.kernel.impl.core.ReadOnlyNodeManager;
+import org.neo4j.kernel.impl.core.RelationshipImpl;
+import org.neo4j.kernel.impl.core.RelationshipProxy;
+import org.neo4j.kernel.impl.core.RelationshipTypeCreator;
+import org.neo4j.kernel.impl.core.RelationshipTypeHolder;
+import org.neo4j.kernel.impl.core.TransactionEventsSyncHook;
+import org.neo4j.kernel.impl.core.TxEventSyncHookFactory;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
@@ -40,20 +74,23 @@ import org.neo4j.kernel.impl.persistence.IdGenerator;
 import org.neo4j.kernel.impl.persistence.IdGeneratorModule;
 import org.neo4j.kernel.impl.persistence.PersistenceManager;
 import org.neo4j.kernel.impl.persistence.PersistenceModule;
-import org.neo4j.kernel.impl.transaction.*;
-import org.neo4j.kernel.impl.transaction.xaframework.*;
+import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
+import org.neo4j.kernel.impl.transaction.LockManager;
+import org.neo4j.kernel.impl.transaction.RagManager;
+import org.neo4j.kernel.impl.transaction.ReadOnlyTxManager;
+import org.neo4j.kernel.impl.transaction.TransactionManagerProvider;
+import org.neo4j.kernel.impl.transaction.TxHook;
+import org.neo4j.kernel.impl.transaction.TxManager;
+import org.neo4j.kernel.impl.transaction.TxModule;
+import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
+import org.neo4j.kernel.impl.transaction.xaframework.DefaultLogBufferFactory;
+import org.neo4j.kernel.impl.transaction.xaframework.LogBufferFactory;
+import org.neo4j.kernel.impl.transaction.xaframework.TransactionInterceptorProvider;
+import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
+import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
 import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsManager;
 import org.neo4j.tooling.GlobalGraphOperations;
-
-import javax.transaction.TransactionManager;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
-
-import static org.neo4j.helpers.Exceptions.launderedException;
 
 
 /**

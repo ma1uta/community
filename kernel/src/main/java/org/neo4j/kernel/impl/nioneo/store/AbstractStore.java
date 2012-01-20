@@ -19,19 +19,18 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
-import org.neo4j.helpers.UTF8;
-import org.neo4j.kernel.IdGeneratorFactory;
-import org.neo4j.kernel.IdType;
-import org.neo4j.kernel.impl.core.ReadOnlyDbException;
-import org.neo4j.kernel.impl.util.StringLogger;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+
+import org.neo4j.helpers.UTF8;
+import org.neo4j.kernel.IdGeneratorFactory;
+import org.neo4j.kernel.IdType;
+import org.neo4j.kernel.impl.core.ReadOnlyDbException;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * An abstract representation of a store. A store is a file that contains

@@ -25,31 +25,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.transaction.TransactionManager;
-
 import org.neo4j.helpers.Args;
 import org.neo4j.kernel.impl.annotations.Documented;
-import org.neo4j.kernel.impl.cache.AdaptiveCacheManager;
-import org.neo4j.kernel.impl.core.GraphDbModule;
-import org.neo4j.kernel.impl.core.KernelPanicEventGenerator;
-import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
-import org.neo4j.kernel.impl.core.LockReleaser;
-import org.neo4j.kernel.impl.core.RelationshipTypeCreator;
-import org.neo4j.kernel.impl.core.RelationshipTypeHolder;
-import org.neo4j.kernel.impl.core.TxEventSyncHookFactory;
-import org.neo4j.kernel.impl.index.IndexStore;
-import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
-import org.neo4j.kernel.impl.nioneo.store.StoreId;
-import org.neo4j.kernel.impl.persistence.IdGenerator;
-import org.neo4j.kernel.impl.persistence.IdGeneratorModule;
-import org.neo4j.kernel.impl.persistence.PersistenceManager;
-import org.neo4j.kernel.impl.persistence.PersistenceModule;
-import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
-import org.neo4j.kernel.impl.transaction.LockManager;
-import org.neo4j.kernel.impl.transaction.TxHook;
-import org.neo4j.kernel.impl.transaction.TxModule;
-import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
-import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * A non-standard configuration object.

@@ -20,14 +20,6 @@
 package org.neo4j.kernel.impl.transaction.xaframework;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-
-import javax.transaction.TransactionManager;
-
-import org.neo4j.helpers.Pair;
-import org.neo4j.kernel.Config;
-import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
 
 /**
  * This is a wrapper class containing the logical log, command factory,

@@ -19,10 +19,6 @@
  */
 package org.neo4j.kernel.impl.persistence;
 
-import javax.transaction.TransactionManager;
-
-import org.neo4j.kernel.impl.core.LockReleaser;
-import org.neo4j.kernel.impl.core.TxEventSyncHookFactory;
 
 /**
  *

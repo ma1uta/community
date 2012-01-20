@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import java.util.concurrent.atomic.AtomicReference;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.index.Index;
@@ -31,14 +30,7 @@ import org.neo4j.graphdb.index.IndexImplementation;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.helpers.collection.MapUtil;
-import org.neo4j.kernel.Config;
-import org.neo4j.kernel.ConfigProxy;
-import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.impl.index.IndexConnectionBroker;
-import org.neo4j.kernel.impl.index.IndexStore;
-import org.neo4j.kernel.impl.index.ReadOnlyIndexConnectionBroker;
-import org.neo4j.kernel.impl.transaction.TxModule;
-import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
 
 public class LuceneIndexImplementation implements IndexImplementation
 {

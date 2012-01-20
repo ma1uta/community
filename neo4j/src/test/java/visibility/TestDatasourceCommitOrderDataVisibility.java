@@ -27,7 +27,6 @@ import java.util.concurrent.CountDownLatch;
 import org.junit.Test;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.impl.nioneo.xa.WriteTransaction;
 import org.neo4j.test.AbstractSubProcessTestBase;

@@ -23,12 +23,12 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.index.Index;
+import java.util.Map;
+
+import javax.transaction.TransactionManager;
+
 import org.neo4j.graphdb.index.IndexImplementation;
 import org.neo4j.graphdb.index.IndexProvider;
-import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.index.impl.lucene.ConnectionBroker;
 import org.neo4j.index.impl.lucene.LuceneDataSource;
 import org.neo4j.index.impl.lucene.LuceneIndexImplementation;
@@ -42,9 +42,6 @@ import org.neo4j.kernel.impl.index.ReadOnlyIndexConnectionBroker;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
 import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
-
-import javax.transaction.TransactionManager;
-import java.util.Map;
 
 public class LuceneIndexProvider extends IndexProvider
 {

@@ -19,16 +19,6 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
-import org.neo4j.kernel.ConfigProxy;
-import org.neo4j.kernel.IdGeneratorFactory;
-import org.neo4j.kernel.IdType;
-import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
-import org.neo4j.kernel.impl.storemigration.*;
-import org.neo4j.kernel.impl.storemigration.monitoring.VisibleMigrationProgressMonitor;
-import org.neo4j.kernel.impl.transaction.TxHook;
-import org.neo4j.kernel.impl.util.Bits;
-import org.neo4j.kernel.impl.util.StringLogger;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -36,8 +26,21 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
+
+import org.neo4j.kernel.ConfigProxy;
+import org.neo4j.kernel.IdGeneratorFactory;
+import org.neo4j.kernel.IdType;
+import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
+import org.neo4j.kernel.impl.storemigration.ConfigMapUpgradeConfiguration;
+import org.neo4j.kernel.impl.storemigration.DatabaseFiles;
+import org.neo4j.kernel.impl.storemigration.StoreMigrator;
+import org.neo4j.kernel.impl.storemigration.StoreUpgrader;
+import org.neo4j.kernel.impl.storemigration.UpgradableDatabase;
+import org.neo4j.kernel.impl.storemigration.monitoring.VisibleMigrationProgressMonitor;
+import org.neo4j.kernel.impl.transaction.TxHook;
+import org.neo4j.kernel.impl.util.Bits;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * This class contains the references to the "NodeStore,RelationshipStore,

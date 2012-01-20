@@ -21,7 +21,6 @@ package org.neo4j.server.database;
 
 import java.util.Map;
 
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseSPI;
 
 public interface GraphDatabaseFactory
