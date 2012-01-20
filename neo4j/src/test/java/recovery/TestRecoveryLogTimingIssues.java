@@ -32,7 +32,6 @@ import org.junit.Test;
 import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.transaction.xaframework.LogExtractor;

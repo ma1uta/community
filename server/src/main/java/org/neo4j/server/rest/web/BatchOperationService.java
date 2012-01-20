@@ -42,7 +42,6 @@ import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonToken;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseSPI;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.rest.domain.BatchOperationFailedException;

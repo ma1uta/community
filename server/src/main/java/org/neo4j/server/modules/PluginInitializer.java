@@ -24,7 +24,6 @@ import java.util.HashSet;
 
 import org.apache.commons.configuration.Configuration;
 import org.neo4j.helpers.Service;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseSPI;
 import org.neo4j.server.NeoServer;
 import org.neo4j.server.plugins.Injectable;

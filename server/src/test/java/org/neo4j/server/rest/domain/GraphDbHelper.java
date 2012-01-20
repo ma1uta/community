@@ -33,7 +33,6 @@ import org.neo4j.graphdb.index.AutoIndexer;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.helpers.collection.MapUtil;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.database.DatabaseBlockedException;

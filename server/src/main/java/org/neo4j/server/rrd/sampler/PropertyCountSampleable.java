@@ -19,7 +19,6 @@
  */
 package org.neo4j.server.rrd.sampler;
 
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseSPI;
 import org.neo4j.kernel.impl.nioneo.store.PropertyStore;
 

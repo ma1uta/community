@@ -33,7 +33,6 @@ import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.server.logging.InMemoryAppender;
 import org.neo4j.shell.ShellException;
 import org.neo4j.shell.ShellLobby;
