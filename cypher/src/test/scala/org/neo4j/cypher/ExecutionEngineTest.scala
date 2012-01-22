@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -27,6 +27,7 @@ import org.junit.matchers.JUnitMatchers._
 import org.neo4j.graphdb.{Path, Relationship, Direction, Node}
 import org.junit.{Ignore, Test}
 import org.neo4j.index.lucene.ValueContext
+import org.neo4j.test.ImpermanentGraphDatabase
 
 class ExecutionEngineTest extends ExecutionEngineHelper {
 
@@ -647,7 +648,6 @@ class ExecutionEngineTest extends ExecutionEngineHelper {
         Map("node.y" -> "a", "count(node.x)" -> 1),
         Map("node.y" -> "b", "count(node.x)" -> 1)))
   }
-
 
   @Test def shouldSumNonNullValues() {
     val n1 = createNode(Map("y" -> "a", "x" -> 33))
@@ -1406,6 +1406,11 @@ return other
     assert(List(Map("other" -> c)) === result.toList)
   }
 
+  @Test def shouldHandleCheckingThatANodeDoesNotHaveAProp() {
+    val result = parseAndExecute("start a=node(0) where not(a.propertyDoesntExist) return a")
+    assert(List(Map("a" -> refNode)) === result.toList)
+  }
+
   @Test def shouldHandleAggregationAndSortingOnSomeOverlappingColumns() {
     createNode("COL1" -> "A", "COL2" -> "A", "num" -> 1)
     createNode("COL1" -> "B", "COL2" -> "B", "num" -> 2)
@@ -1425,9 +1430,9 @@ order by a.COL1
   @Test def shouldThrowNiceErrorMessageWhenPropertyIsMissing() {
     val query = new CypherParser().parse("start n=node(0) return n.A_PROPERTY_THAT_IS_MISSING")
 
-    val exception = intercept[SyntaxException](execute(query).toList)
+    val exception = intercept[EntityNotFoundException](execute(query).toList)
 
-    assert(exception.getMessage === "n.A_PROPERTY_THAT_IS_MISSING does not exist on Node[0]")
+    assert(exception.getMessage === "The property 'A_PROPERTY_THAT_IS_MISSING' does not exist on Node[0]")
   }
 
   @Test def shouldAllowAllPredicateOnArrayProperty() {
@@ -1517,7 +1522,7 @@ RETURN x0.name?
     relate(c, y4, "X", "CY")
 
     val result = parseAndExecute("""START a=node(1), b=node(2), c=node(3) match a-[?]-x-->y-[?]-c, b-[?]-z<--y, z-->x return x""")
-    assert(List(x1,x2,x3,x4) === result.columnAs[Node]("x").toList)
+    assert(List(x1, x2, x3, x4) === result.columnAs[Node]("x").toList)
   }
 
   @Test def shouldFindNodesBothDirections() {
@@ -1564,14 +1569,14 @@ RETURN x0.name?
 
   @Test def shouldReturnDifferentResultsWithDifferentParams() {
     val a = createNode()
-    
+
     val b = createNode()
-    relate(a,b)
-    
+    relate(a, b)
+
     relate(refNode, a, "X")
 
-    assert( 1 === parseAndExecute("start a = node({a}) match a-->b return b", "a" -> a).size )
-    assert( 0 === parseAndExecute("start a = node({a}) match a-->b return b", "a" -> b).size )
+    assert(1 === parseAndExecute("start a = node({a}) match a-->b return b", "a" -> a).size)
+    assert(0 === parseAndExecute("start a = node({a}) match a-->b return b", "a" -> b).size)
   }
 
   @Test def shouldHandleParametersNamedAsIdentifiers() {
@@ -1580,19 +1585,18 @@ RETURN x0.name?
     val result = parseAndExecute("start foo=node(1) where foo.bar = {foo} return foo.bar", "foo" -> "Andres")
     assert(List(Map("foo.bar" -> "Andres")) === result.toList)
   }
-  
+
   @Test def shouldHandleRelationshipIndexQuery() {
     val a = createNode()
     val b = createNode()
-    val r = relate(a,b)
+    val r = relate(a, b)
     indexRel(r, "relIdx", "key", "value")
 
 
     val result = parseAndExecute("start r=relationship:relIdx(key='value') return r")
     assert(List(Map("r" -> r)) === result.toList)
   }
-  
-  
+
 
   @Test def shouldHandleComparisonsWithDifferentTypes() {
     createNode("belt" -> 13)
@@ -1606,5 +1610,20 @@ RETURN x0.name?
 
     val result = parseAndExecute("start a=node(0,1),b=node(1,0) where a != b return a,b")
     assert(List(Map("a" -> refNode, "b" -> a), Map("b" -> refNode, "a" -> a)) === result.toList)
+  }
+
+  @Test def createEngineWithSpecifiedParserVersion() {
+    val db = new ImpermanentGraphDatabase(Map[String, String]("cypher_parser_version" -> "1.5").asJava)
+    val engine = new ExecutionEngine(db)
+
+    try {
+      // This syntax is valid in 1.6, but should give an exception in 1.5
+      engine.execute("start n=node(0) where all(x in n.prop where x = 'monkey') return n")
+    } catch {
+      case x:SyntaxException =>
+      case _ => fail("expected exception")
+    } finally {
+      db.shutdown()
+    }
   }
 }

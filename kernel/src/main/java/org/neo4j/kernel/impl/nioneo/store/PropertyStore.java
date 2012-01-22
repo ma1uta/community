@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -19,23 +19,18 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
-import static org.neo4j.kernel.Config.ARRAY_BLOCK_SIZE;
-import static org.neo4j.kernel.Config.STRING_BLOCK_SIZE;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.logging.Level;
-
 import org.neo4j.helpers.UTF8;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.impl.util.StringLogger;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.logging.Level;
+
+import static org.neo4j.kernel.Config.ARRAY_BLOCK_SIZE;
+import static org.neo4j.kernel.Config.STRING_BLOCK_SIZE;
 
 /**
  * Implementation of the property store. This implementation has two dynamic
@@ -290,10 +285,8 @@ public class PropertyStore extends AbstractStore implements Store, RecordStore<P
 
             // Then go through the blocks
             int longsAppended = 0; // For marking the end of blocks
-            List<PropertyBlock> blocks = record.getPropertyBlocks();
-            for ( int i = 0; i < blocks.size(); i++ )
+            for ( PropertyBlock block : record.getPropertyBlocks() )
             {
-                PropertyBlock block = blocks.get( i );
                 long[] propBlockValues = block.getValueBlocks();
                 for ( int k = 0; k < propBlockValues.length; k++ )
                 {
@@ -333,9 +326,8 @@ public class PropertyStore extends AbstractStore implements Store, RecordStore<P
 
     private void updateDynamicRecords( List<DynamicRecord> records )
     {
-        for (int i = 0; i < records.size(); i++)
+        for (DynamicRecord valueRecord : records)
         {
-            DynamicRecord valueRecord = records.get( i );
             if ( valueRecord.getType() == PropertyType.STRING.intValue() )
             {
                 stringPropertyStore.updateRecord( valueRecord );

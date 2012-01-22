@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -19,7 +19,7 @@
  */
 package org.neo4j.cypher
 
-import internal.parser.v16.ConsoleCypherParser
+import internal.parser.v1_6.ConsoleCypherParser
 import org.neo4j.cypher.commands._
 import org.junit.Assert._
 import org.neo4j.graphdb.Direction
@@ -925,7 +925,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       Query.
         start(NodeById("a", 0), NodeById("b", 1)).
         matches(ShortestPath("p", "a", "b", None, Direction.OUTGOING, Some(1), false, true, None))
-        returns(ExpressionReturnItem(Entity("p"))))
+        returns (ExpressionReturnItem(Entity("p"))))
   }
 
   @Test def testShortestPathWithMaxDepth() {
@@ -1060,19 +1060,19 @@ class CypherParserTest extends JUnitSuite with Assertions {
   }
 
   @Test def shouldBeAbleToParseThingsLikeIts15AllOverAgain() {
-      testQuery(
-        "cypher 1.5 start a = node(1) where ANY(x in NODES(p) : x.name = 'Andres') return b",
-        Query.
-          start(NodeById("a", 1)).
-          where(AnyInIterable(NodesFunction(Entity("p")), "x", Equals(Property("x", "name"), Literal("Andres"))))
-          returns (ExpressionReturnItem(Entity("b"))))
-    }
+    testQuery(
+      "cypher 1.5 start a = node(1) where ANY(x in NODES(p) : x.name = 'Andres') return b",
+      Query.
+        start(NodeById("a", 1)).
+        where(AnyInIterable(NodesFunction(Entity("p")), "x", Equals(Property("x", "name"), Literal("Andres"))))
+        returns (ExpressionReturnItem(Entity("b"))))
+  }
 
   def testQuery(query: String, expectedQuery: Query) {
     val parser = new CypherParser()
 
-      val ast = parser.parse(query)
+    val ast = parser.parse(query)
 
-      assert(expectedQuery === ast)
+    assert(expectedQuery === ast)
   }
 }

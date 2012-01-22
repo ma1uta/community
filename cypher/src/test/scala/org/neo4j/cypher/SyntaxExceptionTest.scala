@@ -1,7 +1,5 @@
-package org.neo4j.cypher
-
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -19,6 +17,7 @@ package org.neo4j.cypher
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+package org.neo4j.cypher
 
 import org.scalatest.junit.JUnitSuite
 import org.junit.Assert._
@@ -40,7 +39,7 @@ class SyntaxExceptionTest extends JUnitSuite {
   @Test def shouldRaiseErrorWhenMissingIndexValue() {
     expectError(
       "start s = node:index(key=) return s",
-      "String literal or parameter expected")
+      "string literal or parameter expected")
   }
 
   @Test def shouldRaiseErrorWhenMissingIndexKey() {
@@ -52,7 +51,14 @@ class SyntaxExceptionTest extends JUnitSuite {
   @Test def startWithoutNodeOrRel() {
     expectError(
       "start s return s",
-      "Need identifier assignment")
+      "expected identifier assignment")
+  }
+
+  @Ignore
+  @Test def shouldRaiseErrorWhenMissingReturnColumns() {
+    expectError(
+      "start s = node(0) return",
+      "Expected comma separated list of returnable values")
   }
 
   @Test def shouldRaiseErrorWhenMissingReturn() {
@@ -64,7 +70,7 @@ class SyntaxExceptionTest extends JUnitSuite {
   @Test def shouldWarnAboutMissingStart() {
     expectError(
       "where s.name = Name and s.age = 10 return s",
-      "Missing START clause")
+      "expected 'START'")
   }
 
   @Test def shouldComplainAboutWholeNumbers() {
@@ -81,15 +87,15 @@ class SyntaxExceptionTest extends JUnitSuite {
 
   @Test def matchWithoutIdentifierHasToHaveParenthesis2() {
     expectError(
-      "start a = node(0) match (a) --> return a",
-      "return is a reserved keyword and may not be used here.")
+      "start a = node(0) match (a) -->, a-->b return a",
+      "expected node identifier")
   }
 
 
   @Test def shouldComplainAboutAStringBeingExpected() {
     expectError(
-      "start s=node:index(key = value) return s limit -1",
-      "String literal or parameter expected")
+      "start s=node:index(key = value) return s",
+      "string literal or parameter expected")
   }
 
   @Test def shortestPathCanNotHaveMinimumDepth() {
@@ -101,25 +107,31 @@ class SyntaxExceptionTest extends JUnitSuite {
   @Test def shortestPathCanNotHaveMultipleLinksInIt() {
     expectError(
       "start a=node(0), b=node(1) match p=shortestPath(a-->()-->b) return p",
-      "Shortest path does not support having multiple path segments")
+      "expected single path segment")
   }
 
   @Test def oldNodeSyntaxGivesHelpfulError() {
     expectError(
       "start a=(0) return a",
-      "Need either node or relationship here")
+      "expected either node or relationship here")
   }
 
   @Test def weirdSpelling() {
     expectError(
       "start a=ndoe(0) return a",
-      "Need either node or relationship here")
+      "expected either node or relationship here")
   }
 
   @Test def unclosedParenthesis() {
     expectError(
       "start a=node(0 return a",
       "Unclosed parenthesis")
+  }
+
+  @Test def trailingComa() {
+    expectError(
+      "start a=node(0,1,) return a",
+      "trailing coma")
   }
 
   @Test def unclosedCurly() {
@@ -131,7 +143,7 @@ class SyntaxExceptionTest extends JUnitSuite {
   @Test def twoEqualSigns() {
     expectError(
       "start a==node(0) return a",
-      "Need either node or relationship here")
+      "expected either node or relationship here")
   }
 
   @Test def oldSyntax() {
@@ -150,13 +162,13 @@ class SyntaxExceptionTest extends JUnitSuite {
   @Test def unknownFunction() {
     expectError(
       "start a=node(0) return foo(a)",
-      "Unknown function")
+      "unknown function")
   }
 
-  @Ignore @Test def nodeParenthesisMustBeClosed() {
+  @Test def nodeParenthesisMustBeClosed() {
     expectError(
       "start s=node(1) match s-->(x return x",
-      "Unfinished parenthesis around 'x'")
+      "Unclosed parenthesis")
   }
 
   @Test def handlesMultilineQueries() {
@@ -169,6 +181,6 @@ class SyntaxExceptionTest extends JUnitSuite {
     f=node(0),
     g=node(0),
     s=node:index(key = value) return s""",
-      "String literal or parameter expected")
+      "string literal or parameter expected")
   }
 }
