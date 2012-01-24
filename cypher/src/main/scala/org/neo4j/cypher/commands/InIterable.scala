@@ -51,19 +51,24 @@ case class AllInIterable(iterable: Expression, symbolName: String, inner: Predic
   def seqMethod[U](f: Seq[U]): ((U) => Boolean) => Boolean = f.forall _
 
   def name = "all"
+
+  def rewrite(r: Rewriter) = r(AllInIterable(iterable.rewrite(r), symbolName, inner.rewrite(r)))
 }
 
 case class AnyInIterable(iterable: Expression, symbolName: String, inner: Predicate) extends InIterable(iterable, symbolName, inner) {
   def seqMethod[U](f: Seq[U]): ((U) => Boolean) => Boolean = f.exists _
   def name = "any"
+  def rewrite(r: Rewriter) = r(AnyInIterable(iterable.rewrite(r), symbolName, inner.rewrite(r)))
 }
 
 case class NoneInIterable(iterable: Expression, symbolName: String, inner: Predicate) extends InIterable(iterable, symbolName, inner) {
   def seqMethod[U](f: Seq[U]): ((U) => Boolean) => Boolean = x => !f.exists(x)
   def name = "none"
+  def rewrite(r: Rewriter) = r(NoneInIterable(iterable.rewrite(r), symbolName, inner.rewrite(r)))
 }
 
 case class SingleInIterable(iterable: Expression, symbolName: String, inner: Predicate) extends InIterable(iterable, symbolName, inner) {
   def seqMethod[U](f: Seq[U]): ((U) => Boolean) => Boolean = x => f.filter(x).length == 1
   def name = "single"
+  def rewrite(r: Rewriter) = r(SingleInIterable(iterable.rewrite(r), symbolName, inner.rewrite(r)))
 }

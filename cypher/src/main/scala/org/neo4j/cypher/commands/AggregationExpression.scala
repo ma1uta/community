@@ -51,7 +51,7 @@ case class Distinct(innerAggregator: AggregationExpression, expression: Expressi
     expression.dependencies(innerAggregator.expectedInnerType) ++ innerAggregator.dependencies(extectedType)
   }
 
-  def rewrite(f: (Expression) => Expression) = innerAggregator.rewrite(f) match {
+  def rewrite(f: Rewriter) = innerAggregator.rewrite(f) match {
     case x: AggregationExpression => f(Distinct(x, expression.rewrite(f), name))
     case _ => throw new ThisShouldNotHappenError("Andres", "Tried re-writing an aggregation expression to a non-aggregation expression.")
   }
@@ -64,7 +64,7 @@ case class Count(anInner: Expression, name: String) extends AggregationExpressio
 
   def expectedInnerType: AnyType = AnyType()
 
-  def rewrite(f: (Expression) => Expression) = f(Count(anInner.rewrite(f), name))
+  def rewrite(f: Rewriter) = f(Count(anInner.rewrite(f), name))
 }
 
 case class Sum(anInner: Expression, name: String) extends AggregationExpression(anInner) {
@@ -74,7 +74,7 @@ case class Sum(anInner: Expression, name: String) extends AggregationExpression(
 
   def expectedInnerType: AnyType = NumberType()
 
-  def rewrite(f: (Expression) => Expression) = f(Sum(anInner.rewrite(f), name))
+  def rewrite(f: Rewriter) = f(Sum(anInner.rewrite(f), name))
 }
 
 case class Min(anInner: Expression, name: String) extends AggregationExpression(anInner) {
@@ -84,7 +84,7 @@ case class Min(anInner: Expression, name: String) extends AggregationExpression(
 
   def expectedInnerType: AnyType = NumberType()
 
-  def rewrite(f: (Expression) => Expression) = f(Min(anInner.rewrite(f), name))
+  def rewrite(f: Rewriter) = f(Min(anInner.rewrite(f), name))
 }
 
 case class Max(anInner: Expression, name: String) extends AggregationExpression(anInner) {
@@ -94,7 +94,7 @@ case class Max(anInner: Expression, name: String) extends AggregationExpression(
 
   def expectedInnerType: AnyType = NumberType()
 
-  def rewrite(f: (Expression) => Expression) = f(Max(anInner.rewrite(f), name))
+  def rewrite(f: Rewriter) = f(Max(anInner.rewrite(f), name))
 }
 
 case class Avg(anInner: Expression, name: String) extends AggregationExpression(anInner) {
@@ -104,7 +104,7 @@ case class Avg(anInner: Expression, name: String) extends AggregationExpression(
 
   def expectedInnerType: AnyType = NumberType()
 
-  def rewrite(f: (Expression) => Expression) = f(Avg(anInner.rewrite(f), name))
+  def rewrite(f: Rewriter) = f(Avg(anInner.rewrite(f), name))
 }
 
 case class Collect(anInner: Expression, name: String) extends AggregationExpression(anInner) {
@@ -114,5 +114,5 @@ case class Collect(anInner: Expression, name: String) extends AggregationExpress
 
   def expectedInnerType: AnyType = AnyType()
 
-  def rewrite(f: (Expression) => Expression) = f(Collect(anInner.rewrite(f), name))
+  def rewrite(f: Rewriter) = f(Collect(anInner.rewrite(f), name))
 }

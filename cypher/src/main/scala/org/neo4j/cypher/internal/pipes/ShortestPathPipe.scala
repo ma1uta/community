@@ -22,10 +22,12 @@ package org.neo4j.cypher.internal.pipes
 import org.neo4j.kernel.Traversal
 import org.neo4j.cypher.SyntaxException
 import java.lang.String
-import org.neo4j.graphdb.{Expander, DynamicRelationshipType, Node}
 import collection.Seq
 import org.neo4j.cypher.symbols.{NodeType, Identifier, PathType}
-import org.neo4j.cypher.commands.{ReturnItem, ShortestPath}
+import org.neo4j.cypher.commands.{Predicate, ShortestPath}
+import java.lang.{Iterable => JIterable}
+import org.neo4j.graphdb._
+import scala.collection.JavaConverters._
 
 /**
  * Shortest pipe inserts a single shortest path between two already found nodes
@@ -33,23 +35,26 @@ import org.neo4j.cypher.commands.{ReturnItem, ShortestPath}
  * It's also the base class for all shortest paths
  */
 abstract class ShortestPathPipe(source: Pipe, ast: ShortestPath) extends PipeWithSource(source) {
-  def startName = ast.start
-  def endName = ast.end
-  def relType = ast.relType
-  def dir = ast.dir
-  def maxDepth = ast.maxDepth
+  private def startName = ast.start
+  private def endName = ast.end
+  private def relType = ast.relType
+  private def dir = ast.dir
+  private def maxDepth = ast.maxDepth
   def optional = ast.optional
   def pathName = ast.pathName
-  def returnItems: Seq[ReturnItem] = Seq()
-
 
   def createResults[U](params: Map[String, Any]): Traversable[Map[String, Any]] = source.createResults(params).flatMap(m => {
     val (start, end) = getStartAndEnd(m)
-    val expander: Expander = createExpander()
     val depth: Int = maxDepth.getOrElse(15)
 
-    findResult(expander, start, end,  depth, m)
+    findResult(createExpander(m), start, end,  depth, m)
   })
+
+  class PredicateExpander(inner: RelationshipExpander, predicate: Predicate, m: Map[String,Any]) extends RelationshipExpander {
+    def expand(node: Node):JIterable[Relationship] = inner.expand(node).asScala.filter(r=> predicate.isMatch(m)).asJava
+
+    def reversed() = new PredicateExpander(inner.reversed(), predicate, m)
+  }
 
   private def getStartAndEnd[U](m: Map[String, Any]): (Node, Node) = {
     val err = (n: String) => throw new SyntaxException("To find a shortest path, both ends of the path need to be provided. Couldn't find `" + n + "`")
@@ -59,17 +64,18 @@ abstract class ShortestPathPipe(source: Pipe, ast: ShortestPath) extends PipeWit
     (start, end)
   }
 
-  private def createExpander[U](): Expander = {
+  private def createExpander(m:Map[String,Any]): RelationshipExpander = {
     val expander = relType match {
       case None => Traversal.expanderForAllTypes(dir)
       case Some(typeName) => Traversal.expanderForTypes(DynamicRelationshipType.withName(typeName), dir)
     }
-    expander
+
+    new PredicateExpander(expander, ast.predicate, m)
   }
 
   def dependencies: Seq[Identifier] = Seq(Identifier(startName, NodeType()), Identifier(endName, NodeType()))
 
-  protected def findResult[U](expander: Expander, start: Node, end: Node, depth: Int, m: Map[String, Any]):Traversable[Map[String, Any]]
+  protected def findResult[U](expander: RelationshipExpander, start: Node, end: Node, depth: Int, m: Map[String, Any]):Traversable[Map[String, Any]]
 
   val symbols = source.symbols.add(Identifier(pathName, PathType()))
 

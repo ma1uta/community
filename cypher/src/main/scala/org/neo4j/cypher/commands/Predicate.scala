@@ -25,7 +25,7 @@ import org.neo4j.cypher.symbols._
 import scala.collection.JavaConverters._
 import org.neo4j.graphdb.{DynamicRelationshipType, Node, Direction, PropertyContainer}
 import org.neo4j.cypher.internal.pipes.Dependant
-import java.util.regex.{Pattern=>RegexPattern}
+import java.util.regex.{Pattern => RegexPattern}
 
 abstract class Predicate extends Dependant {
   def ++(other: Predicate): Predicate = And(this, other)
@@ -37,6 +37,8 @@ abstract class Predicate extends Dependant {
   def atoms: Seq[Predicate]
 
   def containsIsNull: Boolean
+
+  def rewrite(r: Rewriter): Predicate
 }
 
 case class And(a: Predicate, b: Predicate) extends Predicate {
@@ -49,6 +51,8 @@ case class And(a: Predicate, b: Predicate) extends Predicate {
   override def toString: String = "(" + a + " AND " + b + ")"
 
   def containsIsNull: Boolean = a.containsIsNull || b.containsIsNull
+
+  def rewrite(r: Rewriter) = r(And(a.rewrite(r), b.rewrite(r)))
 }
 
 case class Or(a: Predicate, b: Predicate) extends Predicate {
@@ -61,6 +65,8 @@ case class Or(a: Predicate, b: Predicate) extends Predicate {
   override def toString: String = "(" + a + " OR " + b + ")"
 
   def containsIsNull: Boolean = a.containsIsNull || b.containsIsNull
+
+  def rewrite(r: Rewriter) = r(Or(a.rewrite(r), b.rewrite(r)))
 }
 
 case class Not(a: Predicate) extends Predicate {
@@ -73,6 +79,8 @@ case class Not(a: Predicate) extends Predicate {
   override def toString: String = "NOT(" + a + ")"
 
   def containsIsNull: Boolean = a.containsIsNull
+
+  def rewrite(r: Rewriter) = r(Not(a.rewrite(r)))
 }
 
 case class HasRelationshipTo(from: Expression, to: Expression, dir: Direction, relType: Option[String]) extends Predicate {
@@ -85,11 +93,13 @@ case class HasRelationshipTo(from: Expression, to: Expression, dir: Direction, r
     }
   }
 
-  def atoms: Seq[Predicate] = Seq(this)
+  def atoms = Seq(this)
 
   def containsIsNull: Boolean = false
 
-  def dependencies: Seq[Identifier] = from.dependencies(NodeType()) ++ to.dependencies(NodeType())
+  def dependencies = from.dependencies(NodeType()) ++ to.dependencies(NodeType())
+
+  def rewrite(r: Rewriter) = r(HasRelationshipTo(from.rewrite(r), to.rewrite(r), dir, relType))
 }
 
 case class HasRelationship(from: Expression, dir: Direction, relType: Option[String]) extends Predicate {
@@ -106,6 +116,8 @@ case class HasRelationship(from: Expression, dir: Direction, relType: Option[Str
   def containsIsNull: Boolean = false
 
   def dependencies: Seq[Identifier] = from.dependencies(NodeType())
+
+  def rewrite(r: Rewriter) = r(HasRelationship(from.rewrite(r), dir, relType))
 }
 
 case class IsNull(value: Expression) extends Predicate {
@@ -118,6 +130,8 @@ case class IsNull(value: Expression) extends Predicate {
   override def toString: String = value + " IS NULL"
 
   def containsIsNull: Boolean = true
+
+  def rewrite(r: Rewriter) = r(IsNull(value.rewrite(r)))
 }
 
 case class True() extends Predicate {
@@ -130,6 +144,8 @@ case class True() extends Predicate {
   override def toString: String = "true"
 
   def containsIsNull: Boolean = false
+
+  def rewrite(r: Rewriter) = r(True())
 }
 
 case class Has(property: Property) extends Predicate {
@@ -147,6 +163,8 @@ case class Has(property: Property) extends Predicate {
   override def toString: String = "hasProp(" + property + ")"
 
   def containsIsNull: Boolean = false
+
+  def rewrite(r: Rewriter) = r(Has(property))
 }
 
 case class RegularExpression(a: Expression, regex: Expression) extends Predicate {
@@ -158,7 +176,7 @@ case class RegularExpression(a: Expression, regex: Expression) extends Predicate
       val pattern = x.toString.r.pattern
       (x: Map[String, Any]) => pattern
     }
-    case _ =>  (x: Map[String, Any]) => regex(x).toString.r.pattern
+    case _ => (x: Map[String, Any]) => regex(x).toString.r.pattern
   }
 
   def isMatch(m: Map[String, Any]): Boolean = {
@@ -173,4 +191,6 @@ case class RegularExpression(a: Expression, regex: Expression) extends Predicate
   override def toString: String = a.toString() + " ~= /" + regex.toString() + "/"
 
   def containsIsNull: Boolean = false
+
+  def rewrite(r: Rewriter) = r(RegularExpression(a.rewrite(r), regex.rewrite(r)))
 }
