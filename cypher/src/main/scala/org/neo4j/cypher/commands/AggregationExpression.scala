@@ -22,6 +22,7 @@ package org.neo4j.cypher.commands
 import org.neo4j.cypher.symbols._
 import collection.Seq
 import org.neo4j.cypher.internal.pipes.aggregation._
+import org.neo4j.helpers.ThisShouldNotHappenError
 
 abstract class AggregationExpression(inner: Expression) extends Expression {
   def apply(m: Map[String, Any]) = m(identifier.name)
@@ -50,65 +51,68 @@ case class Distinct(innerAggregator: AggregationExpression, expression: Expressi
     expression.dependencies(innerAggregator.expectedInnerType) ++ innerAggregator.dependencies(extectedType)
   }
 
-  def rewrite(f: (Expression) => Expression) = Distinct(innerAggregator, f(expression.rewrite(f)), name)
+  def rewrite(f: (Expression) => Expression) = innerAggregator.rewrite(f) match {
+    case x: AggregationExpression => f(Distinct(x, expression.rewrite(f), name))
+    case _ => throw new ThisShouldNotHappenError("Andres", "Tried re-writing an aggregation expression to a non-aggregation expression.")
+  }
 }
 
-case class Count(anInner: Expression, name:String) extends AggregationExpression(anInner) {
+case class Count(anInner: Expression, name: String) extends AggregationExpression(anInner) {
   def typ = IntegerType()
 
   def createAggregationFunction = new CountFunction(anInner)
 
   def expectedInnerType: AnyType = AnyType()
 
-  def rewrite(f: (Expression) => Expression) = Count(f(anInner.rewrite(f)), name)
+  def rewrite(f: (Expression) => Expression) = f(Count(anInner.rewrite(f), name))
 }
 
-case class Sum(anInner: Expression, name:String) extends AggregationExpression(anInner) {
+case class Sum(anInner: Expression, name: String) extends AggregationExpression(anInner) {
   def typ = NumberType()
 
   def createAggregationFunction = new SumFunction(anInner)
 
   def expectedInnerType: AnyType = NumberType()
 
-  def rewrite(f: (Expression) => Expression) = Sum(f(anInner.rewrite(f)), name)
+  def rewrite(f: (Expression) => Expression) = f(Sum(anInner.rewrite(f), name))
 }
 
-case class Min(anInner: Expression, name:String) extends AggregationExpression(anInner) {
+case class Min(anInner: Expression, name: String) extends AggregationExpression(anInner) {
   def typ = NumberType()
 
   def createAggregationFunction = new MinFunction(anInner)
 
   def expectedInnerType: AnyType = NumberType()
 
-  def rewrite(f: (Expression) => Expression) = Min(f(anInner.rewrite(f)), name)
+  def rewrite(f: (Expression) => Expression) = f(Min(anInner.rewrite(f), name))
 }
 
-case class Max(anInner: Expression, name:String) extends AggregationExpression(anInner) {
+case class Max(anInner: Expression, name: String) extends AggregationExpression(anInner) {
   def typ = NumberType()
 
   def createAggregationFunction = new MaxFunction(anInner)
 
   def expectedInnerType: AnyType = NumberType()
 
-  def rewrite(f: (Expression) => Expression) = Max(f(anInner.rewrite(f)), name)
+  def rewrite(f: (Expression) => Expression) = f(Max(anInner.rewrite(f), name))
 }
 
-case class Avg(anInner: Expression, name:String) extends AggregationExpression(anInner) {
+case class Avg(anInner: Expression, name: String) extends AggregationExpression(anInner) {
   def typ = NumberType()
 
   def createAggregationFunction = new AvgFunction(anInner)
 
   def expectedInnerType: AnyType = NumberType()
 
-  def rewrite(f: (Expression) => Expression) = Avg(f(anInner.rewrite(f)), name)
+  def rewrite(f: (Expression) => Expression) = f(Avg(anInner.rewrite(f), name))
 }
 
-case class Collect(anInner: Expression, name:String) extends AggregationExpression(anInner) {
+case class Collect(anInner: Expression, name: String) extends AggregationExpression(anInner) {
   def typ = new IterableType(anInner.identifier.typ)
 
   def createAggregationFunction = new CollectFunction(anInner)
 
   def expectedInnerType: AnyType = AnyType()
 
-  def rewrite(f: (Expression) => Expression) = Collect(f(anInner.rewrite(f)), name)
+  def rewrite(f: (Expression) => Expression) = f(Collect(anInner.rewrite(f), name))
 }
