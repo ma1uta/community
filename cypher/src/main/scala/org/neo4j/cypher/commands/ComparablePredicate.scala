@@ -70,24 +70,30 @@ case class Equals(a: Expression, b: Expression) extends Predicate with Comparer 
   def dependencies = a.dependencies(AnyType()) ++ b.dependencies(AnyType())
 
   override def toString = a.toString() + " == " + b.toString()
+
+  def rewrite(r: Rewriter) = r(Equals(a.rewrite(r), b.rewrite(r)))
 }
 
 case class LessThan(a: Expression, b: Expression) extends ComparablePredicate(a, b) {
   def compare(comparisonResult: Int) = comparisonResult < 0
   def sign: String = "<"
+  def rewrite(r: Rewriter) = r(LessThan(a.rewrite(r), b.rewrite(r)))
 }
 
 case class GreaterThan(a: Expression, b: Expression) extends ComparablePredicate(a, b) {
   def compare(comparisonResult: Int) = comparisonResult > 0
   def sign: String = ">"
+  def rewrite(r: Rewriter) = r(GreaterThan(a.rewrite(r), b.rewrite(r)))
 }
 
 case class LessThanOrEqual(a: Expression, b: Expression) extends ComparablePredicate(a, b) {
   def compare(comparisonResult: Int) = comparisonResult <= 0
   def sign: String = "<="
+  def rewrite(r: Rewriter) = r(LessThanOrEqual(a.rewrite(r), b.rewrite(r)))
 }
 
 case class GreaterThanOrEqual(a: Expression, b: Expression) extends ComparablePredicate(a, b) {
   def compare(comparisonResult: Int) = comparisonResult >= 0
   def sign: String = ">="
+  def rewrite(r: Rewriter) = r(GreaterThanOrEqual(a.rewrite(r), b.rewrite(r)))
 }

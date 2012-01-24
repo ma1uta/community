@@ -19,15 +19,15 @@
  */
 package org.neo4j.cypher.internal.pipes
 
-import org.neo4j.graphdb.{Node, Expander}
 import java.lang.String
 import org.neo4j.graphalgo.GraphAlgoFactory
 import scala.collection.JavaConverters._
 import org.neo4j.cypher.commands.ShortestPath
+import org.neo4j.graphdb.{RelationshipExpander, Node}
 
 class AllShortestPathsPipe(source: Pipe, ast: ShortestPath) extends ShortestPathPipe(source, ast) {
 
-  protected def findResult[U](expander: Expander, start: Node, end: Node, depth: Int, m: Map[String, Any]): Traversable[Map[String, Any]] = {
+  protected def findResult[U](expander: RelationshipExpander, start: Node, end: Node, depth: Int, m: Map[String, Any]): Traversable[Map[String, Any]] = {
     val finder = GraphAlgoFactory.shortestPath(expander, depth)
     val foundPaths = finder.findAllPaths(start, end).asScala.toList
 

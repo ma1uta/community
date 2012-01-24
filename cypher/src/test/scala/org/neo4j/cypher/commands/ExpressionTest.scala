@@ -26,11 +26,16 @@ class ExpressionTest extends Assertions {
   @Test def replacePropWithCache() {
     val a = Collect(Nullable(Property("r", "age")), "wut")
     
-    val b = a.rewrite {
-        case Property(n, p) => Literal(n + "." + p)
-        case x => x
-      }
+    val b = a.rewrite(new TestRewriter)
 
     assert(b === Collect(Nullable(Literal("r.age")), "wut"))
+  }
+  
+  class TestRewriter extends Rewriter {
+
+    override def rewriteExpression = {
+      case Property(n, p) => Literal(n + "." + p)
+      case x => x
+    }
   }
 }
