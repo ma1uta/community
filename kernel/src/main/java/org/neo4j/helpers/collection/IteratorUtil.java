@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -340,6 +340,30 @@ public abstract class IteratorUtil
     }
 
     /**
+     * Convenience method for looping over an {@link Iterator}. Converts the
+     * {@link Iterator} to an {@link Iterable} by wrapping it in an
+     * {@link Iterable} that returns the {@link Iterator}. It breaks the
+     * contract of {@link Iterable} in that it returns the supplied iterator
+     * instance for each call to {@code iterator()} on the returned
+     * {@link Iterable} instance. This method exists to make it easy to use an
+     * {@link Iterator} in a for-loop.
+     * 
+     * @param <T> the type of items in the iterator.
+     * @param iterator the iterator to expose as an {@link Iterable}.
+     * @return the supplied iterator posing as an {@link Iterable}.
+     */
+    public static <T> Iterable<T> loop( final Iterator<T> iterator )
+    {
+        return new Iterable<T>()
+        {
+            public Iterator<T> iterator()
+            {
+                return iterator;
+            }
+        };
+    }
+    
+    /**
      * Exposes {@code iterator} as an {@link Iterable}. It breaks the contract
      * of {@link Iterable} in that it returns the supplied iterator instance for
      * each call to {@code iterator()} on the returned {@link Iterable}
@@ -350,15 +374,10 @@ public abstract class IteratorUtil
      * @param iterator the iterator to expose as an {@link Iterable}.
      * @return the supplied iterator posing as an {@link Iterable}.
      */
+    //@Deprecated * @deprecated use {@link #loop(Iterator) the loop method} instead.
     public static <T> Iterable<T> asIterable( final Iterator<T> iterator )
     {
-        return new Iterable<T>()
-        {
-            public Iterator<T> iterator()
-            {
-                return iterator;
-            }
-        };
+        return loop( iterator );
     }
     
     /**

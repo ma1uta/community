@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -342,9 +342,9 @@ public class XaLogicalLog implements LogLoader
         assert txId != -1;
         try
         {
+            cacheTxStartPosition( txId, startEntry.getMasterId(), startEntry );
             LogIoUtils.writeCommit( false, writeBuffer, identifier, txId, System.currentTimeMillis() );
             forceMode.force( writeBuffer );
-            cacheTxStartPosition( txId, startEntry.getMasterId(), startEntry );
         }
         catch ( IOException e )
         {
@@ -419,9 +419,9 @@ public class XaLogicalLog implements LogLoader
         assert txId != -1;
         try
         {
+            cacheTxStartPosition( txId, startEntry.getMasterId(), startEntry );
             LogIoUtils.writeCommit( true, writeBuffer, identifier, txId, System.currentTimeMillis() );
             forceMode.force( writeBuffer );
-            cacheTxStartPosition( txId, startEntry.getMasterId(), startEntry );
         }
         catch ( IOException e )
         {
@@ -523,6 +523,7 @@ public class XaLogicalLog implements LogLoader
         {
             XaTransaction xaTx = xaRm.getXaTransaction( xid );
             xaTx.setCommitTxId( txId );
+            cacheTxStartPosition( txId, startEntry.getMasterId(), startEntry );
             xaRm.injectOnePhaseCommit( xid );
             registerRecoveredTransaction( txId );
         }
@@ -582,6 +583,7 @@ public class XaLogicalLog implements LogLoader
         {
             XaTransaction xaTx = xaRm.getXaTransaction( xid );
             xaTx.setCommitTxId( txId );
+            cacheTxStartPosition( txId, identifier, startEntry );
             xaRm.injectTwoPhaseCommit( xid );
             registerRecoveredTransaction( txId );
         }
@@ -1073,6 +1075,9 @@ public class XaLogicalLog implements LogLoader
      * content is guaranteed to be present, including content just in the write
      * buffer.
      *
+     * Non synchronized, though it accesses writeBuffer. Use this method only
+     * through synchronized blocks or trouble will come your way.
+     *
      * @param version The version of the log to get a channel over
      * @param position The position to which to set the channel
      * @return The channel
@@ -1091,7 +1096,7 @@ public class XaLogicalLog implements LogLoader
             FileChannel channel = fileSystem.open( currentLogName, "r" );
             channel = new BufferedFileChannel( channel );
             /*
-             * this method is called **during** commmit{One,Two}Phase - i.e. before the log buffer
+             * this method is called **during** commit{One,Two}Phase - i.e. before the log buffer
              * is forced and in the case of 1PC without the writeOut() done in prepare (as in 2PC).
              * So, we need to writeOut(). The content of the buffer is written out to the file channel
              * so that the new channel returned above will see the new content. This logical log can
@@ -1194,6 +1199,7 @@ public class XaLogicalLog implements LogLoader
         {
             for ( LogEntry entry : logEntries )
             {
+                if ( entry instanceof Start ) ((Start)entry).setStartPosition( writeBuffer.getFileChannelPosition() );
                 LogIoUtils.writeLogEntry( entry, writeBuffer );
                 applyEntry( entry );
             }
@@ -1263,12 +1269,12 @@ public class XaLogicalLog implements LogLoader
         {
             XaTransaction xaTx = xaRm.getXaTransaction( xid );
             xaTx.setCommitTxId( nextTxId );
+            cacheTxStartPosition( nextTxId, masterId, startEntry );
             xaRm.commit( xid, true );
             LogEntry doneEntry = new LogEntry.Done( startEntry.getIdentifier() );
             LogIoUtils.writeLogEntry( doneEntry, writeBuffer );
             xidIdentMap.remove( startEntry.getIdentifier() );
             recoveredTxMap.remove( startEntry.getIdentifier() );
-            cacheTxStartPosition( nextTxId, masterId, startEntry );
         }
         catch ( XAException e )
         {
@@ -1308,7 +1314,6 @@ public class XaLogicalLog implements LogLoader
         {
             if ( !successfullyApplied && logApplier.getStartEntry() != null )
             {   // Unmap this identifier if tx not applied correctly
-                xidIdentMap.remove( xidIdent );
                 try
                 {
                     xaRm.forget( logApplier.getStartEntry().getXid() );
@@ -1316,6 +1321,10 @@ public class XaLogicalLog implements LogLoader
                 catch ( XAException e )
                 {
                     throw new IOException( e );
+                }
+                finally
+                {
+                    xidIdentMap.remove( xidIdent );
                 }
             }
         }
@@ -1630,7 +1639,7 @@ public class XaLogicalLog implements LogLoader
         }
         return highest;
     }
-    
+
     public boolean wasNonClean()
     {
         return nonCleanShutdown;

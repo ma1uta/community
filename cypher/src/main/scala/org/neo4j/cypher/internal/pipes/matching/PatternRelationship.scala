@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -23,13 +23,15 @@ import scala.collection.JavaConverters._
 import org.neo4j.graphdb.traversal.{TraversalDescription, Evaluators}
 import org.neo4j.graphdb._
 import org.neo4j.kernel.{Uniqueness, Traversal}
+import org.neo4j.cypher.commands.Predicate
 
 class PatternRelationship(key: String,
                           val startNode: PatternNode,
                           val endNode: PatternNode,
                           val relType: Option[String],
                           val dir: Direction,
-                          val optional: Boolean)
+                          val optional: Boolean,
+                          val predicate: Predicate)
   extends PatternElement(key) {
 
   def getOtherNode(node: PatternNode) = if (startNode == node) endNode else startNode
@@ -65,8 +67,9 @@ class VariableLengthPatternRelationship(pathName: String,
                                         maxHops: Option[Int],
                                         relType: Option[String],
                                         dir: Direction,
-                                        optional: Boolean)
-  extends PatternRelationship(pathName, start, end, relType, dir, optional) {
+                                        optional: Boolean,
+                                        predicate:Predicate)
+  extends PatternRelationship(pathName, start, end, relType, dir, optional, predicate) {
 
   override def getGraphRelationships(node: PatternNode, realNode: Node): Seq[GraphRelationship] = {
 

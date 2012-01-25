@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -19,8 +19,8 @@
  */
 package org.neo4j.cypher.internal.pipes.matching
 
-import org.neo4j.cypher.commands.Predicate
 import org.neo4j.graphdb.Node
+import org.neo4j.cypher.commands.{True, Predicate}
 
 class PatternMatcher(bindings: Map[String, MatchingPair], predicates: Seq[Predicate], includeOptionals: Boolean, source:Map[String,Any])
   extends Traversable[Map[String, Any]] {
@@ -74,6 +74,11 @@ class PatternMatcher(bindings: Map[String, MatchingPair], predicates: Seq[Predic
     } else {
 
       val newHistory = history.add(current)
+      
+      currentRel.predicate match {
+        case True() =>
+        case p => if(!p.isMatch(newHistory.toMap)) return false
+      } 
 
       if (isMatchSoFar(newHistory)) {
         val nextNode = rel.getOtherNode(gNode)
@@ -100,6 +105,13 @@ class PatternMatcher(bindings: Map[String, MatchingPair], predicates: Seq[Predic
 
   }
 
+  private def alreadyPinned[U](currentRel: PatternRelationship, x: GraphRelationship): Boolean = {
+    boundRels.get(currentRel.key) match {
+      case Some(pinnedRel) => pinnedRel.matches(x)
+      case None => true
+    }
+  }
+
   private def traverseRelationship[U](currentNode: MatchingPair,
                                       currentRel: PatternRelationship,
                                       history: History,
@@ -112,10 +124,7 @@ class PatternMatcher(bindings: Map[String, MatchingPair], predicates: Seq[Predic
     val relationships = currentNode.getGraphRelationships(currentRel)
     val step1 = history.filter(relationships)
     val notVisitedRelationships: Seq[GraphRelationship] = step1.
-      filter(x => boundRels.get(currentRel.key) match {
-      case Some(pinnedRel) => pinnedRel.matches(x)
-      case None => true
-    })
+      filter(x => alreadyPinned(currentRel, x))
 
     val nextPNode = currentRel.getOtherNode(pNode)
 

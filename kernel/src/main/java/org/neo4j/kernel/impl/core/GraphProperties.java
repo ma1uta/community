@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -85,12 +85,6 @@ public class GraphProperties extends Primitive implements PropertyContainer
     public long getId()
     {
         return -1L;
-    }
-    
-    @Override
-    protected long getFirstProp()
-    {
-        throw new UnsupportedOperationException();
     }
 
     @Override

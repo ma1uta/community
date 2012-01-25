@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -1062,7 +1062,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     }
 
     @Override
-    public ArrayMap<Integer,PropertyData> nodeLoadProperties( long nodeId, long firstProp, boolean light )
+    public ArrayMap<Integer,PropertyData> nodeLoadProperties( long nodeId, boolean light )
     {
         NodeRecord nodeRecord = getNodeRecord( nodeId );
         if ( nodeRecord != null && nodeRecord.isCreated() )
@@ -1077,13 +1077,13 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
                         "] has been deleted in this tx" );
             }
         }
-//        nodeRecord = getNodeStore().getRecord( nodeId );
-//        if ( !nodeRecord.inUse() )
-//        {
-//            throw new InvalidRecordException( "Node[" + nodeId +
-//                "] not in use" );
-//        }
-        return ReadTransaction.loadProperties( getPropertyStore(), firstProp );
+        nodeRecord = getNodeStore().getRecord( nodeId );
+        if ( !nodeRecord.inUse() )
+        {
+            throw new InvalidRecordException( "Node[" + nodeId +
+                "] not in use" );
+        }
+        return ReadTransaction.loadProperties( getPropertyStore(), nodeRecord.getNextProp() );
     }
 
     public Object propertyGetValueOrNull( PropertyBlock block )

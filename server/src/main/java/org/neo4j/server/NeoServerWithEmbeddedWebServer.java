@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -28,13 +28,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.configuration.Configuration;
-import org.neo4j.helpers.collection.IteratorUtil;
 import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.kernel.info.DiagnosticsManager;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.database.GraphDatabaseFactory;
-import org.neo4j.server.guard.GuardedDatabaseFactory;
 import org.neo4j.server.guard.Guard;
+import org.neo4j.server.guard.GuardedDatabaseFactory;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.modules.PluginInitializer;
 import org.neo4j.server.modules.RESTApiModule;
@@ -90,20 +90,12 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
 
         initWebServer();
 
-        StringLogger logger = startDatabase();
+        DiagnosticsManager dm = startDatabase();
 
-        if ( logger != null )
-        {
-            logger.logMessage( "--- SERVER STARTUP START ---" );
+        StringLogger logger = dm.getTargetLog();
+        logger.logMessage( "--- SERVER STARTUP START ---" );
 
-            Configuration configuration = configurator.configuration();
-            logger.logMessage( "Server configuration:" );
-            for ( Object key : IteratorUtil.asIterable( configuration.getKeys() ) )
-            {
-                if ( key instanceof String )
-                    logger.logMessage( "  " + key + " = " + configuration.getProperty( (String) key ) );
-            }
-        }
+        dm.register( Configurator.DIAGNOSTICS, configurator );
 
         startExtensionInitialization();
 
@@ -111,11 +103,11 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
 
         startWebServer( logger );
 
-        if ( logger != null ) logger.logMessage( "--- SERVER STARTUP END ---", true );
+        logger.logMessage( "--- SERVER STARTUP END ---", true );
     }
 
     /**
-     * Initializes individual plugins using the mechanism provided via @{see PluginInitializer} and the java service
+     * Initializes individual plugins using the mechanism provided via {@link PluginInitializer} and the java service
      * locator
      */
     protected void startExtensionInitialization()
@@ -172,7 +164,7 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         }
     }
 
-    private StringLogger startDatabase()
+    private DiagnosticsManager startDatabase()
     {
         String dbLocation = new File( configurator.configuration()
                 .getString( Configurator.DATABASE_LOCATION_PROPERTY_KEY ) ).getAbsolutePath();
@@ -192,7 +184,7 @@ public class NeoServerWithEmbeddedWebServer implements NeoServer
         {
             this.database = new Database( dbFactory, dbLocation );
         }
-        return database.getStringLogger();
+        return database.graph.getConfig().getDiagnosticsManager();
     }
 
     private void initGuard()

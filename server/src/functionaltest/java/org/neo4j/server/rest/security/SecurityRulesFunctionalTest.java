@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -69,8 +69,7 @@ public class SecurityRulesFunctionalTest extends ExclusiveServerTestBase
      * denied. In a production-quality implementation the rule
      * will likely lookup credentials/claims in a 3rd party
      * directory service (e.g. LDAP) or in a local database of
-     * authorized users, or in the provided graph for this server in order
-     * to make context-specific security checks using the domain data.
+     * authorized users.
      * 
      */
     @Test
@@ -85,7 +84,7 @@ public class SecurityRulesFunctionalTest extends ExclusiveServerTestBase
         gen.get().addSnippet(
                 "config",
                 "\n[source]\n----\norg.neo4j.server.rest.security_rules=my.rules.PermanentlyFailingSecurityRule\n----\n" );
-        gen.get().addSourceSnippets( PermanentlyFailingSecurityRule.class,
+        gen.get().addTestSourceSnippets( PermanentlyFailingSecurityRule.class,
                 "failingRule" );
         functionalTestHelper = new FunctionalTestHelper( server );
         gen.get().setSection( "ops" );

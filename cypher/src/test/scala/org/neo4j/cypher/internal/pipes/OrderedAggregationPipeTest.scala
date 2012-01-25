@@ -1,7 +1,5 @@
-package org.neo4j.cypher.internal.pipes
-
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -19,6 +17,7 @@ package org.neo4j.cypher.internal.pipes
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+package org.neo4j.cypher.internal.pipes
 
 import org.junit.Test
 import org.junit.Assert._
@@ -48,7 +47,7 @@ class OrderedAggregationPipeTest extends JUnitSuite with Assertions {
     val source = new FakePipe(List(), createSymbolTableFor("extractReturnItems"))
 
     val returnItems = List(ExpressionReturnItem(Entity("name")))
-    val grouping = List(ValueAggregationItem(Count(Entity("none-existing-identifier"))))
+    val grouping = List(ValueAggregationItem(Count(Entity("none-existing-identifier"), "x")))
     intercept[SyntaxException](new OrderedAggregationPipe(source, returnItems, grouping))
   }
 
@@ -77,7 +76,7 @@ class OrderedAggregationPipeTest extends JUnitSuite with Assertions {
       Map("name" -> "Peter", "age" -> 38)), createSymbolTableFor("name", "age"))
 
     val returnItems = List(ExpressionReturnItem(Entity("name")))
-    val grouping = List(ValueAggregationItem(Count((Entity("age")))))
+    val grouping = List(ValueAggregationItem(Count((Entity("age")), "count(age)")))
     val aggregationPipe = new OrderedAggregationPipe(source, returnItems, grouping)
 
     assertThat(aggregationPipe.createResults(Map()).toIterable.asJava, hasItems(
@@ -89,7 +88,7 @@ class OrderedAggregationPipeTest extends JUnitSuite with Assertions {
     val source = new FakePipe(List(), createSymbolTableFor("name"))
 
     val returnItems = List()
-    val grouping = List(ValueAggregationItem(Count((Entity("name")))))
+    val grouping = List(ValueAggregationItem(Count((Entity("name")), "x")))
     intercept[ThisShouldNotHappenError](new OrderedAggregationPipe(source, returnItems, grouping))
   }
 

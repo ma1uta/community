@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -21,6 +21,7 @@ package org.neo4j.tooling.wrap;
 
 import java.util.Iterator;
 
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
@@ -57,6 +58,12 @@ public abstract class WrappedIndex<T extends PropertyContainer, I extends Readab
     protected abstract I actual();
 
     abstract T wrap( T entity );
+
+    @Override
+    public GraphDatabaseService getGraphDatabase()
+    {
+        return graphdb;
+    }
 
     @Override
     public String toString()
@@ -168,6 +175,20 @@ public abstract class WrappedIndex<T extends PropertyContainer, I extends Readab
     public boolean isWriteable()
     {
         return actual().isWriteable();
+    }
+
+    @Override
+    public T putIfAbsent( T entity, String key, Object value )
+    {
+        I actual = actual();
+        if ( actual instanceof Index<?> )
+        {
+            return wrap( ((Index<T>) actual).putIfAbsent( entity, key, value ) );
+        }
+        else
+        {
+            throw new UnsupportedOperationException();
+        }
     }
 
     public static abstract class WrappedNodeIndex extends

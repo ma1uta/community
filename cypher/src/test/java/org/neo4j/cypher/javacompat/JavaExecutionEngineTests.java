@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -24,10 +24,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.neo4j.cypher.commands.Query;
 import org.neo4j.graphdb.DynamicRelationshipType;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.helpers.collection.IteratorUtil;
+import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.test.ImpermanentGraphDatabase;
 
 import java.io.IOException;
@@ -42,7 +42,7 @@ import static org.neo4j.helpers.collection.IteratorUtil.asIterable;
 
 public class JavaExecutionEngineTests {
 
-    private GraphDatabaseService db;
+    private AbstractGraphDatabase db;
     private ExecutionEngine engine;
     private Node andreasNode;
     private Node johanNode;
@@ -246,6 +246,7 @@ public class JavaExecutionEngineTests {
         assertEquals( "Michaela", n_column.next() );
         assertEquals( "Johan", n_column.next() );
     }
+
 
     private void makeFriends( Node a, Node b ) {
         Transaction tx = db.beginTx();

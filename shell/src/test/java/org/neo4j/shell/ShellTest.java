@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -53,7 +53,7 @@ public class ShellTest
         assertTrue( parser.options().containsKey( "a" ) );
         assertTrue( parser.arguments().isEmpty() );
     }
-
+    
     @Test
     public void testParserArguments() throws Exception
     {
@@ -127,10 +127,10 @@ public class ShellTest
         doc.add( "pwd", "0", "print current history stack" );
         doc.add( "ls -avr", "KNOWS", "verbose list relationships" );
         doc.run();
-        //TODO: implement support for removing root node and previous nodes in the history stack of PWD
-        //client.getServer().interpretLine( "rmnode -f 0", client.session(), client.getOutput() );
-        //        client.getServer().interpretLine( "cd", client.session(), client.getOutput() );
-        //        client.getServer().interpretLine( "pwd", client.session(), client.getOutput() );
+        doc.add( "rmnode -f 0", "", "delete node 0 (reference node)" );
+        doc.add( "cd", "", "cd back to the reference node" );
+        doc.add( "pwd", "(?)", "the reference node doesn't exist now" );
+        doc.add( "mknode --cd --np \"{'name':'Neo'}\"", "", "create a new node and go to it" );
         server.shutdown();
         db.shutdown();
     }
@@ -154,7 +154,7 @@ public class ShellTest
         doc.add("mkrel -t KNOWS -cv", "", "create Thomas direct friends");
         doc.add("cd 3", "", "go to the new node");
         doc.add("set name \"Morpheus\"", "", "set the name property");
-        doc.add("mkrel -t KNOWS -n 2", "", "create relationship to Trinity");
+        doc.add("mkrel -t KNOWS 2", "", "create relationship to Trinity");
 
         doc.add("ls -rv", "", "list the relationships of node 3");
         doc.add("cd -r 2", "", "change the current position to relationship #2");
@@ -183,6 +183,11 @@ public class ShellTest
 
         doc.add( "","","Now, let's ask some questions" );
         doc.add( "start morpheus = node:node_auto_index(name='Morpheus') " +
+                "match morpheus-[:KNOWS]-zionist " +
+                "return zionist.name",
+                "",
+                "Morpheus' friends, looking up Morpheus by name in the Neo4j autoindex" );
+        doc.add( "cypher 1.5 start morpheus = node:node_auto_index(name='Morpheus') " +
                 "match morpheus-[:KNOWS]-zionist " +
                 "return zionist.name",
                 "",

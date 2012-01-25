@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -34,6 +34,9 @@ case class RelationshipByIndexQuery(varName:String, idxName: String, query: Expr
 case class NodeByIndex(varName:String, idxName: String, key:Expression, expression: Expression) extends NodeStartItem(varName)
 case class NodeByIndexQuery(varName:String, idxName: String, query: Expression) extends NodeStartItem(varName)
 case class NodeById(varName:String, expression:Expression) extends NodeStartItem(varName)
+
+case class AllNodes(columnName:String) extends NodeStartItem(columnName)
+case class AllRelationships(columnName:String) extends RelationshipStartItem(columnName)
 
 object NodeById {
   def apply(varName:String, id: Long*) = new NodeById(varName, Literal(id))

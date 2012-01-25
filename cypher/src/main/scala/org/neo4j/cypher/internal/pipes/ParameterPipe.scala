@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -20,11 +20,12 @@
 package org.neo4j.cypher.internal.pipes
 
 import java.lang.String
-import org.neo4j.cypher.symbols.{AnyType, SymbolTable, Identifier}
+import org.neo4j.cypher.symbols.{SymbolTable, Identifier}
+import org.neo4j.cypher.commands.ParameterValue
 
 class ParameterPipe() extends Pipe {
-  def createResults[U](params: Map[String, Any]): Traversable[Map[String, Any]] = Seq(params)
-  val identifiers: Seq[Identifier] = Seq()//  params.keys.map(k => Identifier(k, AnyType())).toSeq
-  val symbols: SymbolTable = new SymbolTable(identifiers:_*)
+  def createResults[U](params: Map[String, Any]): Traversable[Map[String, Any]] = Seq(params.map { case (k,v) => "-=PARAMETER=-"+k+"-=PARAMETER=-" -> ParameterValue(v) } )
+  val identifiers: Seq[Identifier] = Seq()
+  val symbols: SymbolTable = new SymbolTable()
   override def executionPlan(): String = "Parameters()"
 }

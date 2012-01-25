@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -27,12 +27,12 @@ import org.neo4j.kernel.impl.transaction.xaframework.ForceMode;
 
 /**
  * Helps generate testable data models, using a RestfulGraphDatabase.
- * 
+ *
  */
 public class ModelBuilder
 {
     private static final ForceMode FORCE = ForceMode.forced;
-    
+
     public static DomainModel generateMatrix( RestfulGraphDatabase rgd )
     {
         String key = "key_get";
@@ -58,11 +58,11 @@ public class ModelBuilder
         dm.indexedNodeKeyValues.put( key, value );
 
         dm.indexedNodeUriToEntityMap.put(
-                (URI) rgd.addToNodeIndex( FORCE, dm.nodeIndexName, "{\"key\": \"" + key + "\", \"value\":\"" + value + "\", \"uri\": \"" + thomas.location + "\"}" )
+                (URI) rgd.addToNodeIndex( FORCE, dm.nodeIndexName, null, "{\"key\": \"" + key + "\", \"value\":\"" + value + "\", \"uri\": \"" + thomas.location + "\"}" )
                         .getMetadata()
                         .getFirst( "Location" ), thomas );
         dm.indexedNodeUriToEntityMap.put(
-                (URI) rgd.addToNodeIndex( FORCE, dm.nodeIndexName, "{\"key\": \"" + key + "\", \"value\":\"" + value + "\", \"uri\": \"" + agent.location + "\"}" )
+                (URI) rgd.addToNodeIndex( FORCE, dm.nodeIndexName, null, "{\"key\": \"" + key + "\", \"value\":\"" + value + "\", \"uri\": \"" + agent.location + "\"}" )
                         .getMetadata()
                         .getFirst( "Location" ), agent );
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -397,8 +397,7 @@ public class TestXa extends AbstractNeo4jTestCase
         xaCon.getWriteTransaction().nodeCreate( node2 );
         PropertyData n1prop1 = xaCon.getWriteTransaction().nodeAddProperty(
                 node1, index( "prop1" ), "string1" );
-        xaCon.getWriteTransaction().nodeLoadProperties( node1,
-                xaCon.getWriteTransaction().nodeLoadLight( node1 ).getNextProp(), false );
+        xaCon.getWriteTransaction().nodeLoadProperties( node1, false );
         int relType1 = (int) ds.nextId( RelationshipType.class );
         xaCon.getWriteTransaction().createRelationshipType( relType1,
             "relationshiptype1" );
@@ -603,7 +602,7 @@ public class TestXa extends AbstractNeo4jTestCase
         assertTrue( Arrays.equals(
                 (long[]) toRead.getValue(),
                 (long[]) xaCon.getWriteTransaction().nodeLoadProperties( node1,
-                        xaCon.getWriteTransaction().nodeLoadLight( node1 ).getNextProp(), false ).get( toRead.getIndex() ).getValue() ) );
+                        false ).get( toRead.getIndex() ).getValue() ) );
 
         xaRes.end( xid, XAResource.TMSUCCESS );
         xaRes.prepare( xid );
@@ -831,8 +830,7 @@ public class TestXa extends AbstractNeo4jTestCase
         xaCon.getWriteTransaction().nodeCreate( node2 );
         PropertyData n1prop1 = xaCon.getWriteTransaction().nodeAddProperty(
                 node1, index( "prop1" ), "string1" );
-        xaCon.getWriteTransaction().nodeLoadProperties( node1,
-                xaCon.getWriteTransaction().nodeLoadLight( node1 ).getNextProp(), false );
+        xaCon.getWriteTransaction().nodeLoadProperties( node1, false );
         int relType1 = (int) ds.nextId( RelationshipType.class );
         xaCon.getWriteTransaction().createRelationshipType( relType1, "relationshiptype1" );
         long rel1 = ds.nextId( Relationship.class );

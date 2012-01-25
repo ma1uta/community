@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -38,12 +38,7 @@ public class ConfigMapUpgradeConfiguration implements UpgradeConfiguration
         String allowUpgrade = (String) config.get( Config.ALLOW_STORE_UPGRADE );
         if ( !Boolean.parseBoolean( allowUpgrade ) )
         {
-            throw new UpgradeNotAllowedByConfigurationException(
-                    String.format(
-                            "Failed to start Neo4j with an older data store version. "
-                                    + "To enable automatic upgrade, please set configuration parameter \"%s=true\"",
-                            Config.ALLOW_STORE_UPGRADE ) );
+            throw new UpgradeNotAllowedByConfigurationException();
         }
     }
-
 }

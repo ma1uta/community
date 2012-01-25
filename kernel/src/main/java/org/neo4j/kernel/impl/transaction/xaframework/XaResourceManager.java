@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -423,6 +423,7 @@ public class XaResourceManager
         checkStartWritten( txStatus, xaTransaction );
         if ( onePhase )
         {
+            txStatus.markAsPrepared();
             if ( !xaTransaction.isReadOnly() )
             {
                 if ( !xaTransaction.isRecovered() )
@@ -436,7 +437,6 @@ public class XaResourceManager
                             xaTransaction.getCommitTxId(), getForceMode() );
                 }
             }
-            txStatus.markAsPrepared();
         }
         if ( !txStatus.prepared() || txStatus.rollback() )
         {

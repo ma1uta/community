@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -68,24 +68,19 @@ public class InternalJettyServletRequest extends Request
         }
     }
 
-    private Map<String, Object> headers;
-    private Cookie[] cookies;
-    private Input input;
-    private BufferedReader inputReader;
+    private final Map<String, Object> headers;
+    private final Cookie[] cookies;
+    private final Input input;
+    private final BufferedReader inputReader;
     private String contentType;
-    private String method;
+    private final String method;
 
-    public InternalJettyServletRequest()
+    public InternalJettyServletRequest( String method, String uri, String body ) throws UnsupportedEncodingException
     {
-
+        this( method, new HttpURI( uri ), body, new Cookie[] {}, MediaType.APPLICATION_JSON, "UTF-8" );
     }
 
-    public void setup( String method, String uri, String body ) throws UnsupportedEncodingException
-    {
-        setup( method, new HttpURI( uri ), body, new Cookie[] {}, MediaType.APPLICATION_JSON, "UTF-8" );
-    }
-
-    public void setup( String method, HttpURI uri, String body, Cookie[] cookies, String contentType, String encoding )
+    public InternalJettyServletRequest( String method, HttpURI uri, String body, Cookie[] cookies, String contentType, String encoding )
             throws UnsupportedEncodingException
     {
         this.input = new Input( body );
@@ -195,6 +190,11 @@ public class InternalJettyServletRequest extends Request
     public Cookie[] getCookies()
     {
         return cookies;
+    }
+
+    public void addHeader(String header, String value)
+    {
+        headers.put(header, value);
     }
 
     @Override

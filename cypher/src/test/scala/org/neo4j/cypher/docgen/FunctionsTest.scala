@@ -1,7 +1,5 @@
-package org.neo4j.cypher.docgen
-
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -19,6 +17,7 @@ package org.neo4j.cypher.docgen
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+package org.neo4j.cypher.docgen
 
 import org.junit.Test
 import org.junit.Assert._
@@ -97,7 +96,7 @@ class FunctionsTest extends DocumentingTestBase {
       text = """Returns a string representation of the relationship type.""",
       queryText = """start n=node(%A%) match (n)-[r]->() return type(r)""",
       returns = """The relationship type of r.""",
-      assertions = (p) => assertEquals("KNOWS", p.columnAs[String]("TYPE(r)").toList.head))
+      assertions = (p) => assertEquals("KNOWS", p.columnAs[String]("type(r)").toList.head))
   }
 
   @Test def length() {
@@ -108,7 +107,7 @@ class FunctionsTest extends DocumentingTestBase {
       text = """To return or filter on the length of a path, use the special property LENGTH""",
       queryText = """start a=node(%A%) match p=a-->b-->c return length(p)""",
       returns = """The length of the path p.""",
-      assertions = (p) => assertEquals(2, p.columnAs[Int]("LENGTH(p)").toList.head))
+      assertions = (p) => assertEquals(2, p.columnAs[Int]("length(p)").toList.head))
   }
 
   @Test def extract() {
@@ -125,7 +124,7 @@ class FunctionsTest extends DocumentingTestBase {
  in an iterable with these values. It works like the `map` method in functional languages such as Lisp and Scala.""",
       queryText = """start a=node(%A%), b=node(%B%), c=node(%D%) match p=a-->b-->c return extract(n in nodes(p) : n.age)""",
       returns = """The age property of all nodes in the path.""",
-      assertions = (p) => assertEquals(List(Map("extract(n in NODES(p) : n.age)" -> List(38, 25, 54))), p.toList))
+      assertions = (p) => assertEquals(List(Map("extract(n in nodes(p) : n.age)" -> List(38, 25, 54))), p.toList))
   }
 
   @Test def nodes_in_path() {
@@ -172,7 +171,7 @@ class FunctionsTest extends DocumentingTestBase {
       text = """Returns the first non-null value in the list of expressions passed to it.""",
       queryText = """start a=node(%A%) return coalesce(a.hairColour?, a.eyes?)""",
       returns = """""",
-      assertions = (p) => assert(Seq("brown") === p.columnAs[String]("COALESCE(a.hairColour,a.eyes)").toSeq)
+      assertions = (p) => assert(Seq("brown") === p.columnAs[String]("coalesce(a.hairColour?, a.eyes?)").toSeq)
     )
   }
 

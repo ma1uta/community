@@ -56,6 +56,7 @@ public class EmbeddedNeo4jWithIndexing
             // Create users sub reference node (see design guidelines on
             // http://wiki.neo4j.org/ )
             Node usersReferenceNode = graphDb.getReferenceNode( "users" );
+            
             // Create some users and index their names with the IndexService
             for ( int id = 0; id < 100; id++ )
             {
