@@ -30,6 +30,9 @@ object AnyType {
     if(obj.isInstanceOf[Number])
       return NumberType()
     
+    if(obj.isInstanceOf[Boolean])
+      return BooleanType()
+    
     if(obj.isInstanceOf[Seq[_]] || obj.isInstanceOf[Array[_]])
       return AnyIterableType()
     

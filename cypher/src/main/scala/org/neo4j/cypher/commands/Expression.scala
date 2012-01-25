@@ -37,6 +37,101 @@ abstract class Expression extends (Map[String, Any] => Any) {
       throw new SyntaxException(identifier.name + " expected to be of type " + extectedType + " but it is of type " + identifier.typ)
     declareDependencies(extectedType)
   }
+
+  def rewrite(f: Expression => Expression): Expression
+}
+
+case class Add(a: Expression, b: Expression) extends Expression {
+  def identifier = Identifier(a.identifier.name + " + " + b.identifier.name, ScalarType())
+
+  def apply(m: Map[String, Any]) = {
+    val aVal = a(m)
+    val bVal = b(m)
+
+    (aVal, bVal) match {
+      case (x: Number, y: Number) => x.doubleValue() + y.doubleValue()
+      case (x: String, y: String) => x + y
+      case _ => throw new CypherTypeException("Don't know how to add `" + aVal.toString + "` and `" + bVal.toString + "`")
+    }
+
+  }
+
+  def declareDependencies(extectedType: AnyType) = a.declareDependencies(extectedType) ++ b.declareDependencies(extectedType)
+
+  def rewrite(f: (Expression) => Expression) = Add(f(a.rewrite(f)), f(b.rewrite(f)))
+}
+
+case class Subtract(a: Expression, b: Expression) extends Expression {
+  def identifier = Identifier(a.identifier.name + " + " + b.identifier.name, ScalarType())
+
+  def apply(m: Map[String, Any]) = {
+    val aVal = a(m)
+    val bVal = b(m)
+
+    (aVal, bVal) match {
+      case (x: Number, y: Number) => x.doubleValue() - y.doubleValue()
+      case _ => throw new CypherTypeException("Don't know how to subtract `" + bVal.toString + "` from `" + aVal.toString + "`")
+    }
+
+  }
+
+  def declareDependencies(extectedType: AnyType) = a.declareDependencies(extectedType) ++ b.declareDependencies(extectedType)
+
+  def rewrite(f: (Expression) => Expression) = Subtract(f(a.rewrite(f)), f(b.rewrite(f)))
+}
+
+case class Multiply(a: Expression, b: Expression) extends Arithmetics(a, b) {
+  def operand = "*"
+
+  def verb = "multiply"
+
+  def stringWithString(a: String, b: String) = throwTypeError(a, b)
+
+  def numberWithNumber(a: Number, b: Number) = a.doubleValue() * b.doubleValue()
+
+  def rewrite(f: (Expression) => Expression) = Multiply(f(a.rewrite(f)), f(b.rewrite(f)))
+}
+
+case class Divide(a: Expression, b: Expression) extends Arithmetics(a, b) {
+  def operand = "/"
+
+  def verb = "divide"
+
+  def stringWithString(a: String, b: String) = throwTypeError(a, b)
+
+  def numberWithNumber(a: Number, b: Number) = a.doubleValue() / b.doubleValue()
+
+  def rewrite(f: (Expression) => Expression) = Divide(f(a.rewrite(f)), f(b.rewrite(f)))
+}
+
+abstract class Arithmetics(a: Expression, b: Expression) extends Expression {
+  def identifier = Identifier("%s %s %s".format(a.identifier.name, operand, b.identifier.name), ScalarType())
+
+  def operand: String
+
+  def throwTypeError(bVal: Any, aVal: Any): Nothing = {
+    throw new CypherTypeException("Don't know how to subtract `" + bVal.toString + "` from `" + aVal.toString + "`")
+  }
+
+  def apply(m: Map[String, Any]) = {
+    val aVal = a(m)
+    val bVal = b(m)
+
+    (aVal, bVal) match {
+      case (x: Number, y: Number) => numberWithNumber(x, y)
+      case (x: String, y: String) => stringWithString(x, y)
+      case _ => throwTypeError(bVal, aVal)
+    }
+
+  }
+
+  def verb: String
+
+  def stringWithString(a: String, b: String): String
+
+  def numberWithNumber(a: Number, b: Number): Number
+
+  def declareDependencies(extectedType: AnyType) = a.declareDependencies(extectedType) ++ b.declareDependencies(extectedType)
 }
 
 case class Literal(v: Any) extends Expression {
@@ -47,6 +142,8 @@ case class Literal(v: Any) extends Expression {
   override def toString() = if (v.isInstanceOf[String]) "\"" + v + "\"" else v.toString
 
   def declareDependencies(extectedType: AnyType): Seq[Identifier] = Seq()
+
+  def rewrite(f: (Expression) => Expression) = f(this)
 }
 
 abstract class CastableExpression extends Expression {
@@ -54,17 +151,21 @@ abstract class CastableExpression extends Expression {
 }
 
 case class Nullable(expression: Expression) extends Expression {
+
+  //TODO Add question mark
   def identifier = expression.identifier
 
   def apply(m: Map[String, Any]) = try {
     expression.apply(m)
   } catch {
-    case x:EntityNotFoundException => null
+    case x: EntityNotFoundException => null
   }
 
   def declareDependencies(extectedType: AnyType) = expression.dependencies(extectedType)
 
   override def dependencies(extectedType: AnyType) = expression.dependencies(extectedType)
+
+  def rewrite(f: (Expression) => Expression) = Nullable(f(expression.rewrite(f)))
 }
 
 case class Property(entity: String, property: String) extends CastableExpression {
@@ -74,7 +175,7 @@ case class Property(entity: String, property: String) extends CastableExpression
       case propertyContainer => try {
         propertyContainer.getProperty(property)
       } catch {
-        case x: NotFoundException => throw new EntityNotFoundException("The property '%s' does not exist on %s".format(property, propertyContainer),x)
+        case x: NotFoundException => throw new EntityNotFoundException("The property '%s' does not exist on %s".format(property, propertyContainer), x)
       }
     }
   }
@@ -85,7 +186,7 @@ case class Property(entity: String, property: String) extends CastableExpression
 
   def declareDependencies(extectedType: AnyType): Seq[Identifier] = Seq(Identifier(entity, MapType()))
 
-
+  def rewrite(f: (Expression) => Expression) = f(this)
 }
 
 case class RelationshipTypeFunction(relationship: Expression) extends Expression {
@@ -96,6 +197,8 @@ case class RelationshipTypeFunction(relationship: Expression) extends Expression
   override def toString() = "type(" + relationship + ")"
 
   def declareDependencies(extectedType: AnyType): Seq[Identifier] = relationship.dependencies(RelationshipType())
+
+  def rewrite(f: (Expression) => Expression) = RelationshipTypeFunction(f(relationship.rewrite(f)))
 }
 
 case class CoalesceFunction(expressions: Expression*) extends Expression {
@@ -114,6 +217,8 @@ case class CoalesceFunction(expressions: Expression*) extends Expression {
   override def toString() = "coalesce(" + argumentsString + ")"
 
   def declareDependencies(extectedType: AnyType): Seq[Identifier] = expressions.flatMap(_.dependencies(AnyType()))
+
+  def rewrite(f: (Expression) => Expression) = CoalesceFunction(expressions.map( e=> f(e.rewrite(f)) ): _*)
 }
 
 case class LengthFunction(inner: Expression) extends Expression {
@@ -130,6 +235,8 @@ case class LengthFunction(inner: Expression) extends Expression {
     val seq = inner.dependencies(AnyIterableType()).toList
     seq
   }
+
+  def rewrite(f: (Expression) => Expression) = LengthFunction(f(inner.rewrite(f)))
 }
 
 case class IdFunction(inner: Expression) extends Expression {
@@ -140,8 +247,9 @@ case class IdFunction(inner: Expression) extends Expression {
 
   def identifier = Identifier("ID(" + inner.identifier.name + ")", LongType())
 
-
   def declareDependencies(extectedType: AnyType): Seq[Identifier] = inner.dependencies(MapType())
+
+  def rewrite(f: (Expression) => Expression) = IdFunction(f(inner.rewrite(f)))
 }
 
 case class NodesFunction(path: Expression) extends Expression {
@@ -153,6 +261,8 @@ case class NodesFunction(path: Expression) extends Expression {
   def identifier = Identifier("NODES(" + path.identifier.name + ")", new IterableType(NodeType()))
 
   def declareDependencies(extectedType: AnyType): Seq[Identifier] = path.dependencies(PathType())
+
+  def rewrite(f: (Expression) => Expression) = NodesFunction(f(path.rewrite(f)))
 }
 
 case class ExtractFunction(iterable: Expression, id: String, expression: Expression) extends Expression {
@@ -170,6 +280,8 @@ case class ExtractFunction(iterable: Expression, id: String, expression: Express
   // Extract depends on everything that the iterable and the expression depends on, except
   // the new identifier inserted into the expression context, named with id
     iterable.dependencies(AnyIterableType()) ++ expression.dependencies(AnyType()).filterNot(_.name == id)
+
+  def rewrite(f: (Expression) => Expression) = ExtractFunction(f(iterable.rewrite(f)), id, f(expression.rewrite(f)))
 }
 
 case class RelationshipFunction(path: Expression) extends Expression {
@@ -182,6 +294,7 @@ case class RelationshipFunction(path: Expression) extends Expression {
 
   def declareDependencies(extectedType: AnyType): Seq[Identifier] = path.dependencies(PathType())
 
+  def rewrite(f: (Expression) => Expression) = RelationshipFunction(f(path.rewrite(f)))
 }
 
 case class Entity(entityName: String) extends CastableExpression {
@@ -192,10 +305,12 @@ case class Entity(entityName: String) extends CastableExpression {
   override def toString(): String = entityName
 
   def declareDependencies(extectedType: AnyType): Seq[Identifier] = Seq(Identifier(entityName, extectedType))
+
+  def rewrite(f: (Expression) => Expression) = f(this)
 }
 
 case class Parameter(parameterName: String) extends CastableExpression {
-  def apply(m: Map[String, Any]): Any = m.getOrElse("-=PARAMETER=-"+parameterName+"-=PARAMETER=-", throw new ParameterNotFoundException("Expected a parameter named " + parameterName)) match {
+  def apply(m: Map[String, Any]): Any = m.getOrElse("-=PARAMETER=-" + parameterName + "-=PARAMETER=-", throw new ParameterNotFoundException("Expected a parameter named " + parameterName)) match {
     case ParameterValue(x) => x
     case _ => throw new ParameterNotFoundException("Expected a parameter named " + parameterName)
   }
@@ -205,6 +320,8 @@ case class Parameter(parameterName: String) extends CastableExpression {
   override def toString(): String = "{" + parameterName + "}"
 
   def declareDependencies(extectedType: AnyType): Seq[Identifier] = Seq()
+
+  def rewrite(f: (Expression) => Expression) = f(this)
 }
 
-case class ParameterValue(value:Any)
+case class ParameterValue(value: Any)
