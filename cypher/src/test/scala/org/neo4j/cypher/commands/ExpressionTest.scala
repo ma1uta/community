@@ -25,17 +25,37 @@ import org.scalatest.Assertions
 class ExpressionTest extends Assertions {
   @Test def replacePropWithCache() {
     val a = Collect(Nullable(Property("r", "age")), "wut")
-    
-    val b = a.rewrite(new TestRewriter)
+
+    val b = a.rewrite(new ExpressionRewriter({
+      case Property(n, p) => Literal(n + "." + p)
+      case x => x
+    }))
 
     assert(b === Collect(Nullable(Literal("r.age")), "wut"))
   }
-  
-  class TestRewriter extends Rewriter {
 
-    override def rewriteExpression = {
-      case Property(n, p) => Literal(n + "." + p)
+  @Test def reWorkPredicateUsedInShortestPath() {
+    val pred = AllInIterable(RelationshipFunction(Entity("p")), "r", Equals(Property("r", "foo"), Literal("bar")))
+    val pred2 = AllInIterable(RelationshipFunction(Entity("x")), "r", Equals(Property("r", "foo"), Literal("bar")))
+
+    val expected = Equals(Property("r", "foo"), Literal("bar"))
+
+    val rewriter = new PredicateRewriter({
+      case x@AllInIterable(RelationshipFunction(Entity(pathName)), symbol, predicate) => if (pathName == "p") predicate else x
       case x => x
-    }
+    })
+
+    assert(pred.rewrite(rewriter) === expected)
+    assert(pred2.rewrite(rewriter) === pred2)
   }
+
+  class ExpressionRewriter(f: Expression => Expression) extends Rewriter {
+    override def rewriteExpression = f
+  }
+
+  class PredicateRewriter(f: Predicate => Predicate) extends Rewriter {
+    override def rewritePredicate = f
+  }
+
+
 }

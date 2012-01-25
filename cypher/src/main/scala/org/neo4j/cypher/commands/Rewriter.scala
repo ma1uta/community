@@ -8,3 +8,4 @@ abstract class Rewriter {
 
   def rewritePredicate: Predicate => Predicate = x => x
 }
+
