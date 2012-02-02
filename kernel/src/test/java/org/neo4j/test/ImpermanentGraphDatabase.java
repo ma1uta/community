@@ -134,10 +134,11 @@ public class ImpermanentGraphDatabase extends EmbeddedGraphDatabase
         }
     }
 
-    protected void close()
+    @Override
+    public void shutdown()
     {
-        super.close();
-        fileSystemAbstraction.dispose();
+        super.shutdown();
+
         clearDirectory( new File( getStoreDir() ) );
     }
 

@@ -21,10 +21,7 @@ package org.neo4j.kernel.impl.transaction.xaframework;
 
 import java.nio.channels.ReadableByteChannel;
 import java.util.List;
-import java.util.Map;
 
-import org.neo4j.helpers.Pair;
-import org.neo4j.kernel.DependencyResolver;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.nioneo.xa.Command;
 import org.neo4j.kernel.impl.util.StringLogger;

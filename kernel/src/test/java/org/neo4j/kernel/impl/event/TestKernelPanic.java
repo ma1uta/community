@@ -60,7 +60,7 @@ public class TestKernelPanic
         Transaction tx = txMgr.getTransaction();
         
         graphDb.createNode();
-        tx.enlistResource( noob.getXaConnection().getXaResource() );
+        noob.getXaConnection().enlistResource( tx );
         try
         {
             gdbTx.success();

@@ -44,26 +44,16 @@ import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
  */
 public class XaContainer
 {
-    private XaCommandFactory cf;
     private XaLogicalLog log;
     private XaResourceManager rm;
-    private XaTransactionFactory tf;
 
     /**
      * Creates a XaContainer.
      *
-     * @param cf
-     *            The command factory implementation
-     * @param tf
- *            The transaction factory implementation
      * @param log
      */
-    public XaContainer(XaCommandFactory cf, XaTransactionFactory tf,
-                       XaResourceManager rm, XaLogicalLog log)
+    public XaContainer(XaResourceManager rm, XaLogicalLog log)
     {
-        this.cf = cf;
-        this.tf = tf;
-
         this.rm = rm;
         this.log = log;
     }
@@ -101,13 +91,6 @@ public class XaContainer
         }
         log = null;
         rm = null;
-        cf = null;
-        tf = null;
-    }
-
-    public XaCommandFactory getCommandFactory()
-    {
-        return cf;
     }
 
     public XaLogicalLog getLogicalLog()
@@ -118,10 +101,5 @@ public class XaContainer
     public XaResourceManager getResourceManager()
     {
         return rm;
-    }
-
-    public XaTransactionFactory getTransactionFactory()
-    {
-        return tf;
     }
 }

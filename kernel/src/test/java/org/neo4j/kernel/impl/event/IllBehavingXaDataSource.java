@@ -19,6 +19,9 @@
  */
 package org.neo4j.kernel.impl.event;
 
+import javax.transaction.RollbackException;
+import javax.transaction.SystemException;
+import javax.transaction.Transaction;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
@@ -50,6 +53,8 @@ public class IllBehavingXaDataSource extends XaDataSource
 
     private static class IllBehavingXaConnection implements XaConnection
     {
+        IllBehavingXaResource illBehavingXaResource = new IllBehavingXaResource();
+
         public void destroy()
         {
             // TODO Auto-generated method stub
@@ -58,7 +63,21 @@ public class IllBehavingXaDataSource extends XaDataSource
 
         public XAResource getXaResource()
         {
-            return new IllBehavingXaResource();
+            return illBehavingXaResource;
+        }
+
+        @Override
+        public boolean enlistResource( Transaction javaxTx )
+            throws SystemException, RollbackException
+        {
+            return javaxTx.enlistResource( new IllBehavingXaResource() );
+        }
+
+        @Override
+        public boolean delistResource( Transaction tx, int tmsuccess )
+            throws IllegalStateException, SystemException
+        {
+            return tx.delistResource( illBehavingXaResource, tmsuccess );
         }
     }
     

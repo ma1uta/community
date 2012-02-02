@@ -274,6 +274,6 @@ public class TestShortStringProperties extends TestShortString
     private PropertyStore propertyStore()
     {
         XaDataSourceManager dsMgr = graphdb.getXaDataSourceManager();
-        return ( (NeoStoreXaConnection) dsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME ).getXaConnection() ).getPropertyStore();
+        return dsMgr.getNeoStoreDataSource().getXaConnection().getPropertyStore();
     }
 }

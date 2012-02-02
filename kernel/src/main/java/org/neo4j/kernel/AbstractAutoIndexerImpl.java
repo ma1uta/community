@@ -38,7 +38,7 @@ import org.neo4j.graphdb.index.ReadableIndex;
  * @param <T> The database primitive type auto indexed
  */
 abstract class AbstractAutoIndexerImpl<T extends PropertyContainer> implements
-        PropertyTracker<T>, AutoIndexer<T>
+        PropertyTracker<T>, AutoIndexer<T>, Lifecycle
 {
     protected final Set<String> propertyKeysToInclude = new HashSet<String>();
 
@@ -47,8 +47,6 @@ abstract class AbstractAutoIndexerImpl<T extends PropertyContainer> implements
     public AbstractAutoIndexerImpl( )
     {
     }
-
-    public abstract void start();
 
     public void propertyAdded( T primitive, String propertyName,
             Object propertyValue )

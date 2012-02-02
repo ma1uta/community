@@ -45,7 +45,7 @@ public class CreateSomeTransactions
         Node otherNode = db.createNode();
         node.createRelationshipTo( otherNode, MyRelTypes.TEST );
         tx.restart();
-        db.getXaDataSourceManager().getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME ).rotateLogicalLog();
+        db.getXaDataSourceManager().getNeoStoreDataSource().rotateLogicalLog();
         
         for ( int i = 0; i < 5; i++ )
         {

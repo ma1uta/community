@@ -24,8 +24,10 @@ import java.beans.Introspector;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.logging.Logger;
+import org.neo4j.kernel.impl.core.NodeManager;
 
 /**
  * This class is used to create dynamic proxies that implement a configuration interface. Method calls are mapped to
@@ -47,12 +49,7 @@ public class ConfigProxy
     
     public static <T> T config(Map<String, String> parameters, Class<T> configInterface)
     {
-        return config( parameters, "", configInterface );
-    }
-    
-    public static <T> T config(Map<String, String> parameters, String prefix, Class<T> configInterface)
-    {
-        return configInterface.cast(Proxy.newProxyInstance(configInterface.getClassLoader(), new Class<?>[]{configInterface}, new ConfigProxy(parameters, prefix)));
+        return configInterface.cast(Proxy.newProxyInstance(configInterface.getClassLoader(), new Class<?>[]{configInterface}, new ConfigProxy(parameters)));
     }
     
     public static Map<String, String> map(Object configuration)
@@ -60,19 +57,20 @@ public class ConfigProxy
         return ((ConfigProxy)Proxy.getInvocationHandler(configuration)).parameters;
     }
 
-    private String prefix;
     private Map<String, String> parameters;
 
-    public ConfigProxy( Map<String, String> parameters, String prefix )
+    public ConfigProxy( Map<String, String> parameters )
     {
         this.parameters = parameters;
-        this.prefix = prefix;
     }
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable
     {
         String configName = method.getName();
+
+        ConfigurationPrefix annotation = method.getDeclaringClass().getAnnotation( ConfigurationPrefix.class );
+        String prefix = annotation == null ? "" : annotation.value();
 
         String key = prefix + configName;
         Object val = parameters.get( key );
@@ -103,14 +101,29 @@ public class ConfigProxy
                     val = Double.parseDouble(val.toString());
                 else if (returnType.isEnum())
                 {
-                    val = Enum.valueOf((Class<Enum>) returnType, val.toString().toLowerCase());
+                    try
+                    {
+                        val = Enum.valueOf((Class<Enum>) returnType, val.toString().toLowerCase());
+                    }
+                    catch( IllegalArgumentException e )
+                    {
+                        String options = Arrays.asList( ((Object[])returnType.getMethod( "values" ).invoke( null )) ).toString();
+                        if (args != null && args.length > 0)
+                        {
+                            log.warning("Value for configuration parameter '"+key+"' is not valid:"+val+". Please use one of "+options+". Using default instead:"+args[0]);
+                            val = args[0];
+                        } else
+                        {
+                            throw new IllegalArgumentException( "Value for configuration parameter '"+key+"' is not valid:"+val+". Please use one of "+options);
+                        }
+                    }
                 }
             } catch (NumberFormatException e)
             {
                 // Number has wrong format. If default exists, log warning and use default, otherwise rethrow
                 if (args != null && args.length > 0)
                 {
-                    log.warning("Number for configuration parameter "+key+" has wrong format:"+val+" Using default instead:"+args[0]);
+                    log.warning("Number for configuration parameter '"+key+"' has wrong format:"+val+" Using default instead:"+args[0]);
                     val = args[0];
                 } else
                 {
@@ -119,7 +132,7 @@ public class ConfigProxy
             }
 
             // Range checks
-            if (val instanceof Number && args.length == 3)
+            if (val instanceof Number && args != null && args.length == 3)
             {
                 if (val instanceof Float)
                 {

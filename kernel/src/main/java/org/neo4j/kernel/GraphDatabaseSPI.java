@@ -21,16 +21,13 @@
 package org.neo4j.kernel;
 
 import java.util.Collection;
+import javax.transaction.TransactionManager;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.core.NodeManager;
 import org.neo4j.kernel.impl.core.RelationshipTypeHolder;
 import org.neo4j.kernel.impl.transaction.LockManager;
-import org.neo4j.kernel.impl.transaction.TxHook;
-import org.neo4j.kernel.impl.transaction.TxModule;
 import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
-
-import javax.transaction.TransactionManager;
 import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsManager;
 
@@ -52,8 +49,6 @@ public interface GraphDatabaseSPI
     XaDataSourceManager getXaDataSourceManager();
 
     TransactionManager getTxManager();
-
-    TxModule getTxModule();
 
     DiagnosticsManager getDiagnosticsManager();
     

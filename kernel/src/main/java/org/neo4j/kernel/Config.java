@@ -19,37 +19,13 @@
  */
 package org.neo4j.kernel;
 
-import static java.util.regex.Pattern.quote;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
-import javax.transaction.TransactionManager;
-
 import org.neo4j.helpers.Args;
 import org.neo4j.kernel.impl.annotations.Documented;
-import org.neo4j.kernel.impl.cache.AdaptiveCacheManager;
-import org.neo4j.kernel.impl.core.GraphDbModule;
-import org.neo4j.kernel.impl.core.KernelPanicEventGenerator;
-import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
-import org.neo4j.kernel.impl.core.LockReleaser;
-import org.neo4j.kernel.impl.core.RelationshipTypeCreator;
-import org.neo4j.kernel.impl.core.RelationshipTypeHolder;
-import org.neo4j.kernel.impl.core.TxEventSyncHookFactory;
-import org.neo4j.kernel.impl.index.IndexStore;
-import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
-import org.neo4j.kernel.impl.nioneo.store.StoreId;
-import org.neo4j.kernel.impl.persistence.IdGenerator;
-import org.neo4j.kernel.impl.persistence.IdGeneratorModule;
-import org.neo4j.kernel.impl.persistence.PersistenceManager;
-import org.neo4j.kernel.impl.persistence.PersistenceModule;
-import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
-import org.neo4j.kernel.impl.transaction.LockManager;
-import org.neo4j.kernel.impl.transaction.TxHook;
-import org.neo4j.kernel.impl.transaction.TxModule;
-import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
-import org.neo4j.kernel.impl.util.StringLogger;
+
+import static java.util.regex.Pattern.*;
 
 /**
  * A non-standard configuration object.
@@ -227,16 +203,10 @@ public class Config
 
     private Map<String, String> params;
 
-    private final boolean readOnly;
-    private final boolean ephemeral;
-    private final boolean backupSlave;
     private final AutoConfigurator autoConfigurator;
 
-    Config(boolean ephemeral,
-           String storeDir, Map<String, String> inputParams)
+    Config(String storeDir, Map<String, String> inputParams)
     {
-        this.ephemeral = ephemeral;
-
         // Get the default params and override with the user supplied values
         this.params = getDefaultParams();
 
@@ -253,8 +223,6 @@ public class Config
         // Configuration may not be changed at runtime
         this.params = Collections.unmodifiableMap(this.params);
 
-        this.readOnly = Boolean.parseBoolean( (String) params.get( READ_ONLY ) );
-        this.backupSlave = Boolean.parseBoolean( (String) params.get( BACKUP_SLAVE ) );
     }
 
     public static Map<String, String> getDefaultParams()
@@ -303,21 +271,6 @@ public class Config
     public Map<String, String> getParams()
     {
         return this.params;
-    }
-
-    public boolean isReadOnly()
-    {
-        return readOnly;
-    }
-    
-    public boolean isEphemeral()
-    {
-        return ephemeral;
-    }
-
-    boolean isBackupSlave()
-    {
-        return backupSlave;
     }
 
     public static boolean configValueContainsMultipleParameters( String configValue )

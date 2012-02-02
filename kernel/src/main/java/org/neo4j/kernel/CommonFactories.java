@@ -25,25 +25,12 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Map;
-
-import javax.transaction.Transaction;
-import javax.transaction.TransactionManager;
-
-import org.neo4j.kernel.impl.core.DefaultRelationshipTypeCreator;
-import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
-import org.neo4j.kernel.impl.core.RelationshipTypeCreator;
 import org.neo4j.kernel.impl.nioneo.store.FileLock;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.nioneo.store.IdGenerator;
 import org.neo4j.kernel.impl.nioneo.store.IdGeneratorImpl;
-import org.neo4j.kernel.impl.nioneo.store.NeoStore;
-import org.neo4j.kernel.impl.transaction.LockManager;
-import org.neo4j.kernel.impl.transaction.TxHook;
-import org.neo4j.kernel.impl.transaction.TxModule;
 import org.neo4j.kernel.impl.transaction.xaframework.DefaultLogBufferFactory;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBufferFactory;
-import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
-import org.neo4j.kernel.impl.transaction.xaframework.TxIdGeneratorFactory;
 import org.neo4j.kernel.impl.util.FileUtils;
 
 public class CommonFactories
@@ -85,50 +72,7 @@ public class CommonFactories
     
     public static FileSystemAbstraction defaultFileSystemAbstraction()
     {
-        return new FileSystemAbstraction()
-        {
-            @Override
-            public FileChannel open( String fileName, String mode ) throws IOException
-            {
-                return new RandomAccessFile( fileName, mode ).getChannel();
-            }
-            
-            @Override
-            public FileLock tryLock( String fileName, FileChannel channel ) throws IOException
-            {
-                return FileLock.getOsSpecificFileLock( fileName, channel );
-            }
-            
-            @Override
-            public FileChannel create( String fileName ) throws IOException
-            {
-                return open( fileName, "rw" );
-            }
-            
-            @Override
-            public boolean fileExists( String fileName )
-            {
-                return new File( fileName ).exists();
-            }
-            
-            @Override
-            public long getFileSize( String fileName )
-            {
-                return new File( fileName ).length();
-            }
-            
-            @Override
-            public boolean deleteFile( String fileName )
-            {
-                return FileUtils.deleteFile( new File( fileName ) );
-            }
-            
-            @Override
-            public boolean renameFile( String from, String to ) throws IOException
-            {
-                return FileUtils.renameFile( new File( from ), new File( to ) );
-            }
-        };
+        return new DefaultFileSystemAbstraction();
     }
     
     public static LogBufferFactory defaultLogBufferFactory()

@@ -70,9 +70,6 @@ import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 
 public class TestNeoStore extends AbstractNeo4jTestCase
 {
-    private static final IdGeneratorFactory ID_GENERATOR_FACTORY =
-            CommonFactories.defaultIdGeneratorFactory();
-
     private PropertyStore pStore;
     private RelationshipTypeStore rtStore;
 
@@ -163,7 +160,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
                 new XaFactory(Collections.<String,String>emptyMap(), TxIdGenerator.DEFAULT, new PlaceboTm(),
                         CommonFactories.defaultLogBufferFactory(), CommonFactories.defaultFileSystemAbstraction(), StringLogger.DEV_NULL ), Collections.<Pair<TransactionInterceptorProvider,Object>>emptyList(), null );
 
-        xaCon = (NeoStoreXaConnection) ds.getXaConnection();
+        xaCon = ds.getXaConnection();
         pStore = xaCon.getPropertyStore();
         rtStore = xaCon.getRelationshipTypeStore();
     }

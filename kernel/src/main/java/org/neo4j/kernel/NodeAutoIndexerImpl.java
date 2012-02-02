@@ -53,6 +53,31 @@ class NodeAutoIndexerImpl extends AbstractAutoIndexerImpl<Node>
     }
 
     @Override
+    public void init()
+        throws Throwable
+    {
+    }
+
+    @Override
+    public void start()
+    {
+        setEnabled(config.node_auto_indexing(false));
+        propertyKeysToInclude.addAll( parseConfigList( config.node_keys_indexable(null)) );
+    }
+
+    @Override
+    public void stop()
+        throws Throwable
+    {
+    }
+
+    @Override
+    public void shutdown()
+        throws Throwable
+    {
+    }
+
+    @Override
     protected Index<Node> getIndexInternal()
     {
         return indexManager.getOrCreateNodeIndex(
@@ -73,12 +98,5 @@ class NodeAutoIndexerImpl extends AbstractAutoIndexerImpl<Node>
             nodeManager.removeNodePropertyTracker(
                     this );
         }
-    }
-
-    @Override
-    public void start()
-    {
-        setEnabled(config.node_auto_indexing(false));
-        propertyKeysToInclude.addAll( parseConfigList( config.node_keys_indexable(null)) );
     }
 }

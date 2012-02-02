@@ -57,29 +57,6 @@ public class NeoStoreXaConnection extends XaConnectionHelpImpl
             neoStore.getStorageFileName(), xaRm, branchId );
     }
 
-    /**
-     * Made public for testing, dont use.
-     */
-    public PropertyStore getPropertyStore()
-    {
-        return neoStore.getPropertyStore();
-    }
-
-    CommonAbstractStore getNodeStore()
-    {
-        return neoStore.getNodeStore();
-    }
-
-    RelationshipStore getRelationshipStore()
-    {
-        return neoStore.getRelationshipStore();
-    }
-
-    public RelationshipTypeStore getRelationshipTypeStore()
-    {
-        return neoStore.getRelationshipTypeStore();
-    }
-
     public XAResource getXaResource()
     {
         return this.xaResource;
@@ -127,4 +104,15 @@ public class NeoStoreXaConnection extends XaConnectionHelpImpl
             return false;
         }
     };
+
+    // TEST These methods are only used by tests - refactor away if possible
+    public PropertyStore getPropertyStore()
+    {
+        return neoStore.getPropertyStore();
+    }
+
+    public RelationshipTypeStore getRelationshipTypeStore()
+    {
+        return neoStore.getRelationshipTypeStore();
+    }
 }

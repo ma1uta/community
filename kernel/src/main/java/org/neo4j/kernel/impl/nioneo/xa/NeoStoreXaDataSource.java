@@ -27,23 +27,20 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
+import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.helpers.Exceptions;
 import org.neo4j.helpers.Pair;
-import org.neo4j.helpers.Service;
 import org.neo4j.helpers.UTF8;
 import org.neo4j.helpers.collection.ClosableIterable;
 import org.neo4j.helpers.collection.Visitor;
 import org.neo4j.kernel.Config;
-import org.neo4j.kernel.ConfigProxy;
-import org.neo4j.kernel.DependencyResolver;
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.index.IndexStore;
@@ -69,6 +66,7 @@ import org.neo4j.kernel.info.DiagnosticsPhase;
 public class NeoStoreXaDataSource extends LogBackedXaDataSource
 {
     public interface Configuration
+        extends LogBackedXaDataSource.Configuration
     {
         boolean read_only(boolean def);
 
@@ -79,8 +77,6 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         String logical_log();
 
         boolean intercept_committing_transactions(boolean def);
-
-        String keep_logical_logs(String def);
     }
 
     public static final byte BRANCH_ID[] = UTF8.encode( "414141" );
@@ -239,7 +235,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
                 neoStore.getPropertyStore() );
             this.idGenerators.put( PropertyIndex.class,
                 neoStore.getPropertyStore().getIndexStore() );
-            setKeepLogicalLogsIfSpecified( conf.keep_logical_logs(null), Config.DEFAULT_DATA_SOURCE_NAME );
+            setKeepLogicalLogsIfSpecified( conf.online_backup_enabled(false) ? "true" : conf.keep_logical_logs(null), Config.DEFAULT_DATA_SOURCE_NAME );
             setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
         }
         catch ( Throwable e )
@@ -301,7 +297,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
     }
 
     @Override
-    public XaConnection getXaConnection()
+    public NeoStoreXaConnection getXaConnection()
     {
         return new NeoStoreXaConnection( neoStore,
             xaContainer.getResourceManager(), getBranchId() );

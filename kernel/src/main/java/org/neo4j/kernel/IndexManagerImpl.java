@@ -24,6 +24,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.PropertyContainer;
@@ -50,27 +54,21 @@ class IndexManagerImpl implements IndexManager
     private final IndexStore indexStore;
     private final Map<String, IndexImplementation> indexProviders = new HashMap<String, IndexImplementation>();
 
-    private final EmbeddedGraphDbImpl graphDbImpl;
     private NodeAutoIndexerImpl nodeAutoIndexer;
     private RelationshipAutoIndexerImpl relAutoIndexer;
     private Config config;
     private XaDataSourceManager xaDataSourceManager;
     private AbstractTransactionManager txManager;
+    private GraphDatabaseSPI graphDatabaseSPI;
 
     IndexManagerImpl( Config config,IndexStore indexStore,
-                      XaDataSourceManager xaDataSourceManager, AbstractTransactionManager txManager, EmbeddedGraphDbImpl gdb)
+                      XaDataSourceManager xaDataSourceManager, AbstractTransactionManager txManager, GraphDatabaseSPI graphDatabaseSPI)
     {
-        graphDbImpl = gdb;
+        this.graphDatabaseSPI = graphDatabaseSPI;
         this.config = config;
         this.xaDataSourceManager = xaDataSourceManager;
         this.txManager = txManager;
         this.indexStore = indexStore;
-    }
-
-    void start()
-    {
-        nodeAutoIndexer.start();
-        relAutoIndexer.start();
     }
 
     private IndexImplementation getIndexProvider( String provider )
@@ -195,25 +193,65 @@ class IndexManagerImpl implements IndexManager
                 indexName, suppliedConfig, config.getParams() );
         if ( result.other() )
         {
-            IndexCreatorThread creator = new IndexCreatorThread( cls, indexName, result.first() );
-            creator.start();
+            ExecutorService executorService = Executors.newSingleThreadExecutor();
+
             try
             {
-                creator.join();
-                if ( creator.exception != null )
-                {
-                    throw new TransactionFailureException( "Index creation failed for " + indexName +
-                            ", " + result.first(), creator.exception );
-                }
-            }
-            catch ( InterruptedException e )
+                executorService.submit( new IndexCreatorJob(cls, indexName, result.first()) ).get();
+            } catch (ExecutionException ex)
+            {
+                throw new TransactionFailureException( "Index creation failed for " + indexName +
+                        ", " + result.first(), ex.getCause() );
+            } catch (InterruptedException ex)
             {
                 Thread.interrupted();
+            }
+            finally
+            {
+                executorService.shutdownNow();
             }
         }
         return result.first();
     }
 
+    private class IndexCreatorJob implements Callable
+    {
+        private final String indexName;
+        private final Map<String, String> config;
+        private final Class<? extends PropertyContainer> cls;
+
+        IndexCreatorJob( Class<? extends PropertyContainer> cls, String indexName,
+                Map<String, String> config )
+        {
+            this.cls = cls;
+            this.indexName = indexName;
+            this.config = config;
+        }
+
+        @Override
+        public Object call()
+            throws Exception
+        {
+            String provider = config.get( PROVIDER );
+            String dataSourceName = getIndexProvider( provider ).getDataSourceName();
+            XaDataSource dataSource = xaDataSourceManager.getXaDataSource(dataSourceName);
+            IndexXaConnection connection = (IndexXaConnection) dataSource.getXaConnection();
+            Transaction tx = graphDatabaseSPI.tx().begin();
+            try
+            {
+                javax.transaction.Transaction javaxTx = txManager.getTransaction();
+                connection.enlistResource(javaxTx);
+                connection.createIndex( cls, indexName, config );
+                tx.success();
+            }
+            finally
+            {
+                tx.finish();
+            }
+            return null;
+        }
+    }    
+    
     private class IndexCreatorThread extends Thread
     {
         private final String indexName;
@@ -236,11 +274,11 @@ class IndexManagerImpl implements IndexManager
             String dataSourceName = getIndexProvider( provider ).getDataSourceName();
             XaDataSource dataSource = xaDataSourceManager.getXaDataSource(dataSourceName);
             IndexXaConnection connection = (IndexXaConnection) dataSource.getXaConnection();
-            Transaction tx = graphDbImpl.tx().begin();
+            Transaction tx = graphDatabaseSPI.tx().begin();
             try
             {
                 javax.transaction.Transaction javaxTx = txManager.getTransaction();
-                javaxTx.enlistResource( connection.getXaResource() );
+                connection.enlistResource(javaxTx);
                 connection.createIndex( cls, indexName, config );
                 tx.success();
             }

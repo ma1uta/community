@@ -118,7 +118,7 @@ public class TestRecovery
     {
         String path = getDbPath();
         Neo4jTestCase.deleteFileOrDirectory( new File( path ) );
-        assertEquals( 0, Runtime.getRuntime().exec( new String[] { "java", "-cp", System.getProperty( "java.class.path" ),
+        assertEquals( 0, Runtime.getRuntime().exec( new String[] { "java", "-Xdebug","-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005", "-cp", System.getProperty( "java.class.path" ),
                 AddRelToIndex.class.getName(), getDbPath() } ).waitFor() );
         
         // I would like to do this, but there's no exception propagated out from the constructor

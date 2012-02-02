@@ -84,6 +84,7 @@ import org.neo4j.kernel.impl.transaction.xaframework.*;
 public class LuceneDataSource extends LogBackedXaDataSource
 {
     public interface Configuration
+        extends LogBackedXaDataSource.Configuration
     {
         int lucene_searcher_cache_size(int def);
 
@@ -94,8 +95,6 @@ public class LuceneDataSource extends LogBackedXaDataSource
         boolean read_only(boolean def);
 
         String store_dir();
-
-        String keep_logical_logs(String def);
 
         boolean allow_store_upgrade( boolean def );
     }
@@ -227,7 +226,7 @@ public class LuceneDataSource extends LogBackedXaDataSource
                         this.baseStorePath, e );
             }
 
-            setKeepLogicalLogsIfSpecified( config.keep_logical_logs(null), DEFAULT_NAME );
+            setKeepLogicalLogsIfSpecified( config.online_backup_enabled(false) ? "true" : config.keep_logical_logs(null), DEFAULT_NAME );
             setLogicalLogAtCreationTime( xaContainer.getLogicalLog() );
         }
     }

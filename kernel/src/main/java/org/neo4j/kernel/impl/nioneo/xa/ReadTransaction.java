@@ -26,6 +26,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import javax.transaction.SystemException;
+import javax.transaction.Transaction;
 import javax.transaction.xa.XAResource;
 
 import org.neo4j.helpers.Pair;
@@ -298,7 +300,8 @@ class ReadTransaction implements NeoStoreTransaction
     }
 
     @Override
-    public XAResource getXAResource()
+    public boolean delistResource( Transaction tx, int tmsuccess )
+        throws SystemException
     {
         throw readOnlyException();
     }

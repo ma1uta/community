@@ -330,14 +330,14 @@ public class TestNeo4j extends AbstractNeo4jTestCase
                 storeDir, config );
         XaDataSourceManager xaDsMgr = 
                 db.getXaDataSourceManager();
-        XaDataSource xaDs = xaDsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
+        XaDataSource xaDs = xaDsMgr.getNeoStoreDataSource();
         assertTrue( xaDs.isLogicalLogKept() );
         db.shutdown();
         
         config.remove( Config.KEEP_LOGICAL_LOGS );
         db = new EmbeddedGraphDatabase( storeDir, config );
         xaDsMgr = db.getXaDataSourceManager();
-        xaDs = xaDsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
+        xaDs = xaDsMgr.getNeoStoreDataSource();
         // Here we rely on the default value being set to true due to the existence
         // of previous log files.
         assertTrue( xaDs.isLogicalLogKept() );
@@ -346,7 +346,7 @@ public class TestNeo4j extends AbstractNeo4jTestCase
         config.put( Config.KEEP_LOGICAL_LOGS, "false" );
         db = new EmbeddedGraphDatabase( storeDir, config );
         xaDsMgr = db.getXaDataSourceManager();
-        xaDs = xaDsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
+        xaDs = xaDsMgr.getNeoStoreDataSource();
         // Here we explicitly turn off the keeping of logical logs so it should be
         // false even if there are previous existing log files.
         assertFalse( xaDs.isLogicalLogKept() );
@@ -355,7 +355,7 @@ public class TestNeo4j extends AbstractNeo4jTestCase
         config.put( Config.KEEP_LOGICAL_LOGS, Config.DEFAULT_DATA_SOURCE_NAME + "=false" );
         db = new EmbeddedGraphDatabase( storeDir, config );
         xaDsMgr = db.getXaDataSourceManager();
-        xaDs = xaDsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
+        xaDs = xaDsMgr.getNeoStoreDataSource();
         // Here we explicitly turn off the keeping of logical logs so it should be
         // false even if there are previous existing log files.
         assertFalse( xaDs.isLogicalLogKept() );
@@ -364,14 +364,14 @@ public class TestNeo4j extends AbstractNeo4jTestCase
         config.put( Config.KEEP_LOGICAL_LOGS, Config.DEFAULT_DATA_SOURCE_NAME + "=true" );
         db = new EmbeddedGraphDatabase( storeDir, config );
         xaDsMgr = db.getXaDataSourceManager();
-        xaDs = xaDsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
+        xaDs = xaDsMgr.getNeoStoreDataSource();
         assertTrue( xaDs.isLogicalLogKept() );
         db.shutdown();
 
         config.put( Config.KEEP_LOGICAL_LOGS, "true" );
         db = new EmbeddedGraphDatabase( storeDir, config );
         xaDsMgr = db.getXaDataSourceManager();
-        xaDs = xaDsMgr.getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
+        xaDs = xaDsMgr.getNeoStoreDataSource();
         assertTrue( xaDs.isLogicalLogKept() );
         db.shutdown();
     }

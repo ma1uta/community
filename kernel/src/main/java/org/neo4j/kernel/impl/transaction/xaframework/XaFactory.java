@@ -79,6 +79,6 @@ public class XaFactory
         rm.setLogicalLog( log );
         tf.setLogicalLog( log );
 
-        return new XaContainer(cf, tf, rm, log);
+        return new XaContainer(rm, log);
     }
 }

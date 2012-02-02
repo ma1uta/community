@@ -246,6 +246,6 @@ public abstract class AbstractNeo4jTestCase
     protected PropertyStore propertyStore()
     {
         XaDataSourceManager dsMgr = graphDb.getXaDataSourceManager();
-        return ( (NeoStoreXaConnection) dsMgr.getXaDataSource( "nioneodb" ).getXaConnection() ).getPropertyStore();
+        return dsMgr.getNeoStoreDataSource().getXaConnection().getPropertyStore();
     }
 }

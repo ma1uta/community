@@ -17,22 +17,36 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.index;
 
-import java.util.Map;
+package org.neo4j.kernel;
 
-import javax.transaction.Transaction;
-import org.neo4j.graphdb.PropertyContainer;
-import org.neo4j.kernel.impl.transaction.xaframework.XaConnectionHelpImpl;
-import org.neo4j.kernel.impl.transaction.xaframework.XaResourceManager;
-
-public abstract class IndexXaConnection extends XaConnectionHelpImpl
+/**
+ * Adapter for Lifecycle interface. Subclass and override methods as needed
+ */
+public class LifecycleAdapter
+    implements Lifecycle
 {
-    public IndexXaConnection( XaResourceManager xaRm )
+    @Override
+    public void init()
+        throws Throwable
     {
-        super( xaRm );
     }
 
-    public abstract void createIndex( Class<? extends PropertyContainer> entityType,
-            String indexName, Map<String, String> config );
+    @Override
+    public void start()
+        throws Throwable
+    {
+    }
+
+    @Override
+    public void stop()
+        throws Throwable
+    {
+    }
+
+    @Override
+    public void shutdown()
+        throws Throwable
+    {
+    }
 }

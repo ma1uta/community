@@ -213,6 +213,6 @@ public abstract class KernelData
     
     public PropertyContainer properties()
     {
-        return ((GraphDatabaseSPI)graphDatabase()).getNodeManager().getGraphProperties();
+        return graphDatabase().getNodeManager().getGraphProperties();
     }
 }

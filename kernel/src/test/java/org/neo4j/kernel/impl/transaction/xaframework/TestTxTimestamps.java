@@ -75,7 +75,7 @@ public class TestTxTimestamps
             tx.finish();
             expectedCommitTimestamps[i] = System.currentTimeMillis();
         }
-        db.getXaDataSourceManager().getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME ).rotateLogicalLog();
+        db.getXaDataSourceManager().getNeoStoreDataSource().rotateLogicalLog();
         
         ByteBuffer buffer = ByteBuffer.allocate( 1024*500 );
         RandomAccessFile file = new RandomAccessFile( new File( db.getStoreDir(), NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME + ".v0" ), "r" );
