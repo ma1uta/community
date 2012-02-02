@@ -49,10 +49,35 @@ class RelationshipAutoIndexerImpl extends AbstractAutoIndexerImpl<Relationship>
     }
 
     @Override
+    public void init()
+        throws Throwable
+    {
+    }
+
+    @Override
+    public void start()
+    {
+        setEnabled(config.relationship_auto_indexing(false));
+        propertyKeysToInclude.addAll( parseConfigList( config.relationship_keys_indexable(null)) );
+    }
+
+    @Override
+    public void stop()
+        throws Throwable
+    {
+    }
+
+    @Override
+    public void shutdown()
+        throws Throwable
+    {
+    }
+
+    @Override
     protected RelationshipIndex getIndexInternal()
     {
         return indexManager.getOrCreateRelationshipIndex(
-                RELATIONSHIP_AUTO_INDEX, null);
+            RELATIONSHIP_AUTO_INDEX, null );
     }
 
     @Override
@@ -75,13 +100,6 @@ class RelationshipAutoIndexerImpl extends AbstractAutoIndexerImpl<Relationship>
             nodeManager.removeRelationshipPropertyTracker(
                     this );
         }
-    }
-
-    @Override
-    public void start()
-    {
-        setEnabled(config.relationship_auto_indexing(false));
-        propertyKeysToInclude.addAll( parseConfigList( config.relationship_keys_indexable(null)) );
     }
 
     static class RelationshipReadOnlyIndexToIndexAdapter extends

@@ -22,24 +22,33 @@ package org.neo4j.kernel;
 import static org.neo4j.helpers.Exceptions.launderedException;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.transaction.TransactionManager;
 
+import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.graphdb.event.KernelEventHandler;
 import org.neo4j.graphdb.event.TransactionEventHandler;
 import org.neo4j.graphdb.index.IndexManager;
@@ -48,7 +57,6 @@ import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Service;
 import org.neo4j.kernel.impl.cache.AdaptiveCacheManager;
 import org.neo4j.kernel.impl.core.DefaultRelationshipTypeCreator;
-import org.neo4j.kernel.impl.core.GraphDbModule;
 import org.neo4j.kernel.impl.core.KernelPanicEventGenerator;
 import org.neo4j.kernel.impl.core.LastCommittedTxIdSetter;
 import org.neo4j.kernel.impl.core.LockReleaser;
@@ -70,10 +78,7 @@ import org.neo4j.kernel.impl.nioneo.store.StoreFactory;
 import org.neo4j.kernel.impl.nioneo.store.StoreId;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
 import org.neo4j.kernel.impl.nioneo.xa.NioNeoDbPersistenceSource;
-import org.neo4j.kernel.impl.persistence.IdGenerator;
-import org.neo4j.kernel.impl.persistence.IdGeneratorModule;
 import org.neo4j.kernel.impl.persistence.PersistenceManager;
-import org.neo4j.kernel.impl.persistence.PersistenceModule;
 import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.LockType;
@@ -82,17 +87,17 @@ import org.neo4j.kernel.impl.transaction.ReadOnlyTxManager;
 import org.neo4j.kernel.impl.transaction.TransactionManagerProvider;
 import org.neo4j.kernel.impl.transaction.TxHook;
 import org.neo4j.kernel.impl.transaction.TxManager;
-import org.neo4j.kernel.impl.transaction.TxModule;
 import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
 import org.neo4j.kernel.impl.transaction.xaframework.DefaultLogBufferFactory;
+import org.neo4j.kernel.impl.transaction.xaframework.ForceMode;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBufferFactory;
 import org.neo4j.kernel.impl.transaction.xaframework.TransactionInterceptorProvider;
 import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
 import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
+import org.neo4j.kernel.impl.util.FileUtils;
 import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsManager;
 import org.neo4j.tooling.GlobalGraphOperations;
-
 
 /**
  * Exposes the methods {@link #getManagementBeans(Class)}() a.s.o.
@@ -111,16 +116,18 @@ public abstract class AbstractGraphDatabase
     }
 
     private static final NodeManager.CacheType DEFAULT_CACHE_TYPE = NodeManager.CacheType.soft;
+    private static final long MAX_NODE_ID = IdType.NODE.getMaxValue();
+    private static final long MAX_RELATIONSHIP_ID = IdType.RELATIONSHIP.getMaxValue();
 
     protected String storeDir;
     protected Map<String, String> params;
     private StoreId storeId;
-
-    protected final List<KernelEventHandler> kernelEventHandlers = new CopyOnWriteArrayList<KernelEventHandler>();
-    protected final Collection<TransactionEventHandler<?>> transactionEventHandlers = new CopyOnWriteArraySet<TransactionEventHandler<?>>();
+    private Transaction placeboTransaction = null;
+    private final TransactionBuilder defaultTxBuilder = new TransactionBuilderImpl( this, ForceMode.forced );
 
     protected StringLogger msgLog;
-    protected volatile EmbeddedGraphDbImpl graphDbImpl;
+    protected KernelEventHandlers kernelEventHandlers;
+    protected TransactionEventHandlers transactionEventHandlers;
     protected RelationshipTypeHolder relationshipTypeHolder;
     protected NodeManager nodeManager;
     protected IndexManagerImpl indexManager;
@@ -129,7 +136,6 @@ public abstract class AbstractGraphDatabase
     protected TxHook txHook;
     protected FileSystemAbstraction fileSystem;
     protected XaDataSourceManager xaDataSourceManager;
-    protected TxModule txModule;
     protected RagManager ragManager;
     protected LockManager lockManager;
     protected AdaptiveCacheManager cacheManager;
@@ -137,18 +143,12 @@ public abstract class AbstractGraphDatabase
     protected RelationshipTypeCreator relationshipTypeCreator;
     protected LastCommittedTxIdSetter lastCommittedTxIdSetter;
     protected NioNeoDbPersistenceSource persistenceSource;
-    protected IdGenerator idGenerator;
-    protected IdGeneratorModule idGeneratorModule;
     protected TxEventSyncHookFactory syncHook;
     protected PersistenceManager persistenceManager;
     protected PropertyIndexManager propertyIndexManager;
     protected LockReleaser lockReleaser;
-    protected PersistenceModule persistenceModule;
-    protected GraphDbModule graphDbModule;
     protected IndexStore indexStore;
     protected LogBufferFactory logBufferFactory;
-    protected KernelExtensionLoader extensionLoader;
-    protected GraphDbInstance graphDbInstance;
     protected AbstractTransactionManager txManager;
     protected TxIdGenerator txIdGenerator;
     protected StoreFactory storeFactory;
@@ -160,53 +160,70 @@ public abstract class AbstractGraphDatabase
     protected RelationshipAutoIndexerImpl relAutoIndexer;
     protected KernelData extensions;
 
+    // Any incoming calls have to acquire this lock as read.
+    // During stop/shutdown a writelock will be acquired to ensure noone is using db at that time
+    private ReadWriteLock databaseLock = new ReentrantReadWriteLock(  );
+    
+    private LifeSupport life = new LifeSupport();
+
     protected AbstractGraphDatabase(String storeDir, Map<String, String> params)
     {
         this.params = params;
-        this.storeDir = canonicalize( storeDir );
+        this.storeDir = FileUtils.fixSeparatorsInPath( canonicalize( storeDir ));
     }
 
-    protected void init()
+    protected void run()
     {
+        create();
+
+        try
+        {
+            life.start();
+        }
+        catch( LifecycleException throwable )
+        {
+            msgLog.logMessage( "Startup failed", throwable );
+
+            shutdown();
+
+            throw new IllegalStateException( "Startup failed", throwable );
+        }
+    }
+
+    private void create()
+    {
+        // Instantiate all services - some are overridable by subclasses
+        this.msgLog = createStringLogger();
+        params = new ConfigurationMigrator(msgLog).migrateConfiguration( params );
+        
         Configuration conf = ConfigProxy.config(params, Configuration.class);
 
         boolean readOnly = conf.read_only(false);
 
-        NodeManager.CacheType cacheType;
-        try
-        {
-            cacheType = conf.cache_type(DEFAULT_CACHE_TYPE);
-        }
-        catch ( IllegalArgumentException e )
-        {
-            throw new IllegalArgumentException( "Invalid cache type, please use one of: " +
-                    Arrays.asList(NodeManager.CacheType.values()) + " or keep empty for default (" +
-                    DEFAULT_CACHE_TYPE + ")", e.getCause() );
-        }
+        NodeManager.CacheType cacheType = conf.cache_type(DEFAULT_CACHE_TYPE);
 
-        // Instantiate all services - some are overridable by subclasses
-        this.msgLog = createStringLogger();
+        kernelEventHandlers = new KernelEventHandlers();
 
-        diagnosticsManager = new DiagnosticsManager( msgLog );
+        diagnosticsManager = life.add(new DiagnosticsManager( msgLog ));
 
         kernelPanicEventGenerator = new KernelPanicEventGenerator( kernelEventHandlers );
 
         txHook = createTxHook();
 
-        fileSystem = createFileSystemAbstraction();
+        fileSystem = life.add(createFileSystemAbstraction());
 
-        xaDataSourceManager = new XaDataSourceManager(new DependencyResolverImpl());
+        xaDataSourceManager = life.add(new XaDataSourceManager(msgLog));
 
         if (readOnly)
         {
-            txManager = new ReadOnlyTxManager();
+            txManager = new ReadOnlyTxManager(xaDataSourceManager);
 
         } else
         {
             String serviceName = params.get( Config.TXMANAGER_IMPLEMENTATION );
             if ( serviceName == null )
             {
-                txManager = new TxManager( this.storeDir, kernelPanicEventGenerator, txHook, msgLog, fileSystem);
+                txManager = new TxManager( this.storeDir, xaDataSourceManager, kernelPanicEventGenerator, txHook, msgLog, fileSystem);
             }
             else {
                 TransactionManagerProvider provider;
@@ -219,15 +236,16 @@ public abstract class AbstractGraphDatabase
                 txManager = provider.loadTransactionManager( this.storeDir, kernelPanicEventGenerator, txHook, msgLog, fileSystem);
             }
         }
+        life.add( txManager );
+
+        transactionEventHandlers = new TransactionEventHandlers(txManager);
 
         txIdGenerator = createTxIdGenerator();
-
-        txModule = new TxModule(kernelPanicEventGenerator, xaDataSourceManager, txManager);
 
         ragManager = new RagManager(txManager);
         lockManager = createLockManager();
 
-        cacheManager = new AdaptiveCacheManager(ConfigProxy.config(params, AdaptiveCacheManager.Configuration.class));
+        cacheManager = life.add( new AdaptiveCacheManager( ConfigProxy.config( params, AdaptiveCacheManager.Configuration.class ) ) );
 
         idGeneratorFactory = createIdGeneratorFactory();
 
@@ -235,43 +253,36 @@ public abstract class AbstractGraphDatabase
 
         lastCommittedTxIdSetter = createLastCommittedTxIdSetter();
 
-        persistenceSource = new NioNeoDbPersistenceSource(xaDataSourceManager);
+        persistenceSource = life.add(new NioNeoDbPersistenceSource(xaDataSourceManager));
 
-        idGenerator = new IdGenerator(persistenceSource);
-
-        idGeneratorModule = new IdGeneratorModule(idGenerator);
-
-        syncHook = new DefaultTxEventSyncHookFactory(transactionEventHandlers, txManager);
+        syncHook = new DefaultTxEventSyncHookFactory();
 
         // TODO Cyclic dependency! lockReleaser is null here
         persistenceManager = new PersistenceManager(txManager,
                 persistenceSource, syncHook, lockReleaser );
 
-        propertyIndexManager = new PropertyIndexManager(
-                txManager, persistenceManager, idGenerator);
+        propertyIndexManager = life.add(new PropertyIndexManager(
+                txManager, persistenceManager, persistenceSource));
 
         lockReleaser = new LockReleaser(lockManager, txManager, nodeManager, propertyIndexManager);
         persistenceManager.setLockReleaser(lockReleaser); // TODO This cyclic dep needs to be refactored
 
-        persistenceModule = new PersistenceModule(persistenceManager);
-
         relationshipTypeHolder = new RelationshipTypeHolder( txManager,
-            persistenceManager, idGenerator, relationshipTypeCreator );
+            persistenceManager, persistenceSource, relationshipTypeCreator );
 
         nodeManager = !readOnly ? new NodeManager( ConfigProxy.config(params, NodeManager.Configuration.class), this, cacheManager,
                 lockManager, lockReleaser, txManager,
-                persistenceManager, idGenerator, relationshipTypeHolder, cacheType, propertyIndexManager,
+                persistenceManager, persistenceSource, relationshipTypeHolder, cacheType, propertyIndexManager,
 
                 createNodeLookup(), createRelationshipLookups() ):
                 new ReadOnlyNodeManager( ConfigProxy.config(params, NodeManager.Configuration.class), this,
                         cacheManager, lockManager, lockReleaser,
-                        txManager, persistenceManager, idGenerator,
+                        txManager, persistenceManager, persistenceSource,
                         relationshipTypeHolder, cacheType, propertyIndexManager,
                         createNodeLookup(), createRelationshipLookups());
+        life.add( nodeManager );
 
         lockReleaser.setNodeManager(nodeManager); // TODO Another cyclic dep that needs to be refactored
-
-        graphDbModule = new GraphDbModule( persistenceManager, nodeManager);
 
         indexStore = new IndexStore( this.storeDir, fileSystem);
 
@@ -285,7 +296,7 @@ public abstract class AbstractGraphDatabase
         params.put( "logical_log", logicalLog );
         // END SMELL
 
-        config = new Config( this.isEphemeral(), this.storeDir,  params );
+        config = new Config( this.storeDir,  params );
 
         /*
          *  LogBufferFactory needs access to the parameters so it has to be added after the default and
@@ -294,40 +305,24 @@ public abstract class AbstractGraphDatabase
 
         logBufferFactory = new DefaultLogBufferFactory();
 
-        extensions = new DefaultKernelData(config);
+        extensions = life.add(createKernelData());
 
         if ( conf.load_kernel_extensions(true))
         {
-            extensionLoader = new DefaultKernelExtensionLoader( extensions );
-        }
-        else
-        {
-            extensionLoader = KernelExtensionLoader.DONT_LOAD;
+            life.add(new DefaultKernelExtensionLoader( extensions ));
         }
 
-        graphDbInstance = new GraphDbInstance( this.storeDir, true, config, this, extensionLoader, persistenceSource, txManager, graphDbModule, idGeneratorModule, persistenceModule, txModule);
-
-        this.graphDbImpl = new EmbeddedGraphDbImpl( this.getStoreDir(), this,
-                lockManager,
-                txManager,
-                lockReleaser,
-                kernelEventHandlers,
-                transactionEventHandlers,
-                kernelPanicEventGenerator,
-                extensions, graphDbInstance,
-                nodeManager);
-
-        indexManager = new IndexManagerImpl(config, indexStore, xaDataSourceManager, txManager, graphDbImpl);
-        nodeAutoIndexer = new NodeAutoIndexerImpl( ConfigProxy.config( params, NodeAutoIndexerImpl.Configuration.class ), indexManager, nodeManager);
-        relAutoIndexer = new RelationshipAutoIndexerImpl( ConfigProxy.config( params, RelationshipAutoIndexerImpl.Configuration.class ), indexManager, nodeManager);
+        indexManager = new IndexManagerImpl(config, indexStore, xaDataSourceManager, txManager, this);
+        nodeAutoIndexer = life.add(new NodeAutoIndexerImpl( ConfigProxy.config( params, NodeAutoIndexerImpl.Configuration.class ), indexManager, nodeManager));
+        relAutoIndexer = life.add(new RelationshipAutoIndexerImpl( ConfigProxy.config( params, RelationshipAutoIndexerImpl.Configuration.class ), indexManager, nodeManager));
 
         // TODO This cyclic dependency should be resolved
         indexManager.setNodeAutoIndexer( nodeAutoIndexer );
         indexManager.setRelAutoIndexer( relAutoIndexer );
 
         // Factories for things that needs to be created later
-        storeFactory = new StoreFactory(config.getParams(), idGeneratorFactory, fileSystem, lastCommittedTxIdSetter, msgLog, txHook);
-        xaFactory = new XaFactory(config.getParams(), txIdGenerator, txManager, logBufferFactory, fileSystem, msgLog );
+        storeFactory = createStoreFactory();
+        xaFactory = new XaFactory(params, txIdGenerator, txManager, logBufferFactory, fileSystem, msgLog );
 
         // Create DataSource
         List<Pair<TransactionInterceptorProvider, Object>> providers = new ArrayList<Pair<TransactionInterceptorProvider, Object>>( 2 );
@@ -342,6 +337,7 @@ public abstract class AbstractGraphDatabase
 
         try
         {
+            // TODO IO stuff should be done in lifecycle. Refactor!
             neoDataSource = new NeoStoreXaDataSource( ConfigProxy.config( params, NeoStoreXaDataSource.Configuration.class ),
                     storeFactory, lockManager, lockReleaser, msgLog, xaFactory, providers, new DependencyResolverImpl());
             xaDataSourceManager.registerDataSource( neoDataSource );
@@ -354,39 +350,35 @@ public abstract class AbstractGraphDatabase
         {
             throw new IllegalStateException("Could not create Neo XA datasource", e);
         }
+
+        // This is how we lock the entire database to avoid threads using it during lifecycle events
+        life.add( new DatabaseAvailability() );
+        
+        // Kernel event handlers should be the very last, i.e. very first to receive shutdown events
+        life.add( kernelEventHandlers );
     }
 
-    protected void start()
+    @Override
+    public void shutdown()
     {
-        boolean started = false;
         try
         {
-            graphDbInstance.start();
-
-            diagnosticsManager.startup();
-
-            nodeAutoIndexer.start();
-            relAutoIndexer.start();
-            extensionLoader.load();
-
-            started = true; // must be last
+            life.shutdown();
         }
-        catch ( Error cause )
+        catch( LifecycleException throwable )
         {
-            msgLog.logMessage( "Startup failed", cause );
-            throw cause;
+            msgLog.logMessage( "Shutdown failed", throwable );
         }
-        catch ( RuntimeException cause )
-        {
-            cause.printStackTrace();
-            msgLog.logMessage( "Startup failed", cause );
-            throw cause;
-        }
-        finally
-        {
-            // If startup failed, cleanup the extensions - or they will leak
-            if ( !started ) extensions.shutdown( msgLog );
-        }
+    }
+
+    protected StoreFactory createStoreFactory()
+    {
+        return new StoreFactory(params, idGeneratorFactory, fileSystem, lastCommittedTxIdSetter, msgLog, txHook);
+    }
+
+    protected KernelData createKernelData()
+    {
+        return new DefaultKernelData(config, this);
     }
 
     protected LastCommittedTxIdSetter createLastCommittedTxIdSetter()
@@ -403,10 +395,27 @@ public abstract class AbstractGraphDatabase
     {
         return new RelationshipProxy.RelationshipLookups()
         {
+            private int LOCK_TIMEOUT = 5; // This should be made configurable
+            
             @Override
             public Node lookupNode( long nodeId )
             {
-                return nodeManager.getNodeById( nodeId );
+                try
+                {
+                    databaseLock.readLock().tryLock( 5, TimeUnit.SECONDS );
+                }
+                catch( InterruptedException e )
+                {
+                    throw new IllegalStateException( "Could not access database. Is it shutdown?" );
+                }
+                try
+                {
+                    return nodeManager.getNodeById( nodeId );
+                }
+                finally
+                {
+                    databaseLock.readLock().unlock();
+                }
             }
 
             @Override
@@ -448,6 +457,7 @@ public abstract class AbstractGraphDatabase
             @Override
             public GraphDatabaseService getGraphDatabase()
             {
+                // TODO This should be wrapped as well
                 return AbstractGraphDatabase.this;
             }
 
@@ -487,16 +497,19 @@ public abstract class AbstractGraphDatabase
 
     protected StringLogger createStringLogger()
     {
-        return StringLogger.logger( this.storeDir );
+        final StringLogger stringLogger = StringLogger.logger( this.storeDir );
+        life.add( new LifecycleAdapter()
+        {
+            @Override
+            public void shutdown()
+                throws Throwable
+            {
+                stringLogger.close();
+            }
+        });
+        return stringLogger;
     }
     
-    @Override
-    public final void shutdown()
-    {
-        close();
-        msgLog.close();
-    }
-
     public final String getStoreDir()
     {
         return storeDir;
@@ -511,6 +524,44 @@ public abstract class AbstractGraphDatabase
     public Transaction beginTx()
     {
         return tx().begin();
+    }
+
+    Transaction beginTx( ForceMode forceMode )
+    {
+        if ( transactionRunning() )
+        {
+            if ( placeboTransaction == null )
+            {
+                placeboTransaction = new PlaceboTransaction(
+                        txManager );
+            }
+            return placeboTransaction;
+        }
+        Transaction result = null;
+        try
+        {
+            txManager.begin( forceMode );
+            result = new TopLevelTransaction( txManager, lockManager, lockReleaser );
+        }
+        catch ( Exception e )
+        {
+            throw new TransactionFailureException(
+                "Unable to begin transaction", e );
+        }
+        return result;
+    }
+
+    public boolean transactionRunning()
+    {
+        try
+        {
+            return txManager.getTransaction() != null;
+        }
+        catch ( Exception e )
+        {
+            throw new TransactionFailureException(
+                    "Unable to get transaction.", e );
+        }
     }
 
     /**
@@ -565,29 +616,29 @@ public abstract class AbstractGraphDatabase
     public KernelEventHandler registerKernelEventHandler(
             KernelEventHandler handler )
     {
-        return this.graphDbImpl.registerKernelEventHandler( handler );
+        return kernelEventHandlers.registerKernelEventHandler( handler );
     }
 
     public <T> TransactionEventHandler<T> registerTransactionEventHandler(
             TransactionEventHandler<T> handler )
     {
-        return this.graphDbImpl.registerTransactionEventHandler( handler );
+        return transactionEventHandlers.registerTransactionEventHandler( handler );
     }
 
     public KernelEventHandler unregisterKernelEventHandler(
             KernelEventHandler handler )
     {
-        return this.graphDbImpl.unregisterKernelEventHandler( handler );
+        return kernelEventHandlers.unregisterKernelEventHandler( handler );
     }
 
     public <T> TransactionEventHandler<T> unregisterTransactionEventHandler(
             TransactionEventHandler<T> handler )
     {
-        return this.graphDbImpl.unregisterTransactionEventHandler( handler );
+        return transactionEventHandlers.unregisterTransactionEventHandler( handler );
     }
 
     /**
-     * A non-standard convenience method that loads a standard property file and
+     * A non-standard Convenience method that loads a standard property file and
      * converts it into a generic <Code>Map<String,String></CODE>. Will most
      * likely be removed in future releases.
      *
@@ -597,7 +648,32 @@ public abstract class AbstractGraphDatabase
      */
     public static Map<String,String> loadConfigurations( String file )
     {
-        return EmbeddedGraphDbImpl.loadConfigurations( file );
+        Properties props = new Properties();
+        try
+        {
+            FileInputStream stream = new FileInputStream( new File( file ) );
+            try
+            {
+                props.load( stream );
+            }
+            finally
+            {
+                stream.close();
+            }
+        }
+        catch ( Exception e )
+        {
+            throw new IllegalArgumentException( "Unable to load " + file, e );
+        }
+        Set<Map.Entry<Object,Object>> entries = props.entrySet();
+        Map<String,String> stringProps = new HashMap<String,String>();
+        for ( Map.Entry<Object,Object> entry : entries )
+        {
+            String key = (String) entry.getKey();
+            String value = (String) entry.getValue();
+            stringProps.put( key, value );
+        }
+        return stringProps;
     }
 
     public Node createNode()
@@ -607,37 +683,83 @@ public abstract class AbstractGraphDatabase
 
     public Node getNodeById( long id )
     {
-        return graphDbImpl.getNodeById( id );
+        if ( id < 0 || id > MAX_NODE_ID )
+        {
+            throw new NotFoundException( "Node[" + id + "]" );
+        }
+        return nodeManager.getNodeById( id );
     }
 
     public Relationship getRelationshipById( long id )
     {
-        return graphDbImpl.getRelationshipById( id );
+        if ( id < 0 || id > MAX_RELATIONSHIP_ID )
+        {
+            throw new NotFoundException( "Relationship[" + id + "]" );
+        }
+        return nodeManager.getRelationshipById( id );
     }
 
     public Node getReferenceNode()
     {
-        return graphDbImpl.getReferenceNode();
-    }
-
-    protected void close()
-    {
-        graphDbImpl.shutdown();
+        return nodeManager.getReferenceNode();
     }
 
     public TransactionBuilder tx()
     {
-        return graphDbImpl.tx();
+        return defaultTxBuilder;
     }
 
-    public <T> Collection<T> getManagementBeans( Class<T> type )
+    public <T> Collection<T> getManagementBeans( Class<T> beanClass )
     {
-        return graphDbImpl.getManagementBeans( type );
+        KernelExtension<?> jmx = Service.load( KernelExtension.class, "kernel jmx" );
+        if ( jmx != null )
+        {
+            Method getManagementBeans = null;
+            Object state = jmx.getState( extensions );
+            if ( state != null )
+            {
+                try
+                {
+                    getManagementBeans = state.getClass().getMethod( "getManagementBeans", Class.class );
+                }
+                catch ( Exception e )
+                {
+                    // getManagementBean will be null
+                }
+            }
+            if ( getManagementBeans != null )
+            {
+                try
+                {
+                    @SuppressWarnings( "unchecked" ) Collection<T> result =
+                            (Collection<T>) getManagementBeans.invoke( state, beanClass );
+                    if ( result == null ) return Collections.emptySet();
+                    return result;
+                }
+                catch ( InvocationTargetException ex )
+                {
+                    Throwable cause = ex.getTargetException();
+                    if ( cause instanceof Error )
+                    {
+                        throw (Error) cause;
+                    }
+                    if ( cause instanceof RuntimeException )
+                    {
+                        throw (RuntimeException) cause;
+                    }
+                }
+                catch ( Exception ignored )
+                {
+                    // exception thrown below
+                }
+            }
+        }
+        throw new UnsupportedOperationException( "Neo4j JMX support not enabled" );
     }
-
+    
     public KernelData getKernelData()
     {
-        return graphDbImpl.getKernelData();
+        return extensions;
     }
 
     public IndexManager index()
@@ -645,7 +767,7 @@ public abstract class AbstractGraphDatabase
         return indexManager;
     }
 
-    // GraphDatabaseSPI implementation - THESE SHOULD EVENTUALLY BE REMOVED! DON'T ADD deps on these!
+    // GraphDatabaseSPI implementation - THESE SHOULD EVENTUALLY BE REMOVED! DON'T ADD dependencies on these!
     public Config getConfig()
     {
         return config;
@@ -674,11 +796,6 @@ public abstract class AbstractGraphDatabase
     public TransactionManager getTxManager()
     {
         return txManager;
-    }
-
-    public TxModule getTxModule()
-    {
-        return txModule;
     }
 
     @Override
@@ -772,13 +889,15 @@ public abstract class AbstractGraphDatabase
         }
     }
 
-    private class DefaultKernelData extends KernelData
+    protected class DefaultKernelData extends KernelData implements Lifecycle
     {
         private final Config config;
+        private GraphDatabaseSPI graphDb;
 
-        public DefaultKernelData(Config config)
+        public DefaultKernelData(Config config, GraphDatabaseSPI graphDb)
         {
             this.config = config;
+            this.graphDb = graphDb;
         }
 
         @Override
@@ -796,17 +915,43 @@ public abstract class AbstractGraphDatabase
         @Override
         public Map<String, String> getConfigParams()
         {
-            return config.getParams();
+            return params;
         }
 
         @Override
         public GraphDatabaseSPI graphDatabase()
         {
-            return AbstractGraphDatabase.this;
+            return graphDb;
+        }
+
+        @Override
+        public void init()
+            throws Throwable
+        {
+        }
+
+        @Override
+        public void start()
+            throws Throwable
+        {
+        }
+
+        @Override
+        public void stop()
+            throws Throwable
+        {
+        }
+
+        @Override
+        public void shutdown()
+            throws Throwable
+        {
+            // TODO This should be refactored so that shutdown does not need logger as input
+            shutdown( msgLog );
         }
     }
 
-    private class DefaultKernelExtensionLoader implements KernelExtensionLoader
+    private class DefaultKernelExtensionLoader implements Lifecycle
     {
         private final KernelData extensions;
 
@@ -818,39 +963,48 @@ public abstract class AbstractGraphDatabase
         }
 
         @Override
-        public void configureKernelExtensions()
+        public void init()
+            throws Throwable
         {
             loaded = extensions.loadExtensionConfigurations( msgLog );
-        }
-
-        @Override
-        public void initializeIndexProviders()
-        {
             loadIndexImplementations(indexManager, msgLog);
         }
 
         @Override
-        public void load()
+        public void start()
+            throws Throwable
         {
             extensions.loadExtensions( loaded, msgLog );
         }
 
+        @Override
+        public void stop()
+            throws Throwable
+        {
+        }
+
+        @Override
+        public void shutdown()
+            throws Throwable
+        {
+        }
+
         void loadIndexImplementations( IndexManagerImpl indexes, StringLogger msgLog )
+        {
+            for ( IndexProvider index : Service.load( IndexProvider.class ) )
             {
-                for ( IndexProvider index : Service.load( IndexProvider.class ) )
+                try
                 {
-                    try
-                    {
-                        indexes.addProvider( index.identifier(), index.load( new DependencyResolverImpl() ) );
-                    }
-                    catch ( Throwable cause )
-                    {
-                        msgLog.logMessage( "Failed to load index provider " + index.identifier(), cause );
-                        if ( isAnUpgradeProblem( cause ) ) throw launderedException( cause );
-                        else cause.printStackTrace();
-                    }
+                    indexes.addProvider( index.identifier(), index.load( new DependencyResolverImpl() ) );
+                }
+                catch ( Throwable cause )
+                {
+                    msgLog.logMessage( "Failed to load index provider " + index.identifier(), cause );
+                    if ( isAnUpgradeProblem( cause ) ) throw launderedException( cause );
+                    else cause.printStackTrace();
                 }
             }
+        }
 
 
         private boolean isAnUpgradeProblem( Throwable cause )
@@ -867,21 +1021,11 @@ public abstract class AbstractGraphDatabase
 
     private class DefaultTxEventSyncHookFactory implements TxEventSyncHookFactory
     {
-        private final Collection<TransactionEventHandler<?>> transactionEventHandlers;
-        private AbstractTransactionManager txManager;
-
-        public DefaultTxEventSyncHookFactory(Collection<TransactionEventHandler<?>> transactionEventHandlers, AbstractTransactionManager txManager)
-        {
-            this.transactionEventHandlers = transactionEventHandlers;
-            this.txManager = txManager;
-        }
-
         @Override
         public TransactionEventsSyncHook create()
         {
-            return transactionEventHandlers.isEmpty() ? null :
-                    new TransactionEventsSyncHook(
-                            nodeManager, transactionEventHandlers, txManager);
+            return transactionEventHandlers.hasHandlers() ?
+                   new TransactionEventsSyncHook( nodeManager, transactionEventHandlers, txManager) : null;
         }
     }
 
@@ -892,7 +1036,7 @@ public abstract class AbstractGraphDatabase
         public <T> T resolveDependency(Class<T> type)
         {
             if (type.equals(Map.class))
-                return (T) config.getParams();
+                return (T) params;
             else if (GraphDatabaseService.class.isAssignableFrom(type))
                 return (T) AbstractGraphDatabase.this;
             else if (TransactionManager.class.isAssignableFrom(type))
@@ -915,6 +1059,74 @@ public abstract class AbstractGraphDatabase
                 return (T) fileSystem;
             else
                 throw new IllegalArgumentException("Could not resolve dependency of type:"+type.getName());
+        }
+    }
+
+    class DatabaseStartup
+        implements Lifecycle
+    {
+        @Override
+        public void init()
+            throws Throwable
+        {
+        }
+
+        @Override
+        public void start()
+            throws Throwable
+        {
+        }
+
+        @Override
+        public void stop()
+            throws Throwable
+        {
+        }
+
+        @Override
+        public void shutdown()
+            throws Throwable
+        {
+        }
+    }
+
+    /**
+     * This class handles whether the database as a whole is available to use at all.
+     * As it runs as the last service in the lifecycle list, the stop() is called first
+     * on stop, shutdown or restart, and thus blocks access to everything else for outsiders.
+     */
+    class DatabaseAvailability
+        implements Lifecycle
+    {
+        @Override
+        public void init()
+            throws Throwable
+        {
+            // Starting database. Make sure noone can access it
+            databaseLock.writeLock().lock();
+        }
+
+        @Override
+        public void start()
+            throws Throwable
+        {
+            // Started. Now others can use this database
+            databaseLock.writeLock().unlock();
+        }
+
+        @Override
+        public void stop()
+            throws Throwable
+        {
+            // We're stopping. Lock database
+            databaseLock.writeLock().lock();
+        }
+
+        @Override
+        public void shutdown()
+            throws Throwable
+        {
+            // We have shutdown. Do nothing, as we don't want anyone to be able to use it anyway
         }
     }
 }

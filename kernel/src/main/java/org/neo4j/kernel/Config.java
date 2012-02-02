@@ -209,17 +209,17 @@ public class Config implements DiagnosticsProvider
 
     private Map<String, String> params;
 
-    private final boolean readOnly;
-    private final boolean ephemeral;
-    private final boolean backupSlave;
-
+//<<<<<<< HEAD
+//    private final boolean readOnly;
+//    private final boolean ephemeral;
+//    private final boolean backupSlave;
+//
+//=======
+//>>>>>>> Added ConfigurationMigrator
     private final AutoConfigurator autoConfigurator;
 
-    Config(boolean ephemeral,
-           String storeDir, Map<String, String> inputParams)
+    Config(String storeDir, Map<String, String> inputParams)
     {
-        this.ephemeral = ephemeral;
-
         // Get the default params and override with the user supplied values
         this.params = getDefaultParams();
 
@@ -236,8 +236,6 @@ public class Config implements DiagnosticsProvider
         // Configuration may not be changed at runtime
         this.params = Collections.unmodifiableMap(this.params);
 
-        this.readOnly = Boolean.parseBoolean( (String) params.get( READ_ONLY ) );
-        this.backupSlave = Boolean.parseBoolean( (String) params.get( BACKUP_SLAVE ) );
     }
 
     public static Map<String, String> getDefaultParams()
@@ -286,21 +284,6 @@ public class Config implements DiagnosticsProvider
     public Map<String, String> getParams()
     {
         return this.params;
-    }
-
-    public boolean isReadOnly()
-    {
-        return readOnly;
-    }
-    
-    public boolean isEphemeral()
-    {
-        return ephemeral;
-    }
-
-    boolean isBackupSlave()
-    {
-        return backupSlave;
     }
 
     public static boolean configValueContainsMultipleParameters( String configValue )

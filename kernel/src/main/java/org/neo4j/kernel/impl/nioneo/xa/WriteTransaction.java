@@ -19,6 +19,8 @@
  */
 package org.neo4j.kernel.impl.nioneo.xa;
 
+import static org.neo4j.kernel.impl.nioneo.store.PropertyStore.encodeString;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,8 +31,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import javax.transaction.SystemException;
+import javax.transaction.Transaction;
 import javax.transaction.xa.XAException;
-import javax.transaction.xa.XAResource;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -70,8 +73,6 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 import org.neo4j.kernel.impl.util.ArrayMap;
 import org.neo4j.kernel.impl.util.RelIdArray;
 import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
-
-import static org.neo4j.kernel.impl.nioneo.store.PropertyStore.encodeString;
 
 /**
  * Transaction containing {@link Command commands} reflecting the operations
@@ -474,6 +475,13 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         {
             clear();
         }
+    }
+
+    @Override
+    public boolean delistResource( Transaction tx, int tmsuccess )
+        throws SystemException
+    {
+        return xaConnection.delistResource( tx, tmsuccess );
     }
 
     private void updateFirstRelationships()
@@ -1758,12 +1766,6 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     {
         return ReadTransaction.getKeyIdForProperty( property,
                 getPropertyStore() );
-    }
-
-    @Override
-    public XAResource getXAResource()
-    {
-        return xaConnection.getXaResource();
     }
 
     @Override

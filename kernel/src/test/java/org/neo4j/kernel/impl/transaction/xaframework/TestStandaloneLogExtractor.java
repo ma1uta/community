@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 import static org.neo4j.test.TargetDirectory.forTest;
 
 import org.junit.Test;
-import org.neo4j.kernel.Config;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.test.DbRepresentation;
 import org.neo4j.test.TargetDirectory;
@@ -51,7 +50,7 @@ public class TestStandaloneLogExtractor
         } ).waitFor();
 
         EmbeddedGraphDatabase newDb = new EmbeddedGraphDatabase( TargetDirectory.forTest( getClass() ).directory( "target" + nr, true ).getAbsolutePath() );
-        XaDataSource ds = newDb.getXaDataSourceManager().getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
+        XaDataSource ds = newDb.getXaDataSourceManager().getNeoStoreDataSource();
         LogExtractor extractor = LogExtractor.from( sourceDir );
         long expectedTxId = 2;
         while ( true )

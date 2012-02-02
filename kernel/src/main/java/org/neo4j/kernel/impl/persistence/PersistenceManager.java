@@ -72,6 +72,11 @@ public class PersistenceManager
         this.lockReleaser = lockReleaser;
     }
 
+    public void setLockReleaser(LockReleaser lockReleaser)
+    {
+        this.lockReleaser = lockReleaser;
+    }
+
     public NodeRecord loadLightNode( long id )
     {
         return getReadOnlyResourceIfPossible().nodeLoadLight( id );
@@ -303,11 +308,6 @@ public class PersistenceManager
         }
     }
 
-    public void setLockReleaser(LockReleaser lockReleaser)
-    {
-        this.lockReleaser = lockReleaser;
-    }
-
     private class TxCommitHook implements Synchronization
     {
         private final Transaction tx;
@@ -377,7 +377,7 @@ public class PersistenceManager
         {
             try
             {
-                tx.delistResource( con.getXAResource(), XAResource.TMSUCCESS );
+                con.delistResource(tx, XAResource.TMSUCCESS);
             }
             catch ( SystemException e )
             {

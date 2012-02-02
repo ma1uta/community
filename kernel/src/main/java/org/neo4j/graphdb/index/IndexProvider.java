@@ -19,8 +19,8 @@
  */
 package org.neo4j.graphdb.index;
 
+import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.helpers.Service;
-import org.neo4j.kernel.DependencyResolver;
 
 public abstract class IndexProvider extends Service
 {

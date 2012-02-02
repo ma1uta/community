@@ -17,33 +17,36 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.cache;
 
-import org.neo4j.helpers.Counter;
+package org.neo4j.kernel;
 
-final class HitCounter
+/**
+ * Adapter for Lifecycle interface. Subclass and override methods as needed
+ */
+public class LifecycleAdapter
+    implements Lifecycle
 {
-    private final Counter hits, miss;
-
-    public HitCounter( )
+    @Override
+    public void init()
+        throws Throwable
     {
-        this.hits = new Counter();
-        this.miss = new Counter();
     }
 
-    public <T> T count( T item )
+    @Override
+    public void start()
+        throws Throwable
     {
-        ( ( item == null ) ? miss : hits ).inc();
-        return item;
     }
 
-    public long getHitsCount()
+    @Override
+    public void stop()
+        throws Throwable
     {
-        return hits.count();
     }
 
-    public long getMissCount()
+    @Override
+    public void shutdown()
+        throws Throwable
     {
-        return miss.count();
     }
 }

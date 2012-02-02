@@ -26,7 +26,6 @@ import static org.neo4j.test.BatchTransaction.beginBatchTx;
 import java.io.IOException;
 
 import org.neo4j.graphdb.Node;
-import org.neo4j.kernel.Config;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.impl.MyRelTypes;
 import org.neo4j.test.BatchTransaction;
@@ -45,7 +44,7 @@ public class CreateSomeTransactions
         Node otherNode = db.createNode();
         node.createRelationshipTo( otherNode, MyRelTypes.TEST );
         tx.restart();
-        db.getXaDataSourceManager().getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME ).rotateLogicalLog();
+        db.getXaDataSourceManager().getNeoStoreDataSource().rotateLogicalLog();
         
         for ( int i = 0; i < 5; i++ )
         {

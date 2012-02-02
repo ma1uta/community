@@ -38,25 +38,42 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+import org.neo4j.kernel.Lifecycle;
 import org.neo4j.kernel.impl.nioneo.store.FileLock;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 
-public class EphemeralFileSystemAbstraction implements FileSystemAbstraction
+public class EphemeralFileSystemAbstraction implements FileSystemAbstraction, Lifecycle
 {
     private final Map<String, EphemeralFileChannel> files = new HashMap<String, EphemeralFileChannel>();
 
-    public synchronized void dispose()
+    @Override
+    public void init()
+    {
+    }
+
+    @Override
+    public void start()
+    {
+    }
+
+    @Override
+    public void stop()
+    {
+    }
+
+    @Override
+    public void shutdown()
     {
         for (EphemeralFileChannel file : files.values()) free(file);
         files.clear();
-        
+
         DynamicByteBuffer.dispose();
     }
 
     @Override
     protected void finalize() throws Throwable
     {
-        dispose();
+        shutdown();
         super.finalize();
     }
 

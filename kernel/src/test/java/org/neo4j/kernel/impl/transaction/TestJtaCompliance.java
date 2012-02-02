@@ -24,6 +24,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import javax.transaction.NotSupportedException;
+import javax.transaction.RollbackException;
 import javax.transaction.Status;
 import javax.transaction.SystemException;
 import javax.transaction.Transaction;
@@ -748,6 +749,20 @@ public class TestJtaCompliance extends AbstractNeo4jTestCase
 
         public void destroy()
         {
+        }
+
+        @Override
+        public boolean enlistResource( Transaction javaxTx )
+            throws SystemException, RollbackException
+        {
+            return javaxTx.enlistResource( xaResource );
+        }
+
+        @Override
+        public boolean delistResource( Transaction tx, int tmsuccess )
+            throws IllegalStateException, SystemException
+        {
+            return tx.delistResource( xaResource, tmsuccess );
         }
     }
 }

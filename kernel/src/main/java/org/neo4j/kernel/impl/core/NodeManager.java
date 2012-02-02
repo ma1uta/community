@@ -43,6 +43,7 @@ import org.neo4j.graphdb.index.Index;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Triplet;
 import org.neo4j.helpers.collection.PrefetchingIterator;
+import org.neo4j.kernel.Lifecycle;
 import org.neo4j.kernel.PropertyTracker;
 import org.neo4j.kernel.impl.cache.AdaptiveCacheManager;
 import org.neo4j.kernel.impl.cache.Cache;
@@ -67,6 +68,7 @@ import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
 import org.neo4j.kernel.impl.util.RelIdArrayWithLoops;
 
 public class NodeManager
+    implements Lifecycle
 {
     public interface Configuration
     {
@@ -105,11 +107,8 @@ public class NodeManager
     private final List<PropertyTracker<Relationship>> relationshipPropertyTrackers;
 
     private boolean useAdaptiveCache;
-    private float adaptiveCacheHeapRatio;
-    private int minNodeCacheSize;
-    private int minRelCacheSize;
-    private int maxNodeCacheSize;
-    private int maxRelCacheSize;
+
+    private static final int INDEX_COUNT = 2500;
 
     private static final int LOCK_STRIPE_COUNT = 32;
     private final ReentrantLock loadLocks[] =
@@ -158,35 +157,61 @@ public class NodeManager
         return this.cacheType;
     }
 
+    @Override
+    public void init()
+    {
+    }
+
+    @Override
     public void start( )
     {
+        // load and verify from PS
+        NameData[] relTypes = null;
+        NameData[] propertyIndexes = null;
+        // beginTx();
+        relTypes = persistenceManager.loadAllRelationshipTypes();
+        propertyIndexes = persistenceManager.loadPropertyIndexes( INDEX_COUNT );
+        // commitTx();
+        addRawRelationshipTypes( relTypes );
+        addPropertyIndexes( propertyIndexes );
+        if ( propertyIndexes.length < INDEX_COUNT )
+        {
+            setHasAllpropertyIndexes( true );
+        }
+
         useAdaptiveCache = config.use_adaptive_cache(false);
-        adaptiveCacheHeapRatio = config.adaptive_cache_heap_ratio(0.77f, 0.1f, 0.95f);
-        minNodeCacheSize = config.min_node_cache_size(0);
-        minRelCacheSize = config.min_relationship_cache_size(0);
-        maxNodeCacheSize = config.max_node_cache_size(1500);
-        maxRelCacheSize = config.max_relationship_cache_size(3500);
+        float adaptiveCacheHeapRatio = config.adaptive_cache_heap_ratio( 0.77f, 0.1f, 0.95f );
+        int minNodeCacheSize = config.min_node_cache_size( 0 );
+        int minRelCacheSize = config.min_relationship_cache_size( 0 );
+        int maxNodeCacheSize = config.max_node_cache_size( 1500 );
+        int maxRelCacheSize = config.max_relationship_cache_size( 3500 );
 
         nodeCache.resize( maxNodeCacheSize );
         relCache.resize( maxRelCacheSize );
         if ( useAdaptiveCache && cacheType.needsCacheManagerRegistration )
         {
             cacheManager.registerCache( nodeCache, adaptiveCacheHeapRatio,
-                minNodeCacheSize );
+                                        minNodeCacheSize );
             cacheManager.registerCache( relCache, adaptiveCacheHeapRatio,
-                minRelCacheSize );
-            cacheManager.start(  );
+                                        minRelCacheSize );
         }
     }
 
+    @Override
     public void stop()
     {
+        clearCache();
+
         if ( useAdaptiveCache && cacheType.needsCacheManagerRegistration )
         {
-            cacheManager.stop();
             cacheManager.unregisterCache( nodeCache );
             cacheManager.unregisterCache( relCache );
         }
+    }
+
+    @Override
+    public void shutdown()
+    {
     }
 
     public Node createNode()
@@ -873,11 +898,6 @@ public class NodeManager
     void setHasAllpropertyIndexes( boolean hasAll )
     {
         propertyIndexManager.setHasAll( hasAll );
-    }
-
-    void clearPropertyIndexes()
-    {
-        propertyIndexManager.clear();
     }
 
     PropertyIndex getIndexFor( int keyId )

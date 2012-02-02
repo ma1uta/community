@@ -24,7 +24,7 @@ package org.neo4j.kernel;
  * Lifecycle interface for kernel components. Init is called first, 
  * followed by start, 
  * and then any number of stop-start sequences,
- * and finally stop and destroy.
+ * and finally stop and shutdown.
  * 
  * As a stop-start cycle could be due to change of configuration, please perform anything that depends on config
  * in start().
@@ -34,14 +34,14 @@ package org.neo4j.kernel;
 public interface Lifecycle
 {
     void init()
-        throws Exception;
+        throws Throwable;
     
     void start()
-        throws Exception;
+        throws Throwable;
     
     void stop()
-        throws Exception;
+        throws Throwable;
     
-    void destroy()
-        throws Exception;
+    void shutdown()
+        throws Throwable;
 }

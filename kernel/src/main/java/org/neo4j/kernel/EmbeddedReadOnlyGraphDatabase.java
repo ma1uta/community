@@ -49,8 +49,7 @@ public final class EmbeddedReadOnlyGraphDatabase extends AbstractGraphDatabase
     {
         this( storeDir, readOnlyParams );
         
-        init();
-        start();
+        run();
     }
 
     /**

@@ -27,6 +27,7 @@ import java.util.Map;
 
 import javax.transaction.TransactionManager;
 
+import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.index.IndexImplementation;
 import org.neo4j.graphdb.index.IndexProvider;
 import org.neo4j.index.impl.lucene.ConnectionBroker;
@@ -35,7 +36,6 @@ import org.neo4j.index.impl.lucene.LuceneIndexImplementation;
 import org.neo4j.index.impl.lucene.LuceneXaConnection;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.ConfigProxy;
-import org.neo4j.kernel.DependencyResolver;
 import org.neo4j.kernel.impl.index.IndexConnectionBroker;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.index.ReadOnlyIndexConnectionBroker;

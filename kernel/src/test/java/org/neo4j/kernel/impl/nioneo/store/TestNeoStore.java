@@ -51,7 +51,6 @@ import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.CommonFactories;
 import org.neo4j.kernel.ConfigProxy;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
-import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.core.PropertyIndex;
@@ -70,9 +69,6 @@ import org.neo4j.kernel.impl.util.StringLogger;
 
 public class TestNeoStore extends AbstractNeo4jTestCase
 {
-    private static final IdGeneratorFactory ID_GENERATOR_FACTORY =
-            CommonFactories.defaultIdGeneratorFactory();
-
     private PropertyStore pStore;
     private RelationshipTypeStore rtStore;
 
@@ -163,7 +159,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
                 new XaFactory(Collections.<String,String>emptyMap(), TxIdGenerator.DEFAULT, new PlaceboTm(),
                         CommonFactories.defaultLogBufferFactory(), CommonFactories.defaultFileSystemAbstraction(), StringLogger.DEV_NULL ), Collections.<Pair<TransactionInterceptorProvider,Object>>emptyList(), null );
 
-        xaCon = (NeoStoreXaConnection) ds.getXaConnection();
+        xaCon = ds.getXaConnection();
         pStore = xaCon.getPropertyStore();
         rtStore = xaCon.getRelationshipTypeStore();
     }

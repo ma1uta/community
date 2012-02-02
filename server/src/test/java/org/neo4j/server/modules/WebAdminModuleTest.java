@@ -29,11 +29,9 @@ import static org.neo4j.test.ReflectionUtil.setStaticFinalField;
 import java.net.URI;
 import java.util.Collections;
 import java.util.HashMap;
-
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeDataSupport;
-
 import org.apache.commons.configuration.MapConfiguration;
 import org.junit.Test;
 import org.neo4j.jmx.JmxUtils;
@@ -44,6 +42,14 @@ import org.neo4j.server.database.Database;
 import org.neo4j.server.web.WebServer;
 import org.rrd4j.core.RrdDb;
 
+<<<<<<< HEAD
+=======
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.*;
+import static org.neo4j.test.ReflectionUtil.*;
+
+>>>>>>> Added ConfigurationMigrator
 public class WebAdminModuleTest
 {
     @Test

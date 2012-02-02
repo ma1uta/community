@@ -20,18 +20,26 @@
 
 package org.neo4j.kernel;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+
 import java.util.HashMap;
 import java.util.Map;
 
-import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 import org.junit.Test;
+import org.neo4j.helpers.collection.MapUtil;
 
 /**
  * ConfigProxy tests
  */
 public class ConfigProxyTest
 {
+    public enum Options
+    {
+        first,
+        second
+    }
+    
     public interface Configuration
     {
         float floatNoDef();
@@ -43,8 +51,24 @@ public class ConfigProxyTest
         boolean boolDefined();
         boolean boolNotDefined();
         boolean boolNotDefinedWithDefault(boolean def);
+        
+        Options someOption();
+        Options someOptionWithDefault(Options def);
     }
     
+    @ConfigurationPrefix( "test." )
+    public interface ConfigurationPrefixed
+    {
+        String foo();
+    }
+    
+    @ConfigurationPrefix( "test2." )
+    public interface ConfigurationPrefixed2
+        extends ConfigurationPrefixed
+    {
+        String bar();
+    }
+
     @Test
     public void testNumbersAndRanges()
     {
@@ -55,27 +79,27 @@ public class ConfigProxyTest
         map.put("integerValueMinMax", "3");
         
         Configuration conf = ConfigProxy.config(map, Configuration.class);
-        Assert.assertThat(conf.floatValueMinMax(4, 1, 5), CoreMatchers.equalTo(3.0F));
-        Assert.assertThat(conf.floatValueMinMax(4, 5, 7), CoreMatchers.equalTo(5.0F));
-        Assert.assertThat(conf.floatValueMinMax(4, 1, 2), CoreMatchers.equalTo(2.0F));
+        Assert.assertThat(conf.floatValueMinMax(4, 1, 5), equalTo( 3.0F ));
+        Assert.assertThat(conf.floatValueMinMax(4, 5, 7), equalTo( 5.0F ));
+        Assert.assertThat(conf.floatValueMinMax(4, 1, 2), equalTo( 2.0F ));
 
-        Assert.assertThat(conf.doubleValueMinMax(4, 1, 5), CoreMatchers.equalTo(3.0D));
-        Assert.assertThat(conf.doubleValueMinMax(4, 5, 7), CoreMatchers.equalTo(5.0D));
-        Assert.assertThat(conf.doubleValueMinMax(4, 1, 2), CoreMatchers.equalTo(2.0D));
+        Assert.assertThat(conf.doubleValueMinMax(4, 1, 5), equalTo( 3.0D ));
+        Assert.assertThat(conf.doubleValueMinMax(4, 5, 7), equalTo( 5.0D ));
+        Assert.assertThat(conf.doubleValueMinMax(4, 1, 2), equalTo( 2.0D ));
 
-        Assert.assertThat(conf.longValueMinMax(4, 1, 5), CoreMatchers.equalTo(3L));
-        Assert.assertThat(conf.longValueMinMax(4, 5, 7), CoreMatchers.equalTo(5L));
-        Assert.assertThat(conf.longValueMinMax(4, 1, 2), CoreMatchers.equalTo(2L));
+        Assert.assertThat(conf.longValueMinMax(4, 1, 5), equalTo( 3L ));
+        Assert.assertThat(conf.longValueMinMax(4, 5, 7), equalTo( 5L ));
+        Assert.assertThat(conf.longValueMinMax(4, 1, 2), equalTo( 2L ));
 
-        Assert.assertThat(conf.integerValueMinMax(4, 1, 5), CoreMatchers.equalTo(3));
-        Assert.assertThat(conf.integerValueMinMax(4, 5, 7), CoreMatchers.equalTo(5));
-        Assert.assertThat(conf.integerValueMinMax(4, 1, 2), CoreMatchers.equalTo(2));
+        Assert.assertThat(conf.integerValueMinMax(4, 1, 5), equalTo( 3 ));
+        Assert.assertThat(conf.integerValueMinMax(4, 5, 7), equalTo( 5 ));
+        Assert.assertThat(conf.integerValueMinMax(4, 1, 2), equalTo( 2 ));
 
         // Invalid number format
         map.put("floatValueMinMax", "3x");
-        Assert.assertThat(conf.floatValueMinMax(4, 1, 5), CoreMatchers.equalTo(4.0F));
+        Assert.assertThat(conf.floatValueMinMax(4, 1, 5), equalTo( 4.0F ));
         map.put("floatValueMinMax", "3,0");
-        Assert.assertThat(conf.floatValueMinMax(4, 1, 5), CoreMatchers.equalTo(4.0F));
+        Assert.assertThat(conf.floatValueMinMax(4, 1, 5), equalTo( 4.0F ));
         map.put("floatNoDef", "3,0");
         try
         {
@@ -94,9 +118,9 @@ public class ConfigProxyTest
         map.put("boolDefined", "true");
         
         Configuration conf = ConfigProxy.config(map, Configuration.class);
-        Assert.assertThat(conf.boolDefined(), CoreMatchers.equalTo(true));
+        Assert.assertThat(conf.boolDefined(), equalTo( true ));
         map.put("boolDefined", "TrUe");
-        Assert.assertThat(conf.boolDefined(), CoreMatchers.equalTo(true));
+        Assert.assertThat(conf.boolDefined(), equalTo( true ));
 
         try
         {
@@ -106,6 +130,50 @@ public class ConfigProxyTest
         {
         }
 
-        Assert.assertThat(conf.boolNotDefinedWithDefault(true), CoreMatchers.equalTo(true));
+        Assert.assertThat(conf.boolNotDefinedWithDefault(true), equalTo( true ));
+    }
+    
+    @Test
+    public void testEnum()
+    {
+        Map<String,String> map = new HashMap<String, String>();
+        map.put("someOption", "first");
+        
+        Configuration conf = ConfigProxy.config(map, Configuration.class);
+        Assert.assertThat(conf.someOption(), equalTo( Options.first ));
+
+        map.put("someOption", "third");
+        try
+        {
+            conf.someOption();
+        }
+        catch( Exception e )
+        {
+            e.printStackTrace();
+        }
+
+        map.put("someOptionWithDefault", "third");
+        Assert.assertThat(conf.someOptionWithDefault( Options.first ), equalTo( Options.first ));
+
+        map.remove( "someOption" );
+        try
+        {
+            conf.someOption();
+            Assert.fail();
+        } catch (Exception e)
+        {
+        }
+    }
+    
+    @Test
+    public void testPrefix()
+    {
+        ConfigurationPrefixed conf = ConfigProxy.config( MapUtil.stringMap( "test.foo", "bar" ), ConfigurationPrefixed.class );
+        Assert.assertThat(conf.foo(), equalTo( "bar" ));
+
+        ConfigurationPrefixed2 conf2 = ConfigProxy.config( MapUtil.stringMap( "test.foo", "bar", "test2.bar", "foo" ), ConfigurationPrefixed2.class );
+        Assert.assertThat(conf2.foo(), equalTo( "bar" ));
+        Assert.assertThat(conf2.bar(), equalTo( "foo" ));
+
     }
 }

@@ -19,15 +19,13 @@
  */
 package recovery;
 
-import static org.neo4j.graphdb.DynamicRelationshipType.withName;
-import static org.neo4j.helpers.collection.MapUtil.stringMap;
-import static org.neo4j.kernel.Config.DEFAULT_DATA_SOURCE_NAME;
-import static org.neo4j.kernel.Config.KEEP_LOGICAL_LOGS;
-
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
+<<<<<<< HEAD
 
 import org.junit.Ignore;
+=======
+>>>>>>> Added ConfigurationMigrator
 import org.junit.Test;
 import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.Node;
@@ -41,6 +39,10 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
 import org.neo4j.test.AbstractSubProcessTestBase;
 import org.neo4j.test.subprocess.BreakPoint;
 import org.neo4j.test.subprocess.BreakPoint.Event;
+
+import static org.neo4j.graphdb.DynamicRelationshipType.*;
+import static org.neo4j.helpers.collection.MapUtil.*;
+import static org.neo4j.kernel.Config.*;
 
 /**
  * Tries to trigger log file version errors that could happen if the db was killed
@@ -117,8 +119,7 @@ public class TestRecoveryLogTimingIssues extends AbstractSubProcessTestBase
         {
             try
             {
-                graphdb.getXaDataSourceManager().getXaDataSource(
-                        DEFAULT_DATA_SOURCE_NAME ).rotateLogicalLog();
+                graphdb.getXaDataSourceManager().getNeoStoreDataSource().rotateLogicalLog();
             }
             catch ( IOException e )
             {
@@ -143,7 +144,7 @@ public class TestRecoveryLogTimingIssues extends AbstractSubProcessTestBase
         {
             try
             {
-                XaDataSource dataSource = graphdb.getXaDataSourceManager().getXaDataSource( DEFAULT_DATA_SOURCE_NAME );
+                XaDataSource dataSource = graphdb.getXaDataSourceManager().getNeoStoreDataSource();
                 for ( long logVersion = 0; logVersion < highestLogVersion; logVersion++ )
                 {
                     dataSource.getLogicalLog( logVersion );

@@ -27,8 +27,6 @@ import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.CommonFactories;
 import org.neo4j.kernel.Config;
 import org.neo4j.kernel.IdGeneratorFactory;
-import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
-import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
 
 /**
  * Not thread safe (since DiffRecordStore is not thread safe), intended for
@@ -46,7 +44,6 @@ public class StoreAccess
     private final RecordStore<PropertyIndexRecord> propIndexStore;
     private final RecordStore<DynamicRecord> typeNameStore;
     private final RecordStore<DynamicRecord> propKeyStore;
-    private boolean closable = false;
 
     public StoreAccess( AbstractGraphDatabase graphdb )
     {
@@ -55,13 +52,7 @@ public class StoreAccess
 
     private static NeoStore getNeoStoreFrom( AbstractGraphDatabase graphdb )
     {
-        XaDataSource nioneo = graphdb.getXaDataSourceManager().getXaDataSource(
-                Config.DEFAULT_DATA_SOURCE_NAME );
-        if ( nioneo instanceof NeoStoreXaDataSource )
-        {
-            return ( (NeoStoreXaDataSource) nioneo ).getNeoStore();
-        }
-        throw new IllegalArgumentException( "Could not access NeoStore from " + graphdb );
+        return graphdb.getXaDataSourceManager().getNeoStoreDataSource().getNeoStore();
     }
 
     public StoreAccess( NeoStore store )
@@ -127,21 +118,6 @@ public class StoreAccess
     public RecordStore<DynamicRecord> getPropertyKeyStore()
     {
         return propKeyStore;
-    }
-
-    public void close()
-    {
-        if ( closable ) try
-        {
-            nodeStore.close();
-            relStore.close();
-            relTypeStore.close();
-            if ( propStore != null ) propStore.close();
-        }
-        finally
-        {
-            closable = false;
-        }
     }
 
     public final <P extends RecordStore.Processor> P applyToAll( P processor )
