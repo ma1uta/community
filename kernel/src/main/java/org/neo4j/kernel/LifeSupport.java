@@ -40,107 +40,7 @@ public class LifeSupport
     {
         NONE,INITIALIZING,STARTING,STARTED,STOPPING,STOPPED,SHUTTING_DOWN,SHUTDOWN
     }
-    
-    private static class LifecycleInstance
-        implements Lifecycle
-    {
-        Lifecycle instance;
-        Status currentStatus = Status.NONE;
 
-        private LifecycleInstance( Lifecycle instance )
-        {
-            this.instance = instance;
-        }
-
-        @Override
-        public void init()
-            throws LifecycleException
-        {
-            if (currentStatus == Status.NONE )
-            {
-                currentStatus = Status.INITIALIZING;
-                try
-                {
-                    instance.init();
-                    currentStatus = Status.STOPPED;
-                }
-                catch( Throwable e )
-                {
-                    currentStatus = Status.NONE;
-                    throw new LifecycleException( instance, Status.NONE, Status.STOPPED, e );
-                }
-            }
-        }
-
-        @Override
-        public void start()
-            throws LifecycleException
-        {
-            if (currentStatus == Status.STOPPED )
-            {
-                currentStatus = Status.STARTING;
-                try
-                {
-                    instance.start();
-                    currentStatus = Status.STARTED;
-                }
-                catch( Throwable e )
-                {
-                    currentStatus = Status.STOPPED;
-                    throw new LifecycleException( instance, Status.STOPPED, Status.STARTED, e );
-                }
-            }
-        }
-
-        @Override
-        public void stop()
-            throws LifecycleException
-        {
-            if (currentStatus == Status.STARTED )
-            {
-                currentStatus = Status.STOPPING;
-                try
-                {
-                    instance.stop();
-                }
-                catch( Throwable e )
-                {
-                    throw new LifecycleException( instance, Status.STARTED, Status.STOPPED, e );
-                } finally
-                {
-                    currentStatus = Status.STOPPED;
-                }
-            }
-        }
-
-        @Override
-        public void shutdown()
-            throws LifecycleException
-        {
-            if (currentStatus == Status.STOPPED )
-            {
-                currentStatus = Status.SHUTTING_DOWN;
-                try
-                {
-                    instance.shutdown();
-                }
-                catch( Throwable e )
-                {
-                    throw new LifecycleException( instance, Status.STOPPED, Status.SHUTTING_DOWN, e );
-                } finally
-                {
-                    currentStatus = Status.SHUTDOWN;
-                }
-            }
-        }
-
-        @Override
-        public String toString()
-        {
-            return instance.toString()+": "+currentStatus.name();
-        }
-    }
-    
     List<LifecycleInstance> instances = new ArrayList<LifecycleInstance>(  );
     Status status = Status.NONE;
 
@@ -437,5 +337,105 @@ public class LifeSupport
         
         current.initCause( chainedLifecycleException );
         return exception;
+    }
+
+    private static class LifecycleInstance
+        implements Lifecycle
+    {
+        Lifecycle instance;
+        Status currentStatus = Status.NONE;
+
+        private LifecycleInstance( Lifecycle instance )
+        {
+            this.instance = instance;
+        }
+
+        @Override
+        public void init()
+            throws LifecycleException
+        {
+            if (currentStatus == Status.NONE )
+            {
+                currentStatus = Status.INITIALIZING;
+                try
+                {
+                    instance.init();
+                    currentStatus = Status.STOPPED;
+                }
+                catch( Throwable e )
+                {
+                    currentStatus = Status.NONE;
+                    throw new LifecycleException( instance, Status.NONE, Status.STOPPED, e );
+                }
+            }
+        }
+
+        @Override
+        public void start()
+            throws LifecycleException
+        {
+            if (currentStatus == Status.STOPPED )
+            {
+                currentStatus = Status.STARTING;
+                try
+                {
+                    instance.start();
+                    currentStatus = Status.STARTED;
+                }
+                catch( Throwable e )
+                {
+                    currentStatus = Status.STOPPED;
+                    throw new LifecycleException( instance, Status.STOPPED, Status.STARTED, e );
+                }
+            }
+        }
+
+        @Override
+        public void stop()
+            throws LifecycleException
+        {
+            if (currentStatus == Status.STARTED )
+            {
+                currentStatus = Status.STOPPING;
+                try
+                {
+                    instance.stop();
+                }
+                catch( Throwable e )
+                {
+                    throw new LifecycleException( instance, Status.STARTED, Status.STOPPED, e );
+                } finally
+                {
+                    currentStatus = Status.STOPPED;
+                }
+            }
+        }
+
+        @Override
+        public void shutdown()
+            throws LifecycleException
+        {
+            if (currentStatus == Status.STOPPED )
+            {
+                currentStatus = Status.SHUTTING_DOWN;
+                try
+                {
+                    instance.shutdown();
+                }
+                catch( Throwable e )
+                {
+                    throw new LifecycleException( instance, Status.STOPPED, Status.SHUTTING_DOWN, e );
+                } finally
+                {
+                    currentStatus = Status.SHUTDOWN;
+                }
+            }
+        }
+
+        @Override
+        public String toString()
+        {
+            return instance.toString()+": "+currentStatus.name();
+        }
     }
 }

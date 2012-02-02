@@ -226,6 +226,50 @@ public class LifeSupportTest
         assertEquals( LifeSupport.Status.SHUTDOWN , instance3.getStatus() );
     }
 
+    @Test
+    public void testRestartOk()
+        throws LifecycleException
+    {
+        LifeSupport lifeSupport = new LifeSupport();
+
+        LifecycleMock instance1 = new LifecycleMock( null, null, null, null );
+        lifeSupport.add( instance1 );
+        LifecycleMock instance2 = new LifecycleMock( null, null, null, null );
+        lifeSupport.add( instance2 );
+        LifecycleMock instance3 = new LifecycleMock( null, null, null, null );
+        lifeSupport.add( instance3 );
+
+        lifeSupport.init();
+        assertEquals( LifeSupport.Status.STOPPED, lifeSupport.getStatus());
+        assertEquals( LifeSupport.Status.STOPPED, instance1.getStatus());
+        assertEquals( LifeSupport.Status.STOPPED, instance2.getStatus());
+        assertEquals( LifeSupport.Status.STOPPED, instance3.getStatus());
+
+        lifeSupport.start();
+        assertEquals( LifeSupport.Status.STARTED, lifeSupport.getStatus());
+        assertEquals( LifeSupport.Status.STARTED, instance1.getStatus());
+        assertEquals( LifeSupport.Status.STARTED, instance2.getStatus() );
+        assertEquals( LifeSupport.Status.STARTED, instance3.getStatus());
+
+        lifeSupport.stop();
+        assertEquals( LifeSupport.Status.STOPPED, lifeSupport.getStatus());
+        assertEquals( LifeSupport.Status.STOPPED, instance1.getStatus());
+        assertEquals( LifeSupport.Status.STOPPED, instance2.getStatus());
+        assertEquals( LifeSupport.Status.STOPPED, instance3.getStatus());
+
+        lifeSupport.start();
+        assertEquals( LifeSupport.Status.STARTED, lifeSupport.getStatus());
+        assertEquals( LifeSupport.Status.STARTED, instance1.getStatus());
+        assertEquals( LifeSupport.Status.STARTED, instance2.getStatus());
+        assertEquals( LifeSupport.Status.STARTED, instance3.getStatus());
+
+        lifeSupport.shutdown();
+        assertEquals( LifeSupport.Status.SHUTDOWN, lifeSupport.getStatus());
+        assertEquals( LifeSupport.Status.SHUTDOWN, instance1.getStatus());
+        assertEquals( LifeSupport.Status.SHUTDOWN, instance2.getStatus());
+        assertEquals( LifeSupport.Status.SHUTDOWN, instance3.getStatus());
+    }
+
     public class LifecycleMock
         implements Lifecycle
     {
