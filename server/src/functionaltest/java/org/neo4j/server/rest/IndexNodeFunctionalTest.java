@@ -19,6 +19,12 @@
  */
 package org.neo4j.server.rest;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.neo4j.server.helpers.FunctionalTestHelper.CLIENT;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
@@ -38,7 +44,6 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.helpers.collection.MapUtil;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseSPI;
 import org.neo4j.kernel.impl.annotations.Documented;
 import org.neo4j.server.database.DatabaseBlockedException;
@@ -49,12 +54,6 @@ import org.neo4j.server.rest.domain.JsonHelper;
 import org.neo4j.server.rest.domain.JsonParseException;
 import org.neo4j.server.rest.domain.URIHelper;
 import org.neo4j.server.rest.web.PropertyValueException;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.neo4j.server.helpers.FunctionalTestHelper.CLIENT;
 
 public class IndexNodeFunctionalTest extends AbstractRestFunctionalTestBase
 {

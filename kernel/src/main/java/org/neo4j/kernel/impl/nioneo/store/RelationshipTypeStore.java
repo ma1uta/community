@@ -19,15 +19,14 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
-import org.neo4j.kernel.IdGeneratorFactory;
-import org.neo4j.kernel.IdType;
-import org.neo4j.kernel.impl.util.StringLogger;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Map;
+
+import org.neo4j.kernel.IdGeneratorFactory;
+import org.neo4j.kernel.IdType;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * Implementation of the relationship type store. Uses a dynamic store to store

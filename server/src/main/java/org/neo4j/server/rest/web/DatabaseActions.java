@@ -53,7 +53,6 @@ import org.neo4j.graphdb.index.UniqueFactory;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.collection.IterableWrapper;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseSPI;
 import org.neo4j.kernel.TransactionBuilder;
 import org.neo4j.kernel.Traversal;

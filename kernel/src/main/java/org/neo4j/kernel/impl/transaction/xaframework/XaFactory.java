@@ -20,14 +20,12 @@
 
 package org.neo4j.kernel.impl.transaction.xaframework;
 
-import org.neo4j.helpers.Pair;
+import java.util.Map;
+
 import org.neo4j.kernel.Config;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
 import org.neo4j.kernel.impl.util.StringLogger;
-
-import java.util.List;
-import java.util.Map;
 
 /**
 * TODO

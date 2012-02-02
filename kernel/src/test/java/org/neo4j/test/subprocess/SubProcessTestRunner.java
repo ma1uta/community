@@ -44,7 +44,6 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.MultipleFailureException;
 import org.junit.runners.model.Statement;
 import org.neo4j.helpers.Exceptions;
-//import org.neo4j.test.SequencingManager;
 import org.neo4j.test.subprocess.ForeignBreakpoints.BreakpointDef;
 
 public class SubProcessTestRunner extends BlockJUnit4ClassRunner

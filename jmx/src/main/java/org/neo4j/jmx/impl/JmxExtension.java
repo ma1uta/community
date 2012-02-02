@@ -19,6 +19,8 @@
  */
 package org.neo4j.jmx.impl;
 
+import static java.lang.management.ManagementFactory.getPlatformMBeanServer;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;

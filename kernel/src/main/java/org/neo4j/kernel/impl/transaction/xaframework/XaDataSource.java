@@ -22,7 +22,6 @@ package org.neo4j.kernel.impl.transaction.xaframework;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
-import java.util.Map;
 import java.util.StringTokenizer;
 
 import org.neo4j.helpers.Pair;

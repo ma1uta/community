@@ -70,12 +70,20 @@ import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.UTF8;
 import org.neo4j.helpers.collection.ClosableIterable;
-import org.neo4j.kernel.ConfigProxy;
 import org.neo4j.kernel.impl.cache.LruCache;
 import org.neo4j.kernel.impl.index.IndexProviderStore;
 import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
-import org.neo4j.kernel.impl.transaction.xaframework.*;
+import org.neo4j.kernel.impl.transaction.xaframework.LogBackedXaDataSource;
+import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
+import org.neo4j.kernel.impl.transaction.xaframework.XaCommandFactory;
+import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
+import org.neo4j.kernel.impl.transaction.xaframework.XaContainer;
+import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
+import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
+import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
+import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
+import org.neo4j.kernel.impl.transaction.xaframework.XaTransactionFactory;
 
 /**
  * An {@link XaDataSource} optimized for the {@link LuceneIndexImplementation}.

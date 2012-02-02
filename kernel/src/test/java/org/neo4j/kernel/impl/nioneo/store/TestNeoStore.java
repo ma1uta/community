@@ -65,8 +65,8 @@ import org.neo4j.kernel.impl.transaction.xaframework.TxIdGenerator;
 import org.neo4j.kernel.impl.transaction.xaframework.XaFactory;
 import org.neo4j.kernel.impl.util.ArrayMap;
 import org.neo4j.kernel.impl.util.FileUtils;
-import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 public class TestNeoStore extends AbstractNeo4jTestCase
 {

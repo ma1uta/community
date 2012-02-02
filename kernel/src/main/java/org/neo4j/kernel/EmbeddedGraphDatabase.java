@@ -19,10 +19,10 @@
  */
 package org.neo4j.kernel;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.kernel.impl.nioneo.store.*;
 
 /**
  * An implementation of {@link GraphDatabaseService} that is used to embed Neo4j

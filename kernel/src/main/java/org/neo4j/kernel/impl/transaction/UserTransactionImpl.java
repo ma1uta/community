@@ -27,9 +27,6 @@ import javax.transaction.SystemException;
 import javax.transaction.TransactionManager;
 import javax.transaction.UserTransaction;
 
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.kernel.AbstractGraphDatabase;
-
 public class UserTransactionImpl implements UserTransaction
 {
     private TransactionManager tm;

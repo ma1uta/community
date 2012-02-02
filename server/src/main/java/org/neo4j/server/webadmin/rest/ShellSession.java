@@ -19,9 +19,10 @@
  */
 package org.neo4j.server.webadmin.rest;
 
+import java.rmi.RemoteException;
+
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Service;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseSPI;
 import org.neo4j.kernel.KernelExtension;
 import org.neo4j.server.logging.Logger;
@@ -33,8 +34,6 @@ import org.neo4j.shell.impl.AbstractClient;
 import org.neo4j.shell.impl.CollectingOutput;
 import org.neo4j.shell.impl.SameJvmClient;
 import org.neo4j.shell.impl.ShellServerExtension;
-
-import java.rmi.RemoteException;
 
 public class ShellSession implements ScriptSession
 {

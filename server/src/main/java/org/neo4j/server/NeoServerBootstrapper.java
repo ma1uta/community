@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.apache.commons.configuration.Configuration;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseSPI;
 import org.neo4j.server.database.GraphDatabaseFactory;

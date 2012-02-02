@@ -25,7 +25,6 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 
 import org.neo4j.kernel.impl.nioneo.store.Buffer;
-import org.neo4j.kernel.impl.nioneo.store.CommonAbstractStore;
 import org.neo4j.kernel.impl.nioneo.store.OperationType;
 import org.neo4j.kernel.impl.nioneo.store.PersistenceWindow;
 import org.neo4j.kernel.impl.nioneo.store.PersistenceWindowPool;

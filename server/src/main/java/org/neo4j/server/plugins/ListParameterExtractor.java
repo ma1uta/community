@@ -19,7 +19,6 @@
  */
 package org.neo4j.server.plugins;
 
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.GraphDatabaseSPI;
 import org.neo4j.server.rest.repr.BadInputException;
 

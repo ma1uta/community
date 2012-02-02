@@ -23,15 +23,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.neo4j.ext.udc.UdcProperties;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.index.RelationshipIndex;
-import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.Config;
 import org.neo4j.kernel.GraphDatabaseSPI;
-import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.server.logging.Logger;
 import org.neo4j.server.statistic.StatisticCollector;
 import org.rrd4j.core.RrdDb;

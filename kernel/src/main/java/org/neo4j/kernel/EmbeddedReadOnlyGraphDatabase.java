@@ -19,16 +19,12 @@
  */
 package org.neo4j.kernel;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.event.KernelEventHandler;
 import org.neo4j.graphdb.event.TransactionEventHandler;
-import org.neo4j.graphdb.index.IndexManager;
 
 /**
  * A read-only version of {@link EmbeddedGraphDatabase}.

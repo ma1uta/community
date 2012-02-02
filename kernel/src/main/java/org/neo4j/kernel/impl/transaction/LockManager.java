@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 
 import javax.transaction.Transaction;
-import javax.transaction.TransactionManager;
 
 import org.neo4j.helpers.collection.Visitor;
 import org.neo4j.kernel.DeadlockDetectedException;
