@@ -250,54 +250,6 @@ class IndexManagerImpl implements IndexManager
             }
             return null;
         }
-    }    
-    
-    private class IndexCreatorThread extends Thread
-    {
-        private final String indexName;
-        private final Map<String, String> config;
-        private volatile Exception exception;
-        private final Class<? extends PropertyContainer> cls;
-
-        IndexCreatorThread( Class<? extends PropertyContainer> cls, String indexName,
-                Map<String, String> config )
-        {
-            this.cls = cls;
-            this.indexName = indexName;
-            this.config = config;
-        }
-
-        @Override
-        public void run()
-        {
-            String provider = config.get( PROVIDER );
-            String dataSourceName = getIndexProvider( provider ).getDataSourceName();
-            XaDataSource dataSource = xaDataSourceManager.getXaDataSource(dataSourceName);
-            IndexXaConnection connection = (IndexXaConnection) dataSource.getXaConnection();
-            Transaction tx = graphDatabaseSPI.tx().begin();
-            try
-            {
-                javax.transaction.Transaction javaxTx = txManager.getTransaction();
-                connection.enlistResource(javaxTx);
-                connection.createIndex( cls, indexName, config );
-                tx.success();
-            }
-            catch ( Exception e )
-            {
-                this.exception = e;
-            }
-            finally
-            {
-                try
-                {
-                    tx.finish();
-                }
-                catch ( Exception e )
-                {
-                    this.exception = e;
-                }
-            }
-        }
     }
 
     public boolean existsForNodes( String indexName )
