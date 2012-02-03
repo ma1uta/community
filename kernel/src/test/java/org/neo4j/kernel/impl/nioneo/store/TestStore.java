@@ -150,7 +150,7 @@ public class TestStore
 
         public Store( String fileName ) throws IOException
         {
-            super( fileName, ConfigProxy.config(MapUtil.<String,String>genericMap(
+            super( fileName, ConfigProxy.config(MapUtil.stringMap(
                     "store_dir", "target/var/teststore" ), AbstractStore.Configuration.class), IdType.NODE, ID_GENERATOR_FACTORY, FILE_SYSTEM, StringLogger.DEV_NULL);
         }
 

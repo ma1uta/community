@@ -38,6 +38,7 @@ import javax.transaction.xa.Xid;
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.helpers.UTF8;
 import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.helpers.collection.Visitor;
 import org.neo4j.kernel.Config;
 import org.neo4j.kernel.Lifecycle;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
@@ -428,6 +429,21 @@ public class XaDataSourceManager
             // ignore
         }
         return exception;
+    }
+
+    public void rotateLogicalLogs()
+    {
+        for ( XaDataSource dataSource : dataSources.values() )
+        {
+            try
+            {
+                dataSource.rotateLogicalLog();
+            }
+            catch ( IOException e )
+            {
+                msgLog.logMessage( "Couldn't rotate logical log for " + dataSource.getName(), e );
+            }
+        }
     }
 
     private static class NonCompletedTransaction
