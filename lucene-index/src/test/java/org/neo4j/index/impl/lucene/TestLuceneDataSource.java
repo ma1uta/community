@@ -196,7 +196,7 @@ public class TestLuceneDataSource
 
     private Map<String,String> config()
     {
-        return MapUtil.genericMap(
+        return MapUtil.stringMap(
                 "store_dir", getDbPath());
     }
 }

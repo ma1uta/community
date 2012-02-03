@@ -161,12 +161,9 @@ public class TestDynamicStore
 
     private Map<String,String> config()
     {
-        return MapUtil.genericMap(
+        return MapUtil.stringMap(
                 "neo_store", dynamicStoreFile(),
-                IdGeneratorFactory.class, ID_GENERATOR_FACTORY,
-                StringLogger.class, StringLogger.DEV_NULL,
-                "store_dir", path(),
-                FileSystemAbstraction.class, CommonFactories.defaultFileSystemAbstraction() );
+                "store_dir", path());
     }
 
     @Test

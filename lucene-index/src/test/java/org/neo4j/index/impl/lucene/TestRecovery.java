@@ -125,7 +125,7 @@ public class TestRecovery
         
         // Instead I have to do this
         FileSystemAbstraction fileSystem = CommonFactories.defaultFileSystemAbstraction();
-        Map<String, String> params = MapUtil.genericMap(
+        Map<String, String> params = MapUtil.stringMap(
                 "store_dir", getDbPath());
         LuceneDataSource ds = new LuceneDataSource(ConfigProxy.config(params, LuceneDataSource.Configuration.class), new IndexStore( getDbPath(), fileSystem ), fileSystem, new XaFactory(params, TxIdGenerator.DEFAULT, new PlaceboTm(), CommonFactories.defaultLogBufferFactory(), CommonFactories.defaultFileSystemAbstraction(), StringLogger.DEV_NULL));
         ds.close();

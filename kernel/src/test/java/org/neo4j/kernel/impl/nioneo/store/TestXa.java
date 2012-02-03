@@ -414,7 +414,7 @@ public class TestXa extends AbstractNeo4jTestCase
     {
         Map<String, String> config = new HashMap<String, String>();
         config.putAll( Config.getDefaultParams() );
-        MapUtil.genericMap( config,
+        MapUtil.stringMap( config,
             "store_dir", path(),
             "neo_store", file( "neo" ),
             "logical_log", file( "nioneo_logical.log" ) );

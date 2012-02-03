@@ -150,7 +150,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
         LockManager lockManager = getEmbeddedGraphDb().getLockManager();
         LockReleaser lockReleaser = getEmbeddedGraphDb().getLockReleaser();
 
-        Map<String, String> config = MapUtil.<String,String>genericMap(
+        Map<String, String> config = MapUtil.stringMap(
                 "store_dir", path(),
                 "neo_store", file("neo"),
                 "logical_log", file("nioneo_logical.log"));
