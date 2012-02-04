@@ -398,7 +398,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
             TransactionInterceptor first = TransactionInterceptorProvider.resolveChain(
                     providers, NeoStoreXaDataSource.this );
             return new InterceptingWriteTransaction( identifier,
-                    getLogicalLog(), neoStore, lockReleaser, lockManager, first );
+                    getLogicalLog(), neoStore, lockReleaser, lockManager, msgLog, identifier, first );
         }
     }
 
@@ -408,7 +408,7 @@ public class NeoStoreXaDataSource extends LogBackedXaDataSource
         public XaTransaction create( int identifier )
         {
             return new WriteTransaction( identifier, getLogicalLog(), neoStore,
-                lockReleaser, lockManager );
+                lockReleaser, lockManager, msgLog, identifier );
         }
 
         @Override

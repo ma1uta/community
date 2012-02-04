@@ -26,6 +26,7 @@ import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.xaframework.TransactionInterceptor;
 import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 public class InterceptingWriteTransaction extends WriteTransaction
 {
@@ -33,10 +34,10 @@ public class InterceptingWriteTransaction extends WriteTransaction
 
     InterceptingWriteTransaction( int identifier, XaLogicalLog log,
             NeoStore neoStore, LockReleaser lockReleaser,
-            LockManager lockManager, TransactionInterceptor interceptor )
+            LockManager lockManager, StringLogger msgLog, int eventIdentifier, TransactionInterceptor interceptor )
     {
         super( identifier, log, neoStore, lockReleaser,
-                lockManager );
+                lockManager, msgLog, eventIdentifier );
         this.interceptor = interceptor;
     }
 

@@ -19,6 +19,8 @@
  */
 package org.neo4j.kernel.impl.nioneo.xa;
 
+import static org.neo4j.kernel.impl.nioneo.store.PropertyStore.encodeString;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -70,8 +72,7 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 import org.neo4j.kernel.impl.util.ArrayMap;
 import org.neo4j.kernel.impl.util.RelIdArray;
 import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
-
-import static org.neo4j.kernel.impl.nioneo.store.PropertyStore.encodeString;
+import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * Transaction containing {@link Command commands} reflecting the operations
@@ -100,14 +101,18 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     private final LockReleaser lockReleaser;
     private final LockManager lockManager;
     private XaConnection xaConnection;
+    private final StringLogger msgLog;
+    private final int eventIdentifier;
 
     WriteTransaction( int identifier, XaLogicalLog log, NeoStore neoStore,
-            LockReleaser lockReleaser, LockManager lockManager )
+            LockReleaser lockReleaser, LockManager lockManager, StringLogger msgLog, int eventIdentifier )
     {
         super( identifier, log );
         this.neoStore = neoStore;
         this.lockReleaser = lockReleaser;
         this.lockManager = lockManager;
+        this.msgLog = msgLog;
+        this.eventIdentifier = eventIdentifier;
     }
 
     @Override
@@ -1527,6 +1532,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     void addNodeRecord( NodeRecord record )
     {
         nodeRecords.put( record.getId(), record );
+        msgLog.logMessage( "ANR:" + eventIdentifier + ":" + record );
     }
 
     NodeRecord getNodeRecord( long nodeId )
