@@ -158,7 +158,7 @@ public class TestConcurrentRotation extends AbstractSubProcessTestBase
         {
             try
             {
-                graphdb.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource( LuceneDataSource.DATA_SOURCE_NAME ).rotateLogicalLog();
+                graphdb.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource( LuceneDataSource.DEFAULT_NAME ).rotateLogicalLog();
                 setSuccess( graphdb, true );
             }
             catch ( Exception e )

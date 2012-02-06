@@ -165,7 +165,7 @@ public class LuceneIndexImplementation extends AbstractIndexImplementation
     @Override
     public String getDataSourceName()
     {
-        return LuceneDataSource.DATA_SOURCE_NAME;
+        return LuceneDataSource.DEFAULT_NAME;
     }
 
     @Override
@@ -177,6 +177,6 @@ public class LuceneIndexImplementation extends AbstractIndexImplementation
     @Override
     protected byte[] getDataSourceBranchId()
     {
-        return LuceneDataSource.BRANCH_ID;
+        return LuceneDataSource.DEFAULT_BRANCH_ID;
     }
 }

@@ -78,8 +78,8 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 public class LuceneDataSource extends IndexDataSource
 {
     public static final Version LUCENE_VERSION = Version.LUCENE_35;
-    public static final String DATA_SOURCE_NAME = "lucene-index";
-    public static final byte[] BRANCH_ID = UTF8.encode( "162374" );
+    public static final String DEFAULT_NAME = "lucene-index";
+    public static final byte[] DEFAULT_BRANCH_ID = UTF8.encode( "162374" );
     public static final long INDEX_VERSION = versionStringToLong( "3.5" );
 
     /**
@@ -170,13 +170,13 @@ public class LuceneDataSource extends IndexDataSource
     @Override
     public String getName()
     {
-        return DATA_SOURCE_NAME;
+        return DEFAULT_NAME;
     }
     
     @Override
     public byte[] getBranchId()
     {
-        return BRANCH_ID;
+        return DEFAULT_BRANCH_ID;
     }
     
     private int parseInt( Map<?, ?> params, String param )
