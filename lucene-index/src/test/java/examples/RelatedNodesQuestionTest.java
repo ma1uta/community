@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -29,7 +29,7 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.index.IndexHits;
 import org.neo4j.graphdb.index.RelationshipIndex;
-import org.neo4j.kernel.EmbeddedGraphDatabase;
+import org.neo4j.test.ImpermanentGraphDatabase;
 
 /**
  * Trying out code from: http://stackoverflow.com/questions/5346011
@@ -41,7 +41,7 @@ public class RelatedNodesQuestionTest
     @Test
     public void question5346011()
     {
-        GraphDatabaseService service = new EmbeddedGraphDatabase( "target/soquestion-test" );
+        GraphDatabaseService service = new ImpermanentGraphDatabase();
         Transaction transaction = service.beginTx();
         try
         {

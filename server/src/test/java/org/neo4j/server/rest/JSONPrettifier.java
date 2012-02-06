@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -19,61 +19,37 @@
  */
 package org.neo4j.server.rest;
 
-import java.io.StringWriter;
+import org.codehaus.jackson.JsonParseException;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.ObjectWriter;
 
 /*
  * Naive implementation of a JSON prettifier.
  */
 public class JSONPrettifier
 {
-    private static final String INDENTATION = "  ";
-
     public static String parse( final String json )
     {
-        StringWriter w = new StringWriter();
-        String indent = "\n";
-        boolean inString = false, escaped = false;
-
-        for ( char c : json.toCharArray() )
-        {
-            if ( c == '\\' )
-            { // Track escape characters
-                escaped = !escaped;
-                w.append( c );
-            }
-            else if ( c == '"' && !escaped )
-            { // Enter and exit strings
-                inString = !inString;
-                w.append( c );
-            }
-            else if ( inString )
-            { // Inside strings
-                w.append( c );
-            }
-            else if ( c == '[' || c == '{' )
-            { // Opening brackets
-                w.append( c );
-                indent += INDENTATION;
-                w.append( indent );
-            }
-            else if ( c == ']' || c == '}' )
-            { // Closing brackets
-                indent = indent.substring( 0,
-                        indent.length() - INDENTATION.length() );
-                w.append( indent );
-                w.append( c );
-            }
-            else if ( c == ',' )
-            { // Comma
-                w.append( c );
-                w.append( indent );
-            }
-            else
-            { // Everything else
-                w.append( c );
-            }
+        if(json==null) {
+            return "";
         }
-
-        return w.toString();
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectWriter writer = mapper.defaultPrettyPrintingWriter();
+        Object myObject;
+        try
+        {
+            myObject = mapper.readValue( json, Object.class );
+            return writer.writeValueAsString(myObject );
+        }
+        catch ( JsonParseException e )
+        {
+            //this prolly isn't JSON
+            return json;
+        }
+        catch ( Exception e )
+        {
+            e.printStackTrace();
+            throw new RuntimeException( "bad input " + json );
+        }
     }
 }

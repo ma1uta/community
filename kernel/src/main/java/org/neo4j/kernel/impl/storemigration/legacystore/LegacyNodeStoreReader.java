@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -18,6 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.neo4j.kernel.impl.storemigration.legacystore;
+
+import static org.neo4j.kernel.impl.storemigration.legacystore.LegacyStore.longFromIntAndMod;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -81,19 +83,16 @@ public class LegacyNodeStoreReader
                             long inUseByte = buffer.get();
 
                             boolean inUse = (inUseByte & 0x1) == Record.IN_USE.intValue();
-                            nodeRecord = new NodeRecord( id );
-                            nodeRecord.setInUse( inUse );
                             if ( inUse )
                             {
                                 long nextRel = LegacyStore.getUnsignedInt( buffer );
-                                long nextProp = LegacyStore.getUnsignedInt( buffer );
-
                                 long relModifier = (inUseByte & 0xEL) << 31;
+                                long nextProp = LegacyStore.getUnsignedInt( buffer );
                                 long propModifier = (inUseByte & 0xF0L) << 28;
-
-                                nodeRecord.setNextRel( LegacyStore.longFromIntAndMod( nextRel, relModifier ) );
-                                nodeRecord.setNextProp( LegacyStore.longFromIntAndMod( nextProp, propModifier ) );
+                                nodeRecord = new NodeRecord( id, longFromIntAndMod( nextRel, relModifier ), longFromIntAndMod( nextProp, propModifier ) );
                             }
+                            else nodeRecord = new NodeRecord( id, Record.NO_NEXT_RELATIONSHIP.intValue(), Record.NO_NEXT_PROPERTY.intValue() );
+                            nodeRecord.setInUse( inUse );
                             id++;
                         }
                         return nodeRecord;

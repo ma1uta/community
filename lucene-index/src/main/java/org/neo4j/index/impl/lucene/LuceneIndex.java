@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -24,9 +24,12 @@ import static org.neo4j.index.base.EntityId.entityId;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.apache.lucene.document.Document;
@@ -55,6 +58,7 @@ public abstract class LuceneIndex<T extends PropertyContainer> extends AbstractI
     static final String KEY_DOC_ID = "_id_";
     static final String KEY_START_NODE_ID = "_start_node_id_";
     static final String KEY_END_NODE_ID = "_end_node_id_";
+    private static Set<String> FORBIDDEN_KEYS = new HashSet<String>( Arrays.asList( null, KEY_DOC_ID, KEY_START_NODE_ID, KEY_END_NODE_ID ) );
 
     final IndexType type;
 
@@ -80,11 +84,26 @@ public abstract class LuceneIndex<T extends PropertyContainer> extends AbstractI
     {
         return super.getReadOnlyConnection();
     }
+        
+    private void assertValidKey( String key )
+    {
+        if ( FORBIDDEN_KEYS.contains( key ) )
+        {
+            throw new IllegalArgumentException( "Key " + key + " forbidden" );
+        }
+    }
+    
+    @Override
+    public void add(T entity, String key, Object value)
+    {
+        assertValidKey( key );
+        super.add( entity, key, value );
+    }
 
     public void remove( T entity, String key )
     {
         IndexBaseXaConnection<LuceneTransaction> connection = getConnection();
-        assertKeyNotNull( key );
+        assertValidKey( key );
         connection.remove( this, entity, key, null );
     }
 

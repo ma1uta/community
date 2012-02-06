@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -157,7 +157,7 @@ public class ElementReference {
     
     public void waitForTextToChangeTo(String value) {
         Condition<ElementReference> cond = new WebdriverCondition<ElementReference>( wl.getWebDriver(), elementTextIs(value), this);
-        cond.waitUntilFulfilled(10000, "Element text did not change from "+value+" within a reasonable time.");
+        cond.waitUntilFulfilled(10000, String.format( "Element text did not change to [%s] within a reasonable time - is still [%s]", value, getText() ) );
     }
 
 }

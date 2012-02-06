@@ -3,13 +3,13 @@
   <parent>
     <groupId>org.neo4j.build</groupId>
     <artifactId>examples-pom</artifactId>
-    <version>25</version>
+    <version>31</version>
     <relativePath />
   </parent>
   <groupId>org.neo4j.examples</groupId>
   <artifactId>neo4j-examples</artifactId>
   <name>Neo4j Examples</name>
-  <version>1.6-SNAPSHOT</version>
+  <version>1.7-SNAPSHOT</version>
   <description>Neo4j Embedded Examples</description>
   <url>http://components.neo4j.org/${project.artifactId}/${project.version}/</url>
 
@@ -23,13 +23,14 @@
     <apidocs-unpack>${project.build.directory}/neo4j-apidocs</apidocs-unpack>
     <apidocs-target>${project.build.directory}/site/apidocs</apidocs-target>
     <license-text.header>ApacheLicense-2.0-header.txt</license-text.header>
+    <docs.url>http://docs.neo4j.org/chunked/${project.version}/tutorials-java-embedded.html</docs.url>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>org.neo4j</groupId>
       <artifactId>neo4j</artifactId>
-      <version>1.6-SNAPSHOT</version>
+      <version>1.7-SNAPSHOT</version>
       <!-- In this context, keep this artifact as type pom -->
       <type>pom</type>
       <exclusions>
@@ -42,25 +43,25 @@
     <dependency>
       <groupId>org.neo4j</groupId>
       <artifactId>neo4j-shell</artifactId>
-      <version>1.6-SNAPSHOT</version>
+      <version>1.7-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.neo4j</groupId>
       <artifactId>neo4j-kernel</artifactId>
-      <version>1.6-SNAPSHOT</version>
+      <version>1.7-SNAPSHOT</version>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.neo4j</groupId>
       <artifactId>neo4j-graphviz</artifactId>
-      <version>1.6-SNAPSHOT</version>
+      <version>1.7-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.neo4j</groupId>
       <artifactId>neo4j-udc</artifactId>
-      <version>1.6-SNAPSHOT</version>
+      <version>1.7-SNAPSHOT</version>
       <classifier>neo4j</classifier>
     </dependency>
     <dependency>
@@ -124,7 +125,7 @@
           </execution>
         </executions>
       </plugin>
-      <plugin>
+      <!-- plugin>
         <artifactId>maven-source-plugin</artifactId>
         <executions>
           <execution>
@@ -136,7 +137,7 @@
             </goals>
           </execution>
         </executions>
-      </plugin>
+      </plugin -->
     </plugins>
   </build>
 
@@ -167,7 +168,7 @@
     <repository>
       <id>neo4j-release-repository</id>
       <name>Neo4j Maven 2 release repository</name>
-      <url>http://m2.neo4j.org/releases</url>
+      <url>http://m2.neo4j.org/content/repositories/releases</url>
       <releases>
         <enabled>true</enabled>
       </releases>
@@ -178,7 +179,7 @@
     <repository>
       <id>neo4j-snapshot-repository</id>
       <name>Neo4j Maven 2 snapshot repository</name>
-      <url>http://m2.neo4j.org/snapshots</url>
+      <url>http://m2.neo4j.org/content/repositories/snapshots</url>
       <snapshots>
         <enabled>true</enabled>
       </snapshots>

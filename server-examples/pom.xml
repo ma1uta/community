@@ -3,13 +3,13 @@
   <parent>
     <groupId>org.neo4j.build</groupId>
     <artifactId>examples-pom</artifactId>
-    <version>25</version>
+    <version>31</version>
     <relativePath />
   </parent>
   <groupId>org.neo4j.examples</groupId>
   <artifactId>neo4j-server-examples</artifactId>
   <name>Neo4j Server Examples</name>
-  <version>1.6-SNAPSHOT</version>
+  <version>1.7-SNAPSHOT</version>
   <description>Neo4j Server Plugin Examples</description>
   <url>http://components.neo4j.org/${project.artifactId}/${project.version}/</url>
 
@@ -17,6 +17,7 @@
     <short-name>neo4j-server-examples</short-name>
     <bundle.namespace>org.neo4j.examples.server</bundle.namespace>
     <license-text.header>ApacheLicense-2.0-header.txt</license-text.header>
+    <docs.url>http://docs.neo4j.org/chunked/${project.version}/server-java-rest-client-example.html</docs.url>
   </properties>
 
   <scm>
@@ -27,12 +28,12 @@
     <dependency>
       <groupId>org.neo4j</groupId>
       <artifactId>server-api</artifactId>
-      <version>1.6-SNAPSHOT</version>
+      <version>1.7-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.neo4j</groupId>
       <artifactId>neo4j-graph-algo</artifactId>
-      <version>1.6-SNAPSHOT</version>
+      <version>1.7-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>com.sun.jersey</groupId>
@@ -65,33 +66,61 @@
         </executions>
       </plugin>
       <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>wagon-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>upload-to-dist-server</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <artifactId>maven-site-plugin</artifactId>
         <executions>
           <execution>
             <id>create-site</id>
             <phase>none</phase>
           </execution>
+          <execution>
+            <id>attach-descriptor</id>
+            <phase>none</phase>
+          </execution>
         </executions>
       </plugin>
       <plugin>
-        <artifactId>maven-source-plugin</artifactId>
+        <artifactId>maven-javadoc-plugin</artifactId>
         <executions>
           <execution>
-            <id>attach-sources</id>
+            <id>attach-javadocs</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>docs</id>
             <phase>package</phase>
+            <configuration>
+              <attach>true</attach>
+              <appendAssemblyId>true</appendAssemblyId>
+              <descriptors>
+                <descriptor>src/main/assembly/docs-assembly.xml</descriptor>
+              </descriptors>
+            </configuration>
             <goals>
-              <goal>jar-no-fork</goal>
-              <goal>test-jar-no-fork</goal>
+              <goal>single</goal>
             </goals>
           </execution>
         </executions>
       </plugin>
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>wagon-maven-plugin</artifactId>
+        <artifactId>maven-jar-plugin</artifactId>
         <executions>
           <execution>
-            <id>upload-to-dist-server</id>
+            <id>attach-docs</id>
             <phase>none</phase>
           </execution>
         </executions>
@@ -107,7 +136,7 @@
     <repository>
       <id>neo4j-release-repository</id>
       <name>Neo4j Maven 2 release repository</name>
-      <url>http://m2.neo4j.org/releases</url>
+      <url>http://m2.neo4j.org/content/repositories/releases</url>
       <releases>
         <enabled>true</enabled>
       </releases>
@@ -118,7 +147,7 @@
     <repository>
       <id>neo4j-snapshot-repository</id>
       <name>Neo4j Maven 2 snapshot repository</name>
-      <url>http://m2.neo4j.org/snapshots</url>
+      <url>http://m2.neo4j.org/content/repositories/snapshots</url>
       <snapshots>
         <enabled>true</enabled>
       </snapshots>

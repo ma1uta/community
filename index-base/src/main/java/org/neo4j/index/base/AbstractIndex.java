@@ -19,10 +19,12 @@
  */
 package org.neo4j.index.base;
 
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.index.Index;
+import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
 import org.neo4j.kernel.impl.util.IoPrimitiveUtils;
 
@@ -74,6 +76,12 @@ public abstract class AbstractIndex<T extends PropertyContainer> implements Inde
         return identifier.getEntityType();
     }
     
+    @Override
+    public GraphDatabaseService getGraphDatabase()
+    {
+        return provider.graphDb();
+    }
+    
     public Class<T> getEntityType()
     {
         return (Class<T>) identifier.getEntityType().getType();
@@ -105,6 +113,12 @@ public abstract class AbstractIndex<T extends PropertyContainer> implements Inde
         {
             connection.add( this, entity, key, oneValue );
         }
+    }
+    
+    @Override
+    public T putIfAbsent( T entity, String key, Object value )
+    {
+        return ((AbstractGraphDatabase)provider.graphDb()).getConfig().getGraphDbModule().getNodeManager().indexPutIfAbsent( this, entity, key, value );
     }
     
     /**

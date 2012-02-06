@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -30,6 +30,7 @@ import java.util.Map;
 import javax.ws.rs.core.MediaType;
 
 import org.neo4j.server.rest.repr.BadInputException;
+import org.neo4j.server.rest.repr.DefaultFormat;
 import org.neo4j.server.rest.repr.ListWriter;
 import org.neo4j.server.rest.repr.MappingWriter;
 import org.neo4j.server.rest.repr.RepresentationFormat;
@@ -78,7 +79,7 @@ public class UrlFormFormat extends RepresentationFormat
     }
 
     @Override
-    public Map<String, Object> readMap( final String input ) throws BadInputException
+    public Map<String, Object> readMap( final String input, String... requiredKeys ) throws BadInputException
     {
         HashMap<String, Object> result = new HashMap<String, Object>();
         if ( input.isEmpty() )
@@ -124,7 +125,7 @@ public class UrlFormFormat extends RepresentationFormat
             }
         }
 
-        return result;
+        return DefaultFormat.validateKeys( result, requiredKeys );
     }
 
     private String ensureThatKeyDoesNotHavePhPStyleParenthesesAtTheEnd( String key )

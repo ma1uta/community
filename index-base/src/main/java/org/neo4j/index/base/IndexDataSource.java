@@ -72,7 +72,9 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
             this.indexStore = (IndexStore) params.get( IndexStore.class );
             ensureDirectoryCreated( this.storeDir );
             FileSystemAbstraction fileSystem = (FileSystemAbstraction) params.get( FileSystemAbstraction.class );
-            this.store = new IndexProviderStore( new File( (String) params.get( "index_store_db" ) ), fileSystem );
+            boolean allowUpgrade = Boolean.parseBoolean( (String) params.get( Config.ALLOW_STORE_UPGRADE ) );
+            this.store = new IndexProviderStore( new File( (String) params.get( "index_store_db" ) ), fileSystem,
+                    getVersion(), allowUpgrade );
             boolean isReadOnly = params.containsKey( "read_only" ) ?
                     (Boolean) params.get( "read_only" ) : false;
             initializeBeforeLogicalLog( params );
@@ -109,6 +111,8 @@ public abstract class IndexDataSource extends LogBackedXaDataSource
     protected void initializeBeforeLogicalLog( Map<?, ?> params )
     {
     }
+    
+    protected abstract long getVersion();
 
     protected String getStoreDir()
     {

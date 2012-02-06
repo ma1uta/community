@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -20,6 +20,7 @@
 package org.neo4j.kernel.impl.nioneo.store;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -340,8 +341,8 @@ public class TestNeoStore extends AbstractNeo4jTestCase
 
         initializeStores();
         startTx();
-        assertEquals( false, xaCon.getWriteTransaction().nodeLoadLight( node1 ) );
-        assertEquals( false, xaCon.getWriteTransaction().nodeLoadLight( node2 ) );
+        assertNull( xaCon.getWriteTransaction().nodeLoadLight( node1 ) );
+        assertNull( xaCon.getWriteTransaction().nodeLoadLight( node2 ) );
         testGetRels( new long[] { rel1, rel2 } );
         // testGetProps( neoStore, new int[] {
         // n1prop1, n1prop2, n1prop3, n2prop1, n2prop2, n2prop3,
@@ -410,9 +411,9 @@ public class TestNeoStore extends AbstractNeo4jTestCase
             PropertyData prop2, PropertyData prop3, long rel1, long rel2,
             int relType1, int relType2 ) throws IOException
     {
-        assertTrue( xaCon.getWriteTransaction().nodeLoadLight( node ) );
-        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node,
-                false );
+        NodeRecord nodeRecord = xaCon.getWriteTransaction().nodeLoadLight( node );
+        assertTrue( nodeRecord != null );
+        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node, false );
         int count = 0;
         for ( int keyId : props.keySet() )
         {
@@ -483,9 +484,9 @@ public class TestNeoStore extends AbstractNeo4jTestCase
             PropertyData prop2, PropertyData prop3,
         long rel1, long rel2, int relType1, int relType2 ) throws IOException
     {
-        assertTrue( xaCon.getWriteTransaction().nodeLoadLight( node ) );
-        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node,
-                false );
+        NodeRecord nodeRecord = xaCon.getWriteTransaction().nodeLoadLight( node );
+        assertTrue( nodeRecord != null );
+        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node, false );
         int count = 0;
         for ( int keyId : props.keySet() )
         {
@@ -789,8 +790,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
             PropertyData prop2, PropertyData prop3 )
         throws IOException
     {
-        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node,
-                false );
+        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node, false );
         int count = 0;
         for ( int keyId : props.keySet() )
         {
@@ -835,8 +835,7 @@ public class TestNeoStore extends AbstractNeo4jTestCase
             PropertyData prop2, PropertyData prop3 )
         throws IOException
     {
-        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node,
-                false );
+        ArrayMap<Integer,PropertyData> props = xaCon.getWriteTransaction().nodeLoadProperties( node, false );
         int count = 0;
         for ( int keyId : props.keySet() )
         {

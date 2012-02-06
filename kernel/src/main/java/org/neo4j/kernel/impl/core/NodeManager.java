@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -39,6 +39,7 @@ import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.event.TransactionData;
+import org.neo4j.graphdb.index.Index;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Triplet;
 import org.neo4j.helpers.collection.PrefetchingIterator;
@@ -51,7 +52,9 @@ import org.neo4j.kernel.impl.cache.SoftLruCache;
 import org.neo4j.kernel.impl.cache.StrongReferenceCache;
 import org.neo4j.kernel.impl.cache.WeakLruCache;
 import org.neo4j.kernel.impl.nioneo.store.NameData;
+import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
 import org.neo4j.kernel.impl.nioneo.store.PropertyData;
+import org.neo4j.kernel.impl.nioneo.store.Record;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
 import org.neo4j.kernel.impl.persistence.EntityIdGenerator;
 import org.neo4j.kernel.impl.persistence.PersistenceManager;
@@ -258,19 +261,20 @@ public class NodeManager
     public Node createNode()
     {
         long id = idGenerator.nextId( Node.class );
-        NodeImpl node = new NodeImpl( id, true );
-        acquireLock( node, LockType.WRITE );
+        NodeImpl node = new NodeImpl( id, Record.NO_NEXT_RELATIONSHIP.intValue(), Record.NO_NEXT_PROPERTY.intValue(), true );
+        NodeProxy proxy = new NodeProxy( id, this );
+        acquireLock( proxy, LockType.WRITE );
         boolean success = false;
         try
         {
             persistenceManager.nodeCreate( id );
             nodeCache.put( id, node );
             success = true;
-            return new NodeProxy( id, this );
+            return proxy;
         }
         finally
         {
-            releaseLock( node, LockType.WRITE );
+            releaseLock( proxy, LockType.WRITE );
             if ( !success )
             {
                 setRollbackOnly();
@@ -278,7 +282,7 @@ public class NodeManager
         }
     }
 
-    public Relationship createRelationship( NodeImpl startNode, Node endNode,
+    public Relationship createRelationship( Node startNodeProxy, NodeImpl startNode, Node endNode,
         RelationshipType type )
     {
         if ( startNode == null || endNode == null || type == null )
@@ -292,13 +296,6 @@ public class NodeManager
             relTypeHolder.addValidRelationshipType( type.name(), true );
         }
         long startNodeId = startNode.getId();
-        NodeImpl firstNode = getLightNode( startNodeId );
-        if ( firstNode == null )
-        {
-            setRollbackOnly();
-            throw new NotFoundException( "First node[" + startNode.getId()
-                + "] deleted" );
-        }
         long endNodeId = endNode.getId();
         NodeImpl secondNode = getLightNode( endNodeId );
         if ( secondNode == null )
@@ -312,28 +309,29 @@ public class NodeManager
         RelationshipImpl rel = newRelationshipImpl( id, startNodeId, endNodeId, type, typeId, true );
         boolean firstNodeTaken = false;
         boolean secondNodeTaken = false;
-        acquireLock( rel, LockType.WRITE );
+        RelationshipProxy proxy = new RelationshipProxy( id, this );
+        acquireLock( proxy, LockType.WRITE );
         boolean success = false;
         try
         {
-            acquireLock( firstNode, LockType.WRITE );
+            acquireLock( startNodeProxy, LockType.WRITE );
             firstNodeTaken = true;
-            acquireLock( secondNode, LockType.WRITE );
+            acquireLock( endNode, LockType.WRITE );
             secondNodeTaken = true;
             persistenceManager.relationshipCreate( id, typeId, startNodeId,
                 endNodeId );
             if ( startNodeId == endNodeId )
             {
-                firstNode.addRelationship( this, type, id, DirectionWrapper.BOTH );
+                startNode.addRelationship( this, type, id, DirectionWrapper.BOTH );
             }
             else
             {
-                firstNode.addRelationship( this, type, id, DirectionWrapper.OUTGOING );
+                startNode.addRelationship( this, type, id, DirectionWrapper.OUTGOING );
                 secondNode.addRelationship( this, type, id, DirectionWrapper.INCOMING );
             }
             relCache.put( rel.getId(), rel );
             success = true;
-            return new RelationshipProxy( id, this );
+            return proxy;
         }
         finally
         {
@@ -342,7 +340,7 @@ public class NodeManager
             {
                 try
                 {
-                    releaseLock( firstNode, LockType.WRITE );
+                    releaseLock( startNodeProxy, LockType.WRITE );
                 }
                 catch ( Exception e )
                 {
@@ -354,7 +352,7 @@ public class NodeManager
             {
                 try
                 {
-                    releaseLock( secondNode, LockType.WRITE );
+                    releaseLock( endNode, LockType.WRITE );
                 }
                 catch ( Exception e )
                 {
@@ -362,7 +360,7 @@ public class NodeManager
                     log.log( Level.SEVERE, "Failed to release lock", e );
                 }
             }
-            releaseLock( rel, LockType.WRITE );
+            releaseLock( proxy, LockType.WRITE );
             if ( !success )
             {
                 setRollbackOnly();
@@ -417,11 +415,9 @@ public class NodeManager
             {
                 return new NodeProxy( nodeId, this );
             }
-            if ( !persistenceManager.loadLightNode( nodeId ) )
-            {
-                return null;
-            }
-            node = new NodeImpl( nodeId );
+            NodeRecord record = persistenceManager.loadLightNode( nodeId );
+            if ( record == null ) return null;
+            node = new NodeImpl( nodeId, record.getCommittedNextRel(), record.getCommittedNextProp() );
             nodeCache.put( nodeId, node );
             return new NodeProxy( nodeId, this );
         }
@@ -430,7 +426,7 @@ public class NodeManager
             loadLock.unlock();
         }
     }
-    
+
     public Node getNodeById( long nodeId ) throws NotFoundException
     {
         Node node = getNodeByIdOrNull( nodeId );
@@ -440,14 +436,14 @@ public class NodeManager
         }
         return node;
     }
-    
+
     public Iterator<Node> getAllNodes()
     {
         final long highId = getHighestPossibleIdInUse( Node.class );
         return new PrefetchingIterator<Node>()
         {
             private long currentId;
-            
+
             @Override
             protected Node fetchNextOrNull()
             {
@@ -486,11 +482,9 @@ public class NodeManager
             {
                 return node;
             }
-            if ( !persistenceManager.loadLightNode( nodeId ) )
-            {
-                return null;
-            }
-            node = new NodeImpl( nodeId );
+            NodeRecord record = persistenceManager.loadLightNode( nodeId );
+            if ( record == null ) return null;
+            node = new NodeImpl( nodeId, record.getCommittedNextRel(), record.getCommittedNextProp() );
             nodeCache.put( nodeId, node );
             return node;
         }
@@ -500,33 +494,12 @@ public class NodeManager
         }
     }
 
-    NodeImpl getNodeForProxy( long nodeId )
+    NodeImpl getNodeForProxy( NodeProxy proxy, LockType lock )
     {
-        NodeImpl node = nodeCache.get( nodeId );
-        if ( node != null )
-        {
-            return node;
-        }
-        ReentrantLock loadLock = lockId( nodeId );
-        try
-        {
-            node = nodeCache.get( nodeId );
-            if ( node != null )
-            {
-                return node;
-            }
-            if ( !persistenceManager.loadLightNode( nodeId ) )
-            {
-                throw new NotFoundException( "Node[" + nodeId + "] not found." );
-            }
-            node = new NodeImpl( nodeId );
-            nodeCache.put( nodeId, node );
-            return node;
-        }
-        finally
-        {
-            loadLock.unlock();
-        }
+        if ( lock != null ) acquireTxBoundLock( proxy, lock );
+        NodeImpl node = getLightNode( proxy.getId() );
+        if ( node == null ) throw new NotFoundException( proxy + " not found." );
+        return node;
     }
 
     public Node getReferenceNode() throws NotFoundException
@@ -582,7 +555,7 @@ public class NodeManager
             loadLock.unlock();
         }
     }
-    
+
     public Relationship getRelationshipById( long id ) throws NotFoundException
     {
         Relationship relationship = getRelationshipByIdOrNull( id );
@@ -599,7 +572,7 @@ public class NodeManager
         return new PrefetchingIterator<Relationship>()
         {
             private long currentId;
-            
+
             @Override
             protected Relationship fetchNextOrNull()
             {
@@ -622,19 +595,18 @@ public class NodeManager
             }
         };
     }
-    
+
     RelationshipType getRelationshipTypeById( int id )
     {
         return relTypeHolder.getRelationshipType( id );
     }
 
-    RelationshipImpl getRelForProxy( long relId )
+    RelationshipImpl getRelForProxy( RelationshipProxy proxy, LockType lock )
     {
+        if ( lock != null ) acquireTxBoundLock( proxy, lock );
+        long relId = proxy.getId();
         RelationshipImpl relationship = relCache.get( relId );
-        if ( relationship != null )
-        {
-            return relationship;
-        }
+        if ( relationship != null ) return relationship;
         ReentrantLock loadLock = lockId( relId );
         try
         {
@@ -646,8 +618,7 @@ public class NodeManager
             RelationshipRecord data = persistenceManager.loadLightRelationship( relId );
             if ( data == null )
             {
-                throw new NotFoundException( "Relationship[" + relId
-                    + "] not found." );
+                throw new NotFoundException( proxy + " not found." );
             }
             int typeId = data.getType();
             RelationshipType type = getRelationshipTypeById( typeId );
@@ -749,7 +720,7 @@ public class NodeManager
     {
          relCache.putAll( map );
     }
-    
+
     ArrayMap<Integer, PropertyData> loadGraphProperties( boolean light )
     {
         return persistenceManager.graphLoadProperties( light );
@@ -763,8 +734,7 @@ public class NodeManager
     ArrayMap<Integer,PropertyData> loadProperties(
             RelationshipImpl relationship, boolean light )
     {
-        return persistenceManager.loadRelProperties( relationship.getId(),
-                light );
+        return persistenceManager.loadRelProperties( relationship.getId(), light );
     }
 
     public void clearCache()
@@ -801,69 +771,132 @@ public class NodeManager
         }
     }
 
+    public <T extends PropertyContainer> T indexPutIfAbsent( Index<T> index, T entity, String key, Object value )
+    {
+        T existing = index.get( key, value ).getSingle();
+        if ( existing != null ) return existing;
+
+        // Grab lock
+        IndexLock lock = new IndexLock( index.getName(), key );
+        LockType.WRITE.acquire( lock, lockManager );
+        try
+        {
+            // Check again
+            existing = index.get( key, value ).getSingle();
+            if ( existing != null )
+            {
+                LockType.WRITE.release( lock, lockManager );
+                return existing;
+            }
+
+            // Add
+            index.add( entity, key, value );
+            return null;
+        }
+        finally
+        {
+            if ( existing == null ) LockType.WRITE.unacquire( lock, lockManager, lockReleaser );
+        }
+    }
+
     void acquireLock( Primitive resource, LockType lockType )
     {
-        PropertyContainer container;
-        if ( resource instanceof NodeImpl )
-        {
-            container = new NodeProxy( resource.getId(), this );
-        }
-        else if ( resource instanceof RelationshipImpl )
-        {
-            container = new RelationshipProxy( resource.getId(), this );
-        }
-        else if ( resource instanceof GraphProperties )
-        {
-            container = (GraphProperties) resource;
-        }
-        else
-        {
-            throw new LockException( "Unkown primitivite type: " + resource );
-        }
-        if ( lockType == LockType.READ )
-        {
-            lockManager.getReadLock( container );
-        }
-        else if ( lockType == LockType.WRITE )
-        {
-            lockManager.getWriteLock( container );
-        }
-        else
-        {
-            throw new LockException( "Unknown lock type: " + lockType );
-        }
+        lockType.acquire( resource.asProxy( this ), lockManager );
+    }
+
+    void acquireLock( PropertyContainer resource, LockType lockType )
+    {
+        lockType.acquire( resource, lockManager );
+    }
+
+    void acquireTxBoundLock( PropertyContainer resource, LockType lockType )
+    {
+        lockType.acquire( resource, lockManager );
+        lockType.unacquire( resource, lockManager, lockReleaser );
+    }
+
+    void acquireIndexLock( String index, String key, LockType lockType )
+    {
+        lockType.acquire( new IndexLock( index, key ), lockManager );
     }
 
     void releaseLock( Primitive resource, LockType lockType )
     {
-        PropertyContainer container;
-        if ( resource instanceof NodeImpl )
+        lockType.unacquire( resource.asProxy( this ), lockManager, lockReleaser );
+    }
+
+    void releaseLock( PropertyContainer resource, LockType lockType )
+    {
+        lockType.unacquire( resource, lockManager, lockReleaser );
+    }
+
+    void releaseIndexLock( String index, String key, LockType lockType )
+    {
+        lockType.unacquire( new IndexLock( index, key ), lockManager, lockReleaser );
+    }
+
+    public static class IndexLock
+    {
+        private final String index;
+        private final String key;
+
+        public IndexLock( String index, String key )
         {
-            container = new NodeProxy( resource.getId(), this );
+            this.index = index;
+            this.key = key;
         }
-        else if ( resource instanceof RelationshipImpl )
+
+        public String getIndex()
         {
-            container = new RelationshipProxy( resource.getId(), this );
+            return index;
         }
-        else if ( resource instanceof GraphProperties )
+
+        public String getKey()
         {
-            container = (GraphProperties) resource;
+            return key;
         }
-        else
-        {
-            throw new LockException( "Unkown primitivite type: " + resource );
+
+        @Override
+        public int hashCode()
+        {   // Auto-generated
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((index == null) ? 0 : index.hashCode());
+            result = prime * result + ((key == null) ? 0 : key.hashCode());
+            return result;
         }
-        if ( lockType == LockType.READ )
-        {
-            lockManager.releaseReadLock( container, null );
+
+        @Override
+        public boolean equals( Object obj )
+        {   // Auto-generated
+            if ( this == obj )
+                return true;
+            if ( obj == null )
+                return false;
+            if ( getClass() != obj.getClass() )
+                return false;
+            IndexLock other = (IndexLock) obj;
+            if ( index == null )
+            {
+                if ( other.index != null )
+                    return false;
+            }
+            else if ( !index.equals( other.index ) )
+                return false;
+            if ( key == null )
+            {
+                if ( other.key != null )
+                    return false;
+            }
+            else if ( !key.equals( other.key ) )
+                return false;
+            return true;
         }
-        else if ( lockType == LockType.WRITE )
+
+        @Override
+        public String toString()
         {
-            lockReleaser.addLockToTransaction( container, lockType );
-        }
-        else
-        {
-            throw new LockException( "Unknown lock type: " + lockType );
+            return "IndexLock[" + index + ":" + key + "]";
         }
     }
 
@@ -1003,7 +1036,7 @@ public class NodeManager
     {
         persistenceManager.graphRemoveProperty( property );
     }
-    
+
     ArrayMap<Integer,PropertyData> deleteRelationship( RelationshipImpl rel )
     {
         deletePrimitive( rel );
@@ -1063,10 +1096,9 @@ public class NodeManager
         return lockReleaser.getCowRelationshipRemoveMap( node, type );
     }
 
-    public Collection<Long> getCowRelationshipRemoveMap( NodeImpl node, String type,
-        boolean create )
+    public Collection<Long> getOrCreateCowRelationshipRemoveMap( NodeImpl node, String type )
     {
-        return lockReleaser.getCowRelationshipRemoveMap( node, type, create );
+        return lockReleaser.getOrCreateCowRelationshipRemoveMap( node, type );
     }
 
     public ArrayMap<String,RelIdArray> getCowRelationshipAddMap( NodeImpl node )
@@ -1079,10 +1111,9 @@ public class NodeManager
         return lockReleaser.getCowRelationshipAddMap( node, string );
     }
 
-    public RelIdArray getCowRelationshipAddMap( NodeImpl node, String string,
-        boolean create )
+    public RelIdArray getOrCreateCowRelationshipAddMap( NodeImpl node, String string )
     {
-        return lockReleaser.getCowRelationshipAddMap( node, string, create );
+        return lockReleaser.getOrCreateCowRelationshipAddMap( node, string );
     }
 
     public NodeImpl getNodeIfCached( long nodeId )
@@ -1112,23 +1143,23 @@ public class NodeManager
         return lockReleaser.getCowPropertyAddMap( primitive );
     }
 
-    public ArrayMap<Integer,PropertyData> getCowPropertyAddMap(
-        Primitive primitive, boolean create )
+    public ArrayMap<Integer,PropertyData> getOrCreateCowPropertyAddMap(
+        Primitive primitive )
     {
-        return lockReleaser.getCowPropertyAddMap( primitive, create );
+        return lockReleaser.getOrCreateCowPropertyAddMap( primitive );
     }
 
-    public ArrayMap<Integer,PropertyData> getCowPropertyRemoveMap(
-        Primitive primitive, boolean create )
+    public ArrayMap<Integer,PropertyData> getOrCreateCowPropertyRemoveMap(
+        Primitive primitive )
     {
-        return lockReleaser.getCowPropertyRemoveMap( primitive, create );
+        return lockReleaser.getOrCreateCowPropertyRemoveMap( primitive );
     }
 
     LockReleaser getLockReleaser()
     {
         return this.lockReleaser;
     }
-    
+
     LockManager getLockManager()
     {
         return this.lockManager;
@@ -1294,17 +1325,17 @@ public class NodeManager
     {
         relationshipPropertyTrackers.remove( relationshipPropertyTracker );
     }
-    
+
     PersistenceManager getPersistenceManager()
     {
         return persistenceManager;
     }
-    
+
     private GraphProperties instantiateGraphProperties()
     {
         return new GraphProperties( this );
     }
-    
+
     public GraphProperties getGraphProperties()
     {
         return graphProperties;

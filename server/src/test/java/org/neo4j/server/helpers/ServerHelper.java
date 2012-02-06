@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -21,6 +21,7 @@ package org.neo4j.server.helpers;
 
 import java.io.IOException;
 
+import org.apache.commons.lang.StringUtils;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.server.NeoServer;
@@ -28,20 +29,6 @@ import org.neo4j.tooling.GlobalGraphOperations;
 
 public class ServerHelper
 {
-//    private static final NeoServer SERVER;
-//    static
-//    {
-//        try
-//        {
-//            SERVER = unstoppable( ServerBuilder.server().onPort( 7474 ).build() );
-//            SERVER.start();
-//        }
-//        catch ( IOException e )
-//        {
-//            throw new Error( "Couldn't start default server", e );
-//        }
-//    }
-    
     public static void cleanTheDatabase( final NeoServer server )
     {
         if ( server == null )
@@ -122,9 +109,18 @@ public class ServerHelper
     public static NeoServer createServer( boolean persistent ) throws IOException
     {
         ServerBuilder builder = ServerBuilder.server();
+        configureHostname( builder );
         if ( persistent ) builder = builder.persistent();
         NeoServer server = builder.build();
         server.start();
         return server;
+    }
+
+    private static void configureHostname( ServerBuilder builder )
+    {
+        String hostName = System.getProperty( "neo-server.test.hostname" );
+        if (StringUtils.isNotEmpty( hostName )) {
+            builder.onHost( hostName );
+        }
     }
 }

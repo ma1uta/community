@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -36,6 +36,7 @@ import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.server.rest.domain.JsonHelper;
 import org.neo4j.server.rest.domain.JsonParseException;
 import org.neo4j.server.rest.repr.BadInputException;
+import org.neo4j.server.rest.repr.DefaultFormat;
 import org.neo4j.server.rest.repr.ListWriter;
 import org.neo4j.server.rest.repr.MappingWriter;
 import org.neo4j.server.rest.repr.Representation;
@@ -120,6 +121,7 @@ public class CompactJsonFormat extends RepresentationFormat
             this.template = template;
         }
 
+        @Override
         protected MappingWriter newMapping( String type, String key )
         {
             Map<String, Object> map = new HashMap<String, Object>();
@@ -191,12 +193,12 @@ public class CompactJsonFormat extends RepresentationFormat
     }
 
     @Override
-    public Map<String, Object> readMap( String input ) throws BadInputException
+    public Map<String, Object> readMap( String input, String... requiredKeys ) throws BadInputException
     {
-        if ( empty( input ) ) return Collections.emptyMap();
+        if ( empty( input ) ) return DefaultFormat.validateKeys( Collections.<String,Object>emptyMap(), requiredKeys );
         try
         {
-            return JsonHelper.jsonToMap( stripByteOrderMark( input ) );
+            return DefaultFormat.validateKeys( JsonHelper.jsonToMap( stripByteOrderMark( input ) ), requiredKeys );
         }
         catch ( JsonParseException ex )
         {

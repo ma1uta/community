@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -29,6 +29,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.DynamicRelationshipType;
@@ -138,6 +139,11 @@ public class TestApps extends AbstractShellTest
         executeCommand( "mv number other-number" );
         assertNull( thirdRelationship.getProperty( "number", null ) );
         assertEquals( 11, thirdRelationship.getProperty( "other-number" ) );
+        
+        // Create and go to
+        executeCommand( "cd end" );
+        executeCommand( "mkrel -ct " + type1.name() + " --np \"{'name':'new'}\" --cd" );
+        executeCommand( "ls -p", "name", "new" );
     }
 
     @Test
@@ -169,6 +175,15 @@ public class TestApps extends AbstractShellTest
         executeCommand( "rmrel -f " + relationships[0].getId() );
         assertRelationshipDoesntExist( relationships[0] );
         assertNodeExists( otherNode );
+    }
+    
+    @Test
+    @Ignore
+    public void correctCypherExecution() throws Exception
+    {
+        executeCommand( "mkrel -ct KNOWS " );
+        executeCommand( "START n = node(1) return n", ".*Node\\[1\\].*" );
+        executeCommand( "START n = node(1) match n--() return n", ".*Node\\[1\\].*" );
     }
 
     @Test
@@ -282,6 +297,7 @@ public class TestApps extends AbstractShellTest
         otherNode.setProperty( name, nodeTwoName );
         Relationship relationship = node.createRelationshipTo( otherNode, RELATIONSHIP_TYPE );
         relationship.setProperty( name, relationshipName );
+        Node strayNode = db.createNode();
         finishTx();
         
         executeCommand( "cd -a " + node.getId() );
@@ -290,6 +306,12 @@ public class TestApps extends AbstractShellTest
         executeCommand( "START r = relationship({self}) RETURN r.name", relationshipName );
         executeCommand( "cd " + otherNode.getId() );
         executeCommand( "START n = node({self}) RETURN n.name", nodeTwoName );
+        
+        executeCommand( "cd -a " + strayNode.getId() );
+        beginTx();
+        strayNode.delete();
+        finishTx();
+        executeCommand( "START n = node(" + node.getId() + ") RETURN n.name", nodeOneName );
     }
     
     @Test
@@ -308,5 +330,25 @@ public class TestApps extends AbstractShellTest
         executeCommand( "ls -f blame", "!Mattias", "Someone else" );
         executeCommand( "ls -pf .*ame", "Mattias", "Someone else" );
         executeCommand( "ls -f .*ame", "Mattias", "Someone else" );
+    }
+    
+    @Test
+    public void createNewNode() throws Exception
+    {
+        executeCommand( "mknode --np \"{'name':'test'}\" --cd" );
+        executeCommand( "ls", "name", "test", "!-" /*no relationship*/ );
+        executeCommand( "mkrel -t KNOWS 0" );
+        executeCommand( "ls", "name", "test", "-", "KNOWS" );
+    }
+    
+    @Ignore( "Setting a new reference node isn't persistent" )
+    @Test
+    public void setNewReferenceNode() throws Exception
+    {
+        executeCommandExpectingException( "mknode -r", "exists" );
+        executeCommand( "rmnode" ); // Delete the reference node
+        executeCommand( "mknode -r --cd --np \"{'name':'test'}\"" );
+        executeCommand( "cd" );
+        executeCommand( "ls -p", "name", "test" );
     }
 }

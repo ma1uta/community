@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -21,11 +21,14 @@ package org.neo4j.kernel.impl.nioneo.store;
 
 public abstract class PrimitiveRecord extends Abstract64BitRecord
 {
-    private long nextProp = Record.NO_NEXT_PROPERTY.intValue();
+    private long nextProp;
+    private final long committedNextProp;
 
-    public PrimitiveRecord( long id )
+    public PrimitiveRecord( long id, long nextProp )
     {
         super( id );
+        this.nextProp = nextProp;
+        this.committedNextProp = this.nextProp = nextProp;
     }
 
     public long getNextProp()
@@ -37,4 +40,11 @@ public abstract class PrimitiveRecord extends Abstract64BitRecord
     {
         this.nextProp = nextProp;
     }
+
+    public long getCommittedNextProp()
+    {
+        return isCreated() ? Record.NO_NEXT_PROPERTY.intValue() : committedNextProp;
+    }
+
+    abstract void setIdTo( PropertyRecord property );
 }

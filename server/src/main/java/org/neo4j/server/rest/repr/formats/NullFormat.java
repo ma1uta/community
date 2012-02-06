@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -28,10 +28,13 @@ import java.util.Map;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import org.neo4j.server.rest.repr.BadInputException;
 import org.neo4j.server.rest.repr.ListWriter;
 import org.neo4j.server.rest.repr.MappingWriter;
 import org.neo4j.server.rest.repr.MediaTypeNotSupportedException;
 import org.neo4j.server.rest.repr.RepresentationFormat;
+
+import scala.actors.threadpool.Arrays;
 
 public class NullFormat extends RepresentationFormat
 {
@@ -66,10 +69,11 @@ public class NullFormat extends RepresentationFormat
     }
 
     @Override
-    public Map<String, Object> readMap( String input )
+    public Map<String, Object> readMap( String input, String... requiredKeys ) throws BadInputException
     {
         if ( empty( input ) )
         {
+            if ( requiredKeys.length != 0 ) throw new BadInputException( "Missing required keys: " + Arrays.toString( requiredKeys ) );
             return Collections.emptyMap();
         }
         throw new MediaTypeNotSupportedException( Response.Status.UNSUPPORTED_MEDIA_TYPE, supported, requested );

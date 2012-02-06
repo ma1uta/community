@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -20,18 +20,20 @@
 package org.neo4j.cypher.javacompat;
 
 import org.neo4j.cypher.SyntaxException;
-import org.neo4j.cypher.commands.Query;
+import org.neo4j.cypher.internal.commands.Query;
 
 /**
- * This is the entry point to parse strings to {@link Query}-objects
+ * This class is deprecated. You should not parse queries manually -
+ * end the string directly to the execution engine
  */
+@Deprecated
 public class CypherParser
 {
-    private org.neo4j.cypher.parser.CypherParser inner;
+    private org.neo4j.cypher.CypherParser inner;
 
     public CypherParser()
     {
-        inner = new org.neo4j.cypher.parser.CypherParser();
+        inner = new org.neo4j.cypher.CypherParser();
     }
 
     public Query parse( String query ) throws SyntaxException
@@ -40,10 +42,10 @@ public class CypherParser
     }
 
     public static Query parseStrict(String query) throws SyntaxException {
-        return new org.neo4j.cypher.parser.CypherParser().parse( query );
+        return new org.neo4j.cypher.CypherParser().parse( query );
     }
 
     public static Query parseConsole(String query) throws SyntaxException {
-        return new org.neo4j.cypher.parser.ConsoleCypherParser().parse( query );
+        return new org.neo4j.cypher.internal.parser.v1_6.ConsoleCypherParser().parse( query );
     }
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -19,9 +19,8 @@
  */
 package org.neo4j.cypher
 
-import commands.Query
+import internal.commands.Query
 import org.junit.Before
-import parser.CypherParser
 
 
 trait ExecutionEngineHelper extends GraphDatabaseTestBase {
@@ -40,8 +39,9 @@ trait ExecutionEngineHelper extends GraphDatabaseTestBase {
 
 
   def parseAndExecute(q: String, params: (String, Any)*): ExecutionResult = {
-    val query = new CypherParser().parse(q)
-    execute(query, params: _*)
+    val plan = engine.prepare(q)
+    
+    plan.execute(params.toMap)
   }
 
 }

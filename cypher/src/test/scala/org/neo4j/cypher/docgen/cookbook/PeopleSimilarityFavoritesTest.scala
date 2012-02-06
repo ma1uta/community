@@ -1,7 +1,5 @@
-package org.neo4j.cypher.docgen.cookbook
-
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -19,6 +17,7 @@ package org.neo4j.cypher.docgen.cookbook
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+package org.neo4j.cypher.docgen.cookbook
 
 import org.junit.Test
 import org.junit.Assert._
@@ -41,8 +40,8 @@ class PeopleSimilarityFavoritesTest extends DocumentingTestBase {
       title = "Find people based on similar favorites",
       text = """To find out the possible new friends based on them liking similar things as the asking person:""",
       queryText = "START me=node:node_auto_index(name = \"Joe\") " +
-      		"MATCH me-[:favorite]->stuff<-[:favorite]-person, me-[r?:friend]-person " +
-      		"WHERE r IS NULL " +
+      		"MATCH me-[:favorite]->stuff<-[:favorite]-person " +
+      		"WHERE NOT(me-[:friend]-person) " +
       		"RETURN person.name, count(stuff) " +
       		"ORDER BY count(stuff) DESC",
       returns = "The list of possible friends ranked by them liking similar stuff that are not yet friends.",

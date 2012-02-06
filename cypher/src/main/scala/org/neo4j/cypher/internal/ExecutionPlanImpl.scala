@@ -1,7 +1,5 @@
-package org.neo4j.cypher.internal
-
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -19,27 +17,37 @@ package org.neo4j.cypher.internal
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+package org.neo4j.cypher.internal
+
+import commands._
 import scala.collection.JavaConverters._
 import org.neo4j.graphdb._
 import collection.Seq
 import java.lang.Iterable
-import org.neo4j.cypher.pipes._
-import org.neo4j.cypher.commands._
+import org.neo4j.cypher.internal.pipes._
 import org.neo4j.cypher._
+import org.neo4j.tooling.GlobalGraphOperations
 
 class ExecutionPlanImpl(query: Query, graph: GraphDatabaseService) extends ExecutionPlan {
-  def execute(params: Map[String, Any]): ExecutionResult = createPipes(params)
+  val (executionPlan, executionPlanText) = prepareExecutionPlan()
 
-  private def createPipes(params: Map[String, Any]) = {
+  def execute(params: Map[String, Any]): ExecutionResult = {
+    val plan = executionPlan(params)
+    plan
+  }
+
+
+  private def prepareExecutionPlan(): ((Map[String, Any]) => PipeExecutionResult, String) = {
     query match {
       case Query(returns, start, matching, where, aggregation, sort, slice, namedPaths, queryText) => {
-
+        var sorted = false
+        var aggregated = false
         val predicates = where match {
           case None => Seq()
           case Some(w) => w.atoms
         }
 
-        val paramPipe = new ParameterPipe(params)
+        val paramPipe = new ParameterPipe()
         val pipe = createSourcePumps(paramPipe, start.startItems.toList)
 
         var context = new CurrentContext(pipe, predicates)
@@ -63,14 +71,41 @@ class ExecutionPlanImpl(query: Query, graph: GraphDatabaseService) extends Execu
 
         context.pipe = new ExtractPipe(context.pipe, allReturnItems)
 
-        aggregation match {
-          case None =>
-          case Some(aggr) => {
-            context.pipe = new EagerAggregationPipe(context.pipe, returns.returnItems, aggr.aggregationItems)
+        (aggregation, sort) match {
+          case (Some(agg), Some(sorting)) => {
+            val sortColumns = sorting.sortItems.map(_.returnItem.columnName)
+            val keyColumns = returns.returnItems.map(_.columnName)
+
+            if (canUseOrderedAggregation(sortColumns, keyColumns)) {
+
+              val keyColumnsNotAlreadySorted = returns.
+                returnItems.
+                filterNot(ri => sortColumns.contains(ri.columnName))
+                .map(x => SortItem(x, true))
+
+              val newSort = Some(Sort(sorting.sortItems ++ keyColumnsNotAlreadySorted: _*))
+
+              createSortPipe(newSort, allReturnItems, context)
+              context.pipe = new OrderedAggregationPipe(context.pipe, returns.returnItems, agg.aggregationItems)
+              sorted = true
+              aggregated = true
+            }
+          }
+          case _ =>
+        }
+
+        if (!aggregated) {
+          aggregation match {
+            case None =>
+            case Some(aggr) => {
+              context.pipe = new EagerAggregationPipe(context.pipe, returns.returnItems, aggr.aggregationItems)
+            }
           }
         }
 
-        createSortPipe(sort, allReturnItems, context)
+        if (!sorted) {
+          createSortPipe(sort, allReturnItems, context)
+        }
 
         slice match {
           case None =>
@@ -81,10 +116,18 @@ class ExecutionPlanImpl(query: Query, graph: GraphDatabaseService) extends Execu
 
         val result = new ColumnFilterPipe(context.pipe, returnItems)
 
-        new PipeExecutionResult(result, returns.columns)
+        val func = (params: Map[String, Any]) => {
+          val start = System.currentTimeMillis()
+          val results = result.createResults(params)
+          val timeTaken = System.currentTimeMillis() - start
+
+          new PipeExecutionResult(results, result.symbols, returns.columns, timeTaken)
+        }
+        val executionPlan = result.executionPlan()
+
+        (func, executionPlan)
       }
     }
-
   }
 
   private def createSortPipe(sort: Option[Sort], allReturnItems: Seq[ReturnItem], context: CurrentContext) {
@@ -206,9 +249,20 @@ class ExecutionPlanImpl(query: Query, graph: GraphDatabaseService) extends Execu
         indexHits.asScala
       })
 
+    case RelationshipByIndexQuery(varName, idxName, query) =>
+      new RelationshipStartPipe(lastPipe, varName, m => {
+        val queryText = query(m)
+        val indexHits: Iterable[Relationship] = graph.index.forRelationships(idxName).query(queryText)
+        indexHits.asScala
+      })
+
     case NodeById(varName, valueGenerator) => new NodeStartPipe(lastPipe, varName, m => makeNodes[Node](valueGenerator(m), varName, graph.getNodeById))
+    case AllNodes(identifierName) => new NodeStartPipe(lastPipe, identifierName, m => GlobalGraphOperations.at(graph).getAllNodes.asScala )
+    case AllRelationships(identifierName) => new RelationshipStartPipe(lastPipe, identifierName, m => GlobalGraphOperations.at(graph).getAllRelationships.asScala )
     case RelationshipById(varName, id) => new RelationshipStartPipe(lastPipe, varName, m => makeNodes[Relationship](id(m), varName, graph.getRelationshipById))
   }
+
+  private def canUseOrderedAggregation(sortColumns: Seq[String], keyColumns: Seq[String]): Boolean = keyColumns.take(sortColumns.size) == sortColumns
 
   private def makeNodes[T](data: Any, name: String, getElement: Long => T): Seq[T] = {
     def castElement(x: Any): T = x match {
@@ -227,6 +281,8 @@ class ExecutionPlanImpl(query: Query, graph: GraphDatabaseService) extends Execu
       case x => throw new ParameterWrongTypeException("Expected a propertycontainer or number here, but got: " + x.toString)
     }
   }
+
+  override def toString = executionPlanText
 }
 
 private class CurrentContext(var pipe: Pipe, var predicates: Seq[Predicate])

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -19,6 +19,13 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
+import org.neo4j.helpers.UTF8;
+import org.neo4j.kernel.Config;
+import org.neo4j.kernel.IdGeneratorFactory;
+import org.neo4j.kernel.IdType;
+import org.neo4j.kernel.impl.core.ReadOnlyDbException;
+import org.neo4j.kernel.impl.util.StringLogger;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -26,13 +33,6 @@ import java.nio.channels.OverlappingFileLockException;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import org.neo4j.helpers.UTF8;
-import org.neo4j.kernel.Config;
-import org.neo4j.kernel.IdGeneratorFactory;
-import org.neo4j.kernel.IdType;
-import org.neo4j.kernel.impl.core.ReadOnlyDbException;
-import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
  * Contains common implementation for {@link AbstractStore} and
@@ -115,9 +115,9 @@ public abstract class CommonAbstractStore
         return typeDescriptor + " " + ALL_STORES_VERSION;
     }
 
-    public void logVersions( StringLogger msgLog )
+    public void logVersions( StringLogger.LineLogger logger )
     {
-        msgLog.logMessage( "  " + getTypeAndVersionDescriptor() );
+        logger.logLine( getTypeAndVersionDescriptor() );
     }
 
     protected static long longFromIntAndMod( long base, long modifier )
@@ -459,8 +459,9 @@ public abstract class CommonAbstractStore
             String mem = (String) config.get( realName + ".mapped_memory" );
             if ( mem != null )
             {
+                mem = mem.trim().toLowerCase();
                 long multiplier = 1;
-                if ( mem.endsWith( "M" ) )
+                if ( mem.endsWith( "m" ) )
                 {
                     multiplier = 1024 * 1024;
                     mem = mem.substring( 0, mem.length() - 1 );
@@ -470,7 +471,7 @@ public abstract class CommonAbstractStore
                     multiplier = 1024;
                     mem = mem.substring( 0, mem.length() - 1 );
                 }
-                else if ( mem.endsWith( "G" ) )
+                else if ( mem.endsWith( "g" ) )
                 {
                     multiplier = 1024*1024*1024;
                     mem = mem.substring( 0, mem.length() - 1 );

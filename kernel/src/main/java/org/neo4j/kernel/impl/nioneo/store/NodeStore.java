@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -83,7 +83,7 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         FileSystemAbstraction fileSystem = (FileSystemAbstraction) config.get( FileSystemAbstraction.class );
         createEmptyStore( fileName, buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR ), idGeneratorFactory, fileSystem );
         NodeStore store = new NodeStore( fileName, config );
-        NodeRecord nodeRecord = new NodeRecord( store.nextId() );
+        NodeRecord nodeRecord = new NodeRecord( store.nextId(), Record.NO_NEXT_RELATIONSHIP.intValue(), Record.NO_NEXT_PROPERTY.intValue() );
         nodeRecord.setInUse( true );
         store.updateRecord( nodeRecord );
         store.close();
@@ -112,9 +112,9 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         }
         catch ( InvalidRecordException e )
         {
-            return new NodeRecord( id ); // inUse=false by default
+            return new NodeRecord( id, Record.NO_NEXT_RELATIONSHIP.intValue(), Record.NO_NEXT_PROPERTY.intValue() ); // inUse=false by default
         }
-        
+
         try
         {
             return getRecord( id, window, RecordLoad.FORCE );
@@ -124,7 +124,7 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
             releaseWindow( window );
         }
     }
-    
+
     @Override
     public NodeRecord forceGetRaw( long id )
     {
@@ -175,7 +175,7 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         }
     }
 
-    public boolean loadLightNode( long id )
+    public NodeRecord loadLightNode( long id )
     {
         PersistenceWindow window = null;
         try
@@ -185,17 +185,12 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         catch ( InvalidRecordException e )
         {
             // ok id to high
-            return false;
+            return null;
         }
 
         try
         {
-            NodeRecord record = getRecord( id, window, RecordLoad.CHECK );
-            if ( record == null )
-            {
-                return false;
-            }
-            return true;
+            return getRecord( id, window, RecordLoad.CHECK );
         }
         finally
         {
@@ -219,7 +214,7 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
             switch ( load )
             {
             case NORMAL:
-                throw new InvalidRecordException( "Record[" + id + "] not in use" );
+                throw new InvalidRecordException( "NodeRecord[" + id + "] not in use" );
             case CHECK:
                 return null;
             }
@@ -231,10 +226,8 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
         long relModifier = (inUseByte & 0xEL) << 31;
         long propModifier = (inUseByte & 0xF0L) << 28;
 
-        NodeRecord nodeRecord = new NodeRecord( id );
+        NodeRecord nodeRecord = new NodeRecord( id, longFromIntAndMod( nextRel, relModifier ), longFromIntAndMod( nextProp, propModifier ) );
         nodeRecord.setInUse( inUse );
-        nodeRecord.setNextRel( longFromIntAndMod( nextRel, relModifier ) );
-        nodeRecord.setNextProp( longFromIntAndMod( nextProp, propModifier ) );
         return nodeRecord;
     }
 
@@ -276,7 +269,7 @@ public class NodeStore extends AbstractStore implements Store, RecordStore<NodeR
     }
 
     @Override
-    public void logIdUsage( StringLogger logger )
+    public void logIdUsage( StringLogger.LineLogger logger )
     {
         NeoStore.logIdUsage( logger, this );
     }

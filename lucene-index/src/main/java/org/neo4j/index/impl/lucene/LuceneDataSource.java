@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -20,6 +20,7 @@
 package org.neo4j.index.impl.lucene;
 
 import static org.neo4j.index.impl.lucene.MultipleBackupDeletionPolicy.SNAPSHOT_ID;
+import static org.neo4j.kernel.impl.nioneo.store.NeoStore.versionStringToLong;
 
 import java.io.File;
 import java.io.IOException;
@@ -76,9 +77,10 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
  */
 public class LuceneDataSource extends IndexDataSource
 {
-    public static final Version LUCENE_VERSION = Version.LUCENE_31;
+    public static final Version LUCENE_VERSION = Version.LUCENE_35;
     public static final String DATA_SOURCE_NAME = "lucene-index";
     public static final byte[] BRANCH_ID = UTF8.encode( "162374" );
+    public static final long INDEX_VERSION = versionStringToLong( "3.5" );
 
     /**
      * Default {@link Analyzer} for fulltext parsing.
@@ -160,6 +162,12 @@ public class LuceneDataSource extends IndexDataSource
     }
     
     @Override
+    protected long getVersion()
+    {
+        return INDEX_VERSION;
+    }
+    
+    @Override
     public String getName()
     {
         return DATA_SOURCE_NAME;
@@ -170,7 +178,7 @@ public class LuceneDataSource extends IndexDataSource
     {
         return BRANCH_ID;
     }
-
+    
     private int parseInt( Map<?, ?> params, String param )
     {
         String searcherParam = (String) params.get( param );
@@ -241,7 +249,7 @@ public class LuceneDataSource extends IndexDataSource
     @Override
     protected void flushAll()
     {
-        for ( Map.Entry<IndexIdentifier, IndexWriter> entry : indexWriters.entrySet() )
+        for ( Map.Entry<IndexIdentifier, IndexWriter> entry : getAllIndexWriters() )
         {
             try
             {
@@ -254,31 +262,38 @@ public class LuceneDataSource extends IndexDataSource
         }
     }
 
+    @SuppressWarnings( "rawtypes" )
+    private synchronized Map.Entry[] getAllIndexWriters()
+    {
+        return indexWriters.entrySet().toArray( new Map.Entry[indexWriters.size()] );
+    }
+
     /**
      * If nothing has changed underneath (since the searcher was last created
-     * or refreshed) {@code null} is returned. But if something has changed a
+     * or refreshed) {@code searcher} is returned. But if something has changed a
      * refreshed searcher is returned. It makes use if the
-     * {@link IndexReader#reopen()} which faster than opening an index from
+     * {@link IndexReader#openIfChanged(IndexReader, IndexWriter, boolean)} which faster than opening an index from
      * scratch.
      *
      * @param searcher the {@link IndexSearcher} to refresh.
+     * @param writer 
      * @return a refreshed version of the searcher or, if nothing has changed,
      * {@code null}.
      * @throws IOException if there's a problem with the index.
      */
-    private Pair<IndexSearcherRef, AtomicBoolean> refreshSearcher( Pair<IndexSearcherRef, AtomicBoolean> searcher )
+    private Pair<IndexSearcherRef, AtomicBoolean> refreshSearcher( Pair<IndexSearcherRef, AtomicBoolean> searcher, IndexWriter writer )
     {
         try
         {
             IndexReader reader = searcher.first().getSearcher().getIndexReader();
-            IndexReader reopened = reader.reopen();
-            if ( reopened != reader )
+            IndexReader reopened = IndexReader.openIfChanged( reader, writer, true );
+            if ( reopened != null )
             {
                 IndexSearcher newSearcher = new IndexSearcher( reopened );
                 searcher.first().detachOrClose();
                 return Pair.of( new IndexSearcherRef( searcher.first().getIdentifier(), newSearcher ), new AtomicBoolean() );
             }
-            return null;
+            return searcher;
         }
         catch ( IOException e )
         {
@@ -312,9 +327,9 @@ public class LuceneDataSource extends IndexDataSource
         try
         {
             Pair<IndexSearcherRef, AtomicBoolean> searcher = indexSearchers.get( identifier );
+            IndexWriter writer = getIndexWriter( identifier );
             if ( searcher == null )
             {
-                IndexWriter writer = getIndexWriter( identifier );
                 IndexReader reader = IndexReader.open( writer, true );
                 IndexSearcher indexSearcher = new IndexSearcher( reader );
                 searcher = Pair.of( new IndexSearcherRef( identifier, indexSearcher ), new AtomicBoolean() );
@@ -324,7 +339,7 @@ public class LuceneDataSource extends IndexDataSource
             {
                 if ( searcher.other().compareAndSet( true, false ) )
                 {
-                    searcher = refreshSearcher( searcher );
+                    searcher = refreshSearcher( searcher, writer );
                     if ( searcher != null )
                     {
                         indexSearchers.put( identifier, searcher );
@@ -541,13 +556,14 @@ public class LuceneDataSource extends IndexDataSource
 //        this.caching.disable( identifier );
 //    }
 
+    @SuppressWarnings( "unchecked" )
     @Override
     public ClosableIterable<File> listStoreFiles( boolean includeLogicalLogs ) throws IOException
     {   // Never include logical logs since they are of little importance
         final Collection<File> files = new ArrayList<File>();
         final Collection<SnapshotDeletionPolicy> snapshots = new ArrayList<SnapshotDeletionPolicy>();
         makeSureAllIndexesAreInstantiated();
-        for ( Map.Entry<IndexIdentifier, IndexWriter> writer : indexWriters.entrySet() )
+        for ( Map.Entry<IndexIdentifier, IndexWriter> writer : getAllIndexWriters() )
         {
             SnapshotDeletionPolicy deletionPolicy = (SnapshotDeletionPolicy)
                     writer.getValue().getConfig().getIndexDeletionPolicy();

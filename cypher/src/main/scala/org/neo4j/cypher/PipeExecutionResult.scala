@@ -1,7 +1,5 @@
-package org.neo4j.cypher
-
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -19,27 +17,26 @@ package org.neo4j.cypher
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+package org.neo4j.cypher
 
-import pipes.Pipe
+import internal.StringExtras
 import scala.collection.JavaConverters._
 import org.neo4j.graphdb.{PropertyContainer, Relationship, NotFoundException, Node}
 import java.io.{StringWriter, PrintWriter}
 import java.lang.String
-import symbols.SymbolTable
+import internal.symbols.SymbolTable
 
 
-class PipeExecutionResult(result: Pipe, val columns: List[String])
+class PipeExecutionResult(result: Traversable[Map[String, Any]], val symbols:SymbolTable, val columns: List[String], val timeTaken:Long)
   extends ExecutionResult
   with StringExtras {
-  def symbols: SymbolTable = result.symbols
-
   def javaColumns: java.util.List[String] = columns.asJava
 
   def javaColumnAs[T](column: String): java.util.Iterator[T] = columnAs[T](column).map(x => makeValueJavaCompatible(x).asInstanceOf[T]).asJava
 
   def columnAs[T](column: String): Iterator[T] = {
     this.map(m => {
-      val item: Any = m.getOrElse(column, throw new NotFoundException("No column named '" + column + "' was found."))
+      val item: Any = m.getOrElse(column, throw new NotFoundException("No column named '" + column + "' was found. Found: " + m.keys.mkString("(\"", "\", \"", "\")")))
       item.asInstanceOf[T]
     }).toIterator
   }
@@ -68,13 +65,11 @@ class PipeExecutionResult(result: Pipe, val columns: List[String])
   }
 
   def dumpToString(writer: PrintWriter) {
-    val start = System.currentTimeMillis()
     val eagerResult = result.toList
-    val timeTaken = System.currentTimeMillis() - start
 
     val columnSizes = calculateColumnSizes(eagerResult)
 
-    val headers = columns.map((c) => Map[String, Any](c -> c)).reduceLeft(_ ++ _)
+    val headers = columns.map((c) => Map[String, Any](c -> Some(c))).reduceLeft(_ ++ _)
     val headerLine: String = createString(columns, columnSizes, headers)
     val lineWidth: Int = headerLine.length - 2
     val --- = "+" + repeat("-", lineWidth) + "+"
@@ -103,6 +98,9 @@ class PipeExecutionResult(result: Pipe, val columns: List[String])
   private def text(obj: Any): String = obj match {
     case x: Node => x.toString + props(x)
     case x: Relationship => ":" + x.getType.toString + "[" + x.getId + "] " + props(x)
+    case x: Array[_] => x.map( text ).mkString("[", ",", "]")
+    case x: String => "\"" + x + "\""
+    case Some(x) => x.toString
     case null => "<null>"
     case x => x.toString
   }

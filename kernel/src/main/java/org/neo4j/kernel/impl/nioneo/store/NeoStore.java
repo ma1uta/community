@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -164,6 +164,30 @@ public class NeoStore extends AbstractStore
     protected void initStorage()
     {
         instantiateChildStores();
+        
+        /* [MP:2012-01-03] Fix for the problem in 1.5.M02 where store version got upgraded but
+         * corresponding store version record was not added. That record was added in the release
+         * thereafter so this missing record doesn't trigger an upgrade of the neostore file and so any
+         * unclean shutdown on such a db with 1.5.M02 < neo4j version <= 1.6.M02 would make that
+         * db unable to start for that version with a "Mismatching store version found" exception.
+         * 
+         * This will make a cleanly shut down 1.5.M02, then started and cleanly shut down with 1.6.M03 (or higher)
+         * successfully add the missing record.
+         */
+        setRecovered();
+        try
+        {
+            if ( getCreationTime() != 0 /*Store that wasn't just now created*/ &&
+                    getStoreVersion() == 0 /*Store is missing the store version record*/ )
+            {
+                setStoreVersion( versionStringToLong( CommonAbstractStore.ALL_STORES_VERSION ) );
+                updateHighId();
+            }
+        }
+        finally
+        {
+            unsetRecovered();
+        }
     }
     
     /**
@@ -651,16 +675,16 @@ public class NeoStore extends AbstractStore
     }
 
     @Override
-    public void logVersions( StringLogger msgLog )
+    public void logVersions( StringLogger.LineLogger logger )
     {
-        super.logVersions( msgLog );
-        nodeStore.logVersions( msgLog );
-        relStore.logVersions( msgLog );
-        relTypeStore.logVersions( msgLog );
-        propStore.logVersions( msgLog );
+        super.logVersions( logger );
+        nodeStore.logVersions( logger );
+        relStore.logVersions( logger );
+        relTypeStore.logVersions( logger );
+        propStore.logVersions( logger );
     }
 
-    public void logIdUsage( StringLogger msgLog )
+    public void logIdUsage( StringLogger.LineLogger msgLog )
     {
         nodeStore.logIdUsage( msgLog );
         relStore.logIdUsage( msgLog );
@@ -675,9 +699,9 @@ public class NeoStore extends AbstractStore
         return result;
     }
 
-    public static void logIdUsage( StringLogger logger, Store store )
+    public static void logIdUsage( StringLogger.LineLogger logger, Store store )
     {
-        logger.logMessage( String.format( "  %s: used=%s high=%s", store.getTypeDescriptor(),
+        logger.logLine( String.format( "%s: used=%s high=%s", store.getTypeDescriptor(),
                 store.getNumberOfIdsInUse(), store.getHighestPossibleIdInUse() ) );
     }
 

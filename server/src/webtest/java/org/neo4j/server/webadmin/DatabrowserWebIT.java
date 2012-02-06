@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -127,6 +127,23 @@ public class DatabrowserWebIT extends AbstractWebadminTest {
         
         propertyShouldHaveValue("mykey","12");
         
+    }
+    
+    //
+    // CYPHER
+    //
+
+    @Test
+    public void canExecuteCypherQueries() {
+        wl.searchForInDataBrowser("start n=node(0) return n,ID(n)");
+        wl.getElement(By.xpath("id('data-area')/div/div/table/tbody/tr[2]/td[2]")).waitForTextToChangeTo("0");
+    }
+
+    @Test
+    public void cypherResultHasClickableNodes() {
+        wl.searchForInDataBrowser("start n=node(0) return n,ID(n)");
+        wl.clickOn(By.xpath("id('data-area')/div/div/table/tbody/tr[2]/td[1]/a"));
+        wl.getDataBrowserItemHeadline().waitForTextToChangeTo(".+/db/data/node/0");
     }
     
     private void propertyShouldHaveValue(String expectedKey, String expectedValue) {

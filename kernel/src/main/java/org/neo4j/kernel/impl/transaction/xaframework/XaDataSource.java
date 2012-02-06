@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -27,7 +27,6 @@ import java.util.StringTokenizer;
 
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.collection.ClosableIterable;
-import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog.LogExtractor;
 
 /**
  * <CODE>XaDataSource</CODE> is as a factory for creating

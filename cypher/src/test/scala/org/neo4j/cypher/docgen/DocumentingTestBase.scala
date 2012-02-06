@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -26,15 +26,14 @@ import org.neo4j.test.GraphDescription
 import scala.collection.JavaConverters._
 import java.io.{PrintWriter, File, FileWriter}
 import org.neo4j.graphdb._
-import org.neo4j.cypher.parser.CypherParser
 import org.scalatest.junit.JUnitSuite
 import java.io.ByteArrayOutputStream
 import org.neo4j.visualization.graphviz.{AsciiDocStyle, GraphvizWriter}
 import org.neo4j.walk.Walker
 import org.neo4j.visualization.asciidoc.AsciidocHelper
 import org.neo4j.cypher.javacompat.GraphImpl
-import org.neo4j.cypher.{ExecutionResult, ExecutionEngine}
 import org.neo4j.cypher.CuteGraphDatabaseService.gds2cuteGds
+import org.neo4j.cypher.{CypherParser, ExecutionResult, ExecutionEngine}
 
 
 abstract class DocumentingTestBase extends JUnitSuite {

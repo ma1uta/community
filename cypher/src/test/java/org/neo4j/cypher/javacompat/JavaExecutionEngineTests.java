@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -22,12 +22,11 @@ package org.neo4j.cypher.javacompat;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.cypher.commands.Query;
 import org.neo4j.graphdb.DynamicRelationshipType;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.helpers.collection.IteratorUtil;
+import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.test.ImpermanentGraphDatabase;
 
 import java.io.IOException;
@@ -35,14 +34,15 @@ import java.util.*;
 
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.matchers.JUnitMatchers.*;
 import static org.neo4j.cypher.javacompat.RegularExpressionMatcher.matchesPattern;
 import static org.neo4j.helpers.collection.IteratorUtil.asIterable;
 
 public class JavaExecutionEngineTests {
 
-    private GraphDatabaseService db;
+    private AbstractGraphDatabase db;
     private ExecutionEngine engine;
     private Node andreasNode;
     private Node johanNode;
@@ -127,22 +127,6 @@ public class JavaExecutionEngineTests {
     }
 
     @Test
-    public void exampleConsole() throws Exception {
-        Query query = CypherParser.parseConsole(
-//START SNIPPET: Identifier
-                "start n=node(0) return n.NOT_EXISTING, n.`property with spaces in it`"
-//END SNIPPET: Identifier
-        );
-
-        ExecutionResult result = engine.execute( query );
-
-        assertThat( result.columns(), hasItem( "n.NOT_EXISTING" ) );
-        Iterator<Object> n_column = result.columnAs( "n.NOT_EXISTING" );
-        assertNull( n_column.next() );
-        assertThat( result.toString(), containsString( "null" ) );
-    }
-
-    @Test
     public void exampleWithParameterForNodeId() throws Exception {
         // START SNIPPET: exampleWithParameterForNodeId
         Map<String, Object> params = new HashMap<String, Object>();
@@ -207,12 +191,12 @@ public class JavaExecutionEngineTests {
     }
 
     @Test
-    public void exampleWithParameterForNode() throws Exception {
-        // START SNIPPET: exampleWithParameterForNode
+    public void exampleWithParameterForNodeObject() throws Exception {
+        // START SNIPPET: exampleWithParameterForNodeObject
         Map<String, Object> params = new HashMap<String, Object>();
         params.put( "node", andreasNode );
         ExecutionResult result = engine.execute( "start n=node({node}) return n.name", params );
-        // END SNIPPET: exampleWithParameterForNode
+        // END SNIPPET: exampleWithParameterForNodeObject
 
         assertThat( result.columns(), hasItem( "n.name" ) );
         Iterator<Object> n_column = result.columnAs( "n.name" );
@@ -246,6 +230,7 @@ public class JavaExecutionEngineTests {
         assertEquals( "Michaela", n_column.next() );
         assertEquals( "Johan", n_column.next() );
     }
+
 
     private void makeFriends( Node a, Node b ) {
         Transaction tx = db.beginTx();

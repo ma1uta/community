@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -63,8 +63,7 @@ public final class EmbeddedGraphDatabase extends AbstractGraphDatabase
 
     /**
      * A non-standard way of creating an embedded {@link GraphDatabaseService}
-     * with a set of configuration parameters. Will most likely be removed in
-     * future releases.
+     * with a set of configuration parameters.
      * <p>
      * Creates an embedded {@link GraphDatabaseService} with a store located in
      * <code>storeDir</code>, which will be created if it doesn't already exist.
