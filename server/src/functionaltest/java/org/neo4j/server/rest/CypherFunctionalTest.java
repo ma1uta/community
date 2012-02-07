@@ -19,17 +19,6 @@
  */
 package org.neo4j.server.rest;
 
-import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.matchers.JUnitMatchers.containsString;
-
-import java.io.UnsupportedEncodingException;
-import java.util.Map;
-
-import javax.ws.rs.core.Response.Status;
-
 import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.helpers.Pair;
@@ -41,6 +30,14 @@ import org.neo4j.test.GraphDescription.NODE;
 import org.neo4j.test.GraphDescription.PROP;
 import org.neo4j.test.GraphDescription.REL;
 import org.neo4j.test.TestData.Title;
+
+import javax.ws.rs.core.Response.Status;
+import java.io.UnsupportedEncodingException;
+import java.util.Map;
+
+import static org.hamcrest.CoreMatchers.not;
+import static org.junit.Assert.*;
+import static org.junit.matchers.JUnitMatchers.containsString;
 
 public class CypherFunctionalTest extends AbstractRestFunctionalTestBase {
 
@@ -70,6 +67,7 @@ public class CypherFunctionalTest extends AbstractRestFunctionalTestBase {
         assertThat( response, containsString( "25" ) );
         assertThat( response, not( containsString( "\"x\"" ) ) );
     }
+
 
 
     /**
@@ -182,5 +180,11 @@ public class CypherFunctionalTest extends AbstractRestFunctionalTestBase {
     {
         return getDataUri() + "cypher";
     }
+    
+    private String cypherAltUri()
+    {
+        return getDataUri() + "cypher_alt";
+    }
+
     
 }

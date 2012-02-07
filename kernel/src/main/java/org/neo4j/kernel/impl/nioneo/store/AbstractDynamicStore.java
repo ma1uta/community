@@ -331,7 +331,6 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
             }
             recordList.add( record );
             assert !record.isLight();
-            assert record.getLength() > 0;
             assert record.getData() != null;
         }
         while ( nextBlock != Record.NO_NEXT_BLOCK.intValue() );
@@ -403,7 +402,7 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
         boolean inUse = inUseByte == Record.IN_USE.intValue();
         if ( !inUse && load != RecordLoad.FORCE )
         {
-            throw new InvalidRecordException( "Not in use, blockId[" + blockId + "]" );
+            throw new InvalidRecordException( "DynamicRecord Not in use, blockId[" + blockId + "]" );
         }
         int dataSize = getBlockSize() - BLOCK_HEADER_SIZE;
 
@@ -461,7 +460,7 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
         {
             return new DynamicRecord( id );
         }
-        
+
         try
         {
             return getRecord( id, window, RecordLoad.FORCE );
@@ -471,7 +470,7 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
             releaseWindow( window );
         }
     }
-    
+
     @Override
     public DynamicRecord forceGetRaw( long id )
     {
@@ -651,10 +650,10 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
     {
         NeoStore.logIdUsage( logger, this );
     }
-    
+
     @Override
     public String toString()
     {
-        return super.toString() + "[blockSize:" + (getRecordSize()-getRecordHeaderSize()) + "]"; 
+        return super.toString() + "[blockSize:" + (getRecordSize()-getRecordHeaderSize()) + "]";
     }
 }

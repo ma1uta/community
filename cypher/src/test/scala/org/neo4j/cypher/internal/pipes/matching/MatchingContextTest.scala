@@ -22,9 +22,9 @@ package org.neo4j.cypher.internal.pipes.matching
 import org.scalatest.Assertions
 import org.neo4j.cypher.GraphDatabaseTestBase
 import org.neo4j.graphdb.{Node, Direction}
-import org.neo4j.cypher.commands._
+import org.neo4j.cypher.internal.commands._
 import org.junit.{Before, Test}
-import org.neo4j.cypher.symbols.{NodeType, RelationshipType, Identifier, SymbolTable}
+import org.neo4j.cypher.internal.symbols.{NodeType, RelationshipType, Identifier, SymbolTable}
 
 class MatchingContextTest extends GraphDatabaseTestBase with Assertions {
   var a: Node = null
@@ -424,6 +424,24 @@ class MatchingContextTest extends GraphDatabaseTestBase with Assertions {
     val matchingContext = new MatchingContext(patterns, bind("a"))
 
     assertMatches(matchingContext.getMatches(Map("a" -> a)), 1, Map("a" -> a, "b" -> null, "r" -> null))
+  }
+
+  @Test def solveDoubleOptionalProblem() {
+    val e = createNode()
+    
+    relate(a,b)
+    relate(a,c)
+    relate(d,c)
+    relate(d,e)
+    
+    val patterns = Seq(
+      RelatedTo("a", "x", "r1", None, Direction.OUTGOING, true, True()),
+      RelatedTo("x", "b", "r2", None, Direction.INCOMING, true, True())
+    )
+
+    val matchingContext = new MatchingContext(patterns, bind("a", "b"))
+
+    assertMatches(matchingContext.getMatches(Map("a" -> a, "b"->d)), 3)
   }
 
   @Test def predicateInPatternRelationshipAlsoForVarLength() {

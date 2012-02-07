@@ -103,4 +103,10 @@ public class NodeRecord extends PrimitiveRecord
         return new StringBuilder( "Node[" ).append( getId() ).append( ",used=" ).append( inUse() ).append( ",rel=" ).append(
                 firstRel ).append( ",prop=" ).append( getFirstProp() ).append( superNode?",superNode":"" ).append( "]" ).toString();
     }
+
+    @Override
+    void setIdTo( PropertyRecord property )
+    {
+        property.setNodeId( getId() );
+    }
 }

@@ -22,7 +22,7 @@ package org.neo4j.kernel.impl.nioneo.store;
 public abstract class PrimitiveRecord extends Abstract64BitRecord
 {
     private long firstProp;
-    private long committedFirstProp;
+    private final long committedFirstProp;
 
     public PrimitiveRecord( long id, long firstProp )
     {
@@ -45,4 +45,6 @@ public abstract class PrimitiveRecord extends Abstract64BitRecord
     {
         return isCreated() ? Record.NO_NEXT_PROPERTY.intValue() : committedFirstProp;
     }
+
+    abstract void setIdTo( PropertyRecord property );
 }
