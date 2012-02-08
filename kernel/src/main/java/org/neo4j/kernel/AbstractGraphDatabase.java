@@ -76,6 +76,7 @@ import org.neo4j.kernel.impl.nioneo.store.StoreId;
 import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
 import org.neo4j.kernel.impl.nioneo.xa.NioNeoDbPersistenceSource;
 import org.neo4j.kernel.impl.persistence.PersistenceManager;
+import org.neo4j.kernel.impl.persistence.PersistenceSource;
 import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.RagManager;
@@ -830,6 +831,12 @@ public abstract class AbstractGraphDatabase
     public DiagnosticsManager getDiagnosticsManager()
     {
         return diagnosticsManager;
+    }
+
+    @Override
+    public PersistenceSource getPersistenceSource()
+    {
+        return persistenceSource;
     }
 
     public final StringLogger getMessageLog()
