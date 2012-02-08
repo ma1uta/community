@@ -28,6 +28,7 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.core.NodeManager;
 import org.neo4j.kernel.impl.core.RelationshipTypeHolder;
+import org.neo4j.kernel.impl.persistence.PersistenceSource;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
 import org.neo4j.kernel.impl.util.StringLogger;
@@ -67,6 +68,8 @@ public interface GraphDatabaseSPI
     <T> T getSingleManagementBean( Class<T> type );
 
     TransactionBuilder tx();
+    
+    PersistenceSource getPersistenceSource();
 
     <T> Collection<T> getManagementBeans( Class<T> type );
 }
