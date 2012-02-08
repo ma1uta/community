@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -103,7 +103,8 @@ public class JsonHelper
             OBJECT_MAPPER.writeValue( generator, data );
             writer.close();
             return writer.getBuffer()
-                    .toString();
+                    .toString()
+                    .replace("\\n", " ");
         }
         catch ( IOException e )
         {

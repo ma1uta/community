@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+ * Copyright (c) 2002-2012 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -664,7 +664,7 @@ public class LockReleaser
         {
             CowRelElement relElement = element.relationships.get( relId );
             RelationshipProxy rel = new RelationshipProxy( relId, nodeManager );
-            RelationshipImpl relImpl = nodeManager.getRelForProxy( relId );
+            RelationshipImpl relImpl = nodeManager.getRelForProxy( rel, null );
             if ( relElement.deleted )
             {
                 if ( nodeManager.relCreated( relId ) )
@@ -707,7 +707,7 @@ public class LockReleaser
         {
             CowNodeElement nodeElement = element.nodes.get( nodeId );
             NodeProxy node = new NodeProxy( nodeId, nodeManager );
-            NodeImpl nodeImpl = nodeManager.getNodeForProxy( nodeId );
+            NodeImpl nodeImpl = nodeManager.getNodeForProxy( node, null );
             if ( nodeElement.deleted )
             {
                 if ( nodeManager.nodeCreated( nodeId ) )
