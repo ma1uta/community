@@ -20,6 +20,9 @@
 package org.neo4j.ext.udc.impl;
 
 import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.util.Formatter;
 import java.util.Properties;
 import java.util.Timer;
 
@@ -64,6 +67,11 @@ public class UdcExtensionImpl extends KernelExtension<UdcTimerTask> implements U
     private static final String DEFAULT_HOST = "udc.neo4j.org";
 
     /**
+     * Registration unavailable.
+     */
+    private static final String DEFAULT_REGISTRATION = "unreg";
+
+    /**
      * No-arg constructor, sets the extension key to "kernel udc".
      */
     public UdcExtensionImpl()
@@ -91,6 +99,7 @@ public class UdcExtensionImpl extends KernelExtension<UdcTimerTask> implements U
         int interval = DEFAULT_INTERVAL;
         String hostAddress = DEFAULT_HOST;
         String source = null;
+        String registration = DEFAULT_REGISTRATION;
         try
         {
             firstDelay = configuration.getInt( FIRST_DELAY_CONFIG_KEY, Integer.toString( firstDelay ) );
@@ -123,13 +132,21 @@ public class UdcExtensionImpl extends KernelExtension<UdcTimerTask> implements U
         {
             // fall back to default
         }
+        try
+        {
+            registration = configuration.getString( UDC_REGISTRATION_KEY, registration );
+        }
+        catch ( Exception e )
+        {
+            // fall back to default
+        }
         NeoStoreXaDataSource ds = (NeoStoreXaDataSource) kernel.getConfig().getTxModule()
                 .getXaDataSourceManager().getXaDataSource( Config.DEFAULT_DATA_SOURCE_NAME );
         boolean crashPing = ds.getXaContainer().getLogicalLog().wasNonClean();
         String storeId = Long.toHexString( ds.getRandomIdentifier() );
         String version = kernel.version().getRevision();
         if ( version.equals( "" ) ) version = kernel.version().getVersion();
-        UdcTimerTask task = new UdcTimerTask( hostAddress, version, storeId, source, crashPing );
+        UdcTimerTask task = new UdcTimerTask( hostAddress, version, storeId, source, crashPing, registration, formattedMacAddy() );
         timer.scheduleAtFixedRate( task, firstDelay, interval );
         return task;
     }
@@ -190,5 +207,28 @@ public class UdcExtensionImpl extends KernelExtension<UdcTimerTask> implements U
             System.err.println( "failed to load udc.properties, because: " + e );
         }
         return sysProps;
+    }
+
+    private String formattedMacAddy() {
+        String formattedMac = "0";
+        try {
+            InetAddress address = InetAddress.getLocalHost();
+            NetworkInterface ni = NetworkInterface.getByInetAddress(address);
+            if (ni != null) {
+                byte[] mac = ni.getHardwareAddress();
+                if (mac != null) {
+                    StringBuilder sb = new StringBuilder(mac.length * 2);
+                    Formatter formatter = new Formatter(sb);
+                    for (byte b : mac) {
+                        formatter.format("%02x", b);
+                    }
+                    formattedMac = sb.toString();
+                }
+            }
+        } catch (Throwable t) {
+            ; //
+        }
+
+        return formattedMac;
     }
 }
