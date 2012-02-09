@@ -20,7 +20,7 @@
 package org.neo4j.cypher.internal.pipes.matching
 
 import org.neo4j.graphdb.{Direction, Node}
-import org.neo4j.cypher.commands.Predicate
+import org.neo4j.cypher.internal.commands.Predicate
 
 class PatternNode(key: String) extends PatternElement(key) {
   val relationships = scala.collection.mutable.Set[PatternRelationship]()
@@ -52,4 +52,15 @@ class PatternNode(key: String) extends PatternElement(key) {
   }
 
   override def toString = String.format("PatternNode[key=%s]", key)
+
+  def traverse[T](shouldFollow: (PatternElement) => Boolean,
+                  visitNode: (PatternNode, T) => T,
+                  visitRelationship: (PatternRelationship, T) => T,
+                  data: T) {
+
+    val moreData = visitNode(this, data)
+
+    val filter = relationships.filter(shouldFollow)
+    filter.foreach(r => r.traverse(shouldFollow, visitNode, visitRelationship, moreData, this))
+  }
 }

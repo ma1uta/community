@@ -38,13 +38,13 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord, R> extends
     {
         super( fileName, config, idType );
     }
-    
+
     @Override
     protected void initStorage()
     {
         nameStore = new DynamicStringStore( getStorageFileName() + getNameStorePostfix(), getConfig(), getNameIdType() );
     }
-    
+
     protected abstract IdType getNameIdType();
 
     protected abstract String getNameStorePostfix();
@@ -53,7 +53,7 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord, R> extends
     {
         return nameStore;
     }
-    
+
     @Override
     public int getRecordHeaderSize()
     {
@@ -206,7 +206,7 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord, R> extends
         {
             return newRecord( (int) id );
         }
-        
+
         try
         {
             return getRecord( (int) id, window, true );
@@ -216,7 +216,7 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord, R> extends
             releaseWindow( window );
         }
     }
-    
+
     @Override
     public T forceGetRaw( long id )
     {
@@ -298,7 +298,7 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord, R> extends
     {
         return (int) nameStore.nextBlockId();
     }
-    
+
     protected abstract T newRecord( int id );
 
     protected T getRecord( int id, PersistenceWindow window, boolean force )
@@ -308,13 +308,13 @@ public abstract class AbstractNameStore<T extends AbstractNameRecord, R> extends
         boolean inUse = (inUseByte == Record.IN_USE.byteValue());
         if ( !inUse && !force )
         {
-            throw new InvalidRecordException( "Record[" + id + "] not in use" );
+            throw new InvalidRecordException( getClass().getSimpleName() + " Record[" + id + "] not in use" );
         }
         if ( inUseByte != Record.IN_USE.byteValue() && inUseByte != Record.NOT_IN_USE.byteValue() )
         {
-            throw new InvalidRecordException( "Record[" + id + "] unknown in use flag[" + inUse + "]" );
+            throw new InvalidRecordException( getClass().getSimpleName() + " Record[" + id + "] unknown in use flag[" + inUse + "]" );
         }
-        
+
         T record = newRecord( id );
         record.setInUse( inUse );
         readRecord( record, buffer );

@@ -252,6 +252,7 @@ public class Config implements DiagnosticsProvider
     private final TxIdGenerator txIdGenerator;
     private final ReferenceNodeCreator refNodeCreator;
     private final DiagnosticsManager diagnostics;
+    private final KernelPanicEventGenerator kpe;
 
     Config( AbstractGraphDatabase graphDb, StoreId storeId,
             Map<String, String> inputParams, KernelPanicEventGenerator kpe,
@@ -263,6 +264,7 @@ public class Config implements DiagnosticsProvider
             FileSystemAbstraction fileSystem )
     {
         this.refNodeCreator = refNodeCreator;
+        this.kpe = kpe;
         this.storeDir = graphDb.getStoreDir();
         this.inputParams = inputParams;
         this.ephemeral = graphDb.isEphemeral();
@@ -529,5 +531,10 @@ public class Config implements DiagnosticsProvider
                 }
             }, true );
         }
+    }
+
+    public KernelPanicEventGenerator getKernelPanicGenerator()
+    {
+        return kpe;
     }
 }

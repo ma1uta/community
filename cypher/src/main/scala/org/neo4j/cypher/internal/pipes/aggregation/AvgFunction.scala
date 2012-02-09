@@ -19,7 +19,7 @@
  */
 package org.neo4j.cypher.internal.pipes.aggregation
 
-import org.neo4j.cypher.commands.Expression
+import org.neo4j.cypher.internal.commands.Expression
 
 class AvgFunction(val value: Expression)
   extends AggregationFunction
@@ -35,7 +35,7 @@ class AvgFunction(val value: Expression)
 
   def apply(data: Map[String, Any]) {
     actOnNumber(value(data), (number) => {
-      count = count + 1
+      count += 1
       sofar = plus(sofar, number)
     })
   }

@@ -19,8 +19,8 @@
  */
 package org.neo4j.cypher
 
+import internal.commands._
 import internal.parser.v1_6.ConsoleCypherParser
-import org.neo4j.cypher.commands._
 import org.junit.Assert._
 import org.neo4j.graphdb.Direction
 import org.scalatest.junit.JUnitSuite
@@ -249,7 +249,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       "start a = node(1) where \"Andres\" =~ /And.*/ return a",
       Query.
         start(NodeById("a", 1)).
-        where(RegularExpression(Literal("Andres"), Literal("And.*"))).
+        where(LiteralRegularExpression(Literal("Andres"), Literal("And.*"))).
         returns(ExpressionReturnItem(Entity("a")))
     )
   }
@@ -259,7 +259,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       """start a = node(1) where a.name =~ /And.*/ AND a.name =~ /And.*/ return a""",
       Query.
         start(NodeById("a", 1)).
-        where(And(RegularExpression(Property("a", "name"), Literal("And.*")), RegularExpression(Property("a", "name"), Literal("And.*")))).
+        where(And(LiteralRegularExpression(Property("a", "name"), Literal("And.*")), LiteralRegularExpression(Property("a", "name"), Literal("And.*")))).
         returns(ExpressionReturnItem(Entity("a")))
     )
   }
@@ -269,7 +269,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       """start a = node(1) where a.name =~ /And\/.*/ return a""",
       Query.
         start(NodeById("a", 1)).
-        where(RegularExpression(Property("a", "name"), Literal("And\\/.*"))).
+        where(LiteralRegularExpression(Property("a", "name"), Literal("And\\/.*"))).
         returns(ExpressionReturnItem(Entity("a")))
     )
   }
@@ -773,7 +773,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
     testQuery("start a=node(0) match a -[r:knows*2..]-> x return x",
       Query.
         start(NodeById("a", 0)).
-        matches(VarLengthRelatedTo("  UNNAMED1", "a", "x", Some(2), None, Some("knows"), Direction.OUTGOING,        Some("r"), false, True())).
+        matches(VarLengthRelatedTo("  UNNAMED1", "a", "x", Some(2), None, Some("knows"), Direction.OUTGOING, Some("r"), false, True())).
         returns(ExpressionReturnItem(Entity("x")))
     )
   }
@@ -803,6 +803,24 @@ class CypherParserTest extends JUnitSuite with Assertions {
         start(NodeById("a", 1)).
         matches(RelatedTo("a", "b", "  UNNAMED1", None, Direction.OUTGOING, true, True())).
         returns(ExpressionReturnItem(Entity("b"))))
+  }
+
+  @Test def questionMarkOperator() {
+    testQuery(
+      "start a = node(1) where a.prop? = 42 return a",
+      Query.
+        start(NodeById("a", 1)).
+        where(NullablePredicate(Equals(Nullable(Property("a", "prop")), Literal(42)), Seq((Nullable(Property("a", "prop")), true)))).
+        returns(ExpressionReturnItem(Entity("a"))))
+  }
+
+  @Test def exclamationMarkOperator() {
+    testQuery(
+      "start a = node(1) where a.prop! = 42 return a",
+      Query.
+        start(NodeById("a", 1)).
+        where(NullablePredicate(Equals(Nullable(Property("a", "prop")), Literal(42)), Seq((Nullable(Property("a", "prop")), false)))).
+        returns(ExpressionReturnItem(Entity("a"))))
   }
 
   @Test def optionalTypedRelationship() {
@@ -1126,8 +1144,31 @@ class CypherParserTest extends JUnitSuite with Assertions {
       "start a = node(1) match a-[r WHERE r.foo = 'bar']->b return b",
       Query.
         start(NodeById("a", 1)).
-        matches(RelatedTo("a", "b", "r", None, Direction.OUTGOING, false, Equals(Property("r", "foo"),Literal("bar"))))
+        matches(RelatedTo("a", "b", "r", None, Direction.OUTGOING, false, Equals(Property("r", "foo"), Literal("bar"))))
         returns (ExpressionReturnItem(Entity("b"))))
+  }
+
+  @Test def shouldHandleUpperCaseDistinct() {
+    testQuery("start s = NODE(1) return DISTINCT s",
+      Query.
+        start(NodeById("s", 1)).
+        aggregation().
+        returns(ExpressionReturnItem(Entity("s"))))
+  }
+
+  @Test def shouldParseMathFunctions() {
+    testQuery("start s = NODE(0) return 5 % 4, abs(-1), round(3.1415), 2 ^ 8, sqrt(16), sign(1)",
+      Query.
+        start(NodeById("s", 0)).
+        returns(
+        ExpressionReturnItem(Modulo(Literal(5), Literal(4))),
+        ExpressionReturnItem(AbsFunction(Literal(-1))),
+        ExpressionReturnItem(RoundFunction(Literal(3.1415))),
+        ExpressionReturnItem(Pow(Literal(2), Literal(8))),
+        ExpressionReturnItem(SqrtFunction(Literal(16))),
+        ExpressionReturnItem(SignFunction(Literal(1)))
+      )
+    )
   }
 
   def testQuery(query: String, expectedQuery: Query) {

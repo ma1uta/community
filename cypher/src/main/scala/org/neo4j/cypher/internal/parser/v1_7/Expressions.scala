@@ -19,16 +19,19 @@
  */
 package org.neo4j.cypher.internal.parser.v1_7
 
-import org.neo4j.cypher.commands._
+import org.neo4j.cypher.internal.commands._
+
 
 trait Expressions extends Base {
 
-  def term: Parser[Expression] = factor ~ rep("*" ~ factor | "/" ~ factor) ^^ {
+  def term: Parser[Expression] = factor ~ rep("*" ~ factor | "/" ~ factor | "%" ~ factor | "^" ~ factor) ^^ {
     case head ~ rest => {
       var result = head
       rest.foreach {
         case "*" ~ f => result = Multiply(result,f)
         case "/" ~ f => result = Divide(result,f)
+        case "%" ~ f => result = Modulo(result,f)
+        case "^" ~ f => result = Pow(result,f)
       }
 
       result
@@ -72,7 +75,12 @@ trait Expressions extends Base {
   
   def createProperty(entity:String, propName:String):Expression
 
-  def nullableProperty: Parser[Expression] = property <~ "?" ^^ (p => Nullable(p))
+  trait DefaultTrue
+  trait DefaultFalse
+
+  def nullableProperty: Parser[Expression] = (
+    property <~ "?" ^^ (p => new Nullable(p) with DefaultTrue) |
+    property <~ "!" ^^ (p => new Nullable(p) with DefaultFalse))
 
   def extract: Parser[Expression] = ignoreCase("extract") ~> parens(identity ~ ignoreCase("in") ~ expression ~ ":" ~ expression) ^^ {
     case (id ~ in ~ iter ~ ":" ~ expression) => ExtractFunction(iter, id, expression)
@@ -82,7 +90,7 @@ trait Expressions extends Base {
     case expressions => CoalesceFunction(expressions: _*)
   }
 
-  def function: Parser[Expression] = ignoreCases("type", "id", "length", "nodes", "rels", "relationships") ~ parens(expression | entity) ^^ {
+  def function: Parser[Expression] = functionNames ~ parens(expression | entity) ^^ {
     case functionName ~ inner => functionName.toLowerCase match {
       case "type" => RelationshipTypeFunction(inner)
       case "id" => IdFunction(inner)
@@ -90,8 +98,14 @@ trait Expressions extends Base {
       case "nodes" => NodesFunction(inner)
       case "rels" => RelationshipFunction(inner)
       case "relationships" => RelationshipFunction(inner)
+      case "abs" => AbsFunction(inner)
+      case "round" => RoundFunction(inner)
+      case "sqrt" => SqrtFunction(inner)
+      case "sign" => SignFunction(inner)
     }
   }
+
+  def functionNames = ignoreCases("type", "id", "length", "nodes", "rels", "relationships", "abs", "round", "sqrt", "sign")
 }
 
 

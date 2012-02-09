@@ -39,8 +39,8 @@ public class ReferenceNodeRecord extends AbstractNameRecord
     }
     
     @Override
-    protected String additionalToString()
+    protected void additionalToString( StringBuilder buf )
     {
-        return "nodeId=" + nodeId;
+        buf.append( "nodeId=" + nodeId );
     }
 }

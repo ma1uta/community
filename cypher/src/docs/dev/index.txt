@@ -4,7 +4,9 @@ Cypher Query Language
 
 include::introduction.txt[]
 
-include::compatibility.txt[]
+:leveloffset: 2
+
+include::ql/operators/index.txt[]
 
 include::parameters.txt[]
 
@@ -46,4 +48,7 @@ include::ql/limit/index.txt[]
 
 include::ql/functions/index.txt[]
 
+:leveloffset: 2
+
+include::compatibility.txt[]
 
