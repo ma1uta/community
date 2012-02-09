@@ -21,7 +21,12 @@ package org.neo4j.kernel.impl.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import org.junit.After;
 import org.junit.Test;
@@ -139,5 +144,72 @@ public class TestReferenceNodes
         }
         tx.finish();
         for ( int i = 0; i < nodes.length; i++ ) assertEquals( nodes[i], db.getReferenceNode( "ref node " + i ) );
+    }
+    
+    @Test
+    public void multipleThreadsCreatingSameRefNode() throws Exception
+    {
+        newDb();
+        int numThreads = Runtime.getRuntime().availableProcessors();
+        for ( int i = 0; i < 100; i++ )
+        {
+            List<ReferenceNodeGetter> threads = new ArrayList<ReferenceNodeGetter>();
+            CountDownLatch readyLatch = new CountDownLatch( numThreads );
+            CountDownLatch runLatch = new CountDownLatch( 1 );
+            CountDownLatch doneLatch = new CountDownLatch( numThreads );
+            for ( int j = 0; j < numThreads; j++ ) threads.add( new ReferenceNodeGetter( readyLatch, runLatch, doneLatch, "nr" + i ) );
+            readyLatch.await();
+            runLatch.countDown();
+            doneLatch.await();
+            
+            // Assert that they all got the same reference node for that name
+            Node comparisonRefNode = null;
+            for ( ReferenceNodeGetter referenceNodeGetter : threads )
+            {
+                assertNotNull( referenceNodeGetter.refNode );
+                if ( comparisonRefNode == null ) comparisonRefNode = referenceNodeGetter.refNode;
+                else assertEquals( comparisonRefNode, referenceNodeGetter.refNode );
+            }
+        }
+    }
+    
+    private class ReferenceNodeGetter extends Thread
+    {
+        private final CountDownLatch readyLatch;
+        private final CountDownLatch runLatch;
+        private final CountDownLatch doneLatch;
+        private final String refName;
+        private volatile Node refNode;
+
+        ReferenceNodeGetter( CountDownLatch readyLatch, CountDownLatch runLatch, CountDownLatch doneLatch, String refName )
+        {
+            this.readyLatch = readyLatch;
+            this.runLatch = runLatch;
+            this.doneLatch = doneLatch;
+            this.refName = refName;
+            start();
+        }
+        
+        @Override
+        public void run()
+        {
+            try
+            {
+                readyLatch.countDown();
+                try
+                {
+                    runLatch.await();
+                }
+                catch ( InterruptedException e )
+                {
+                    Thread.interrupted();
+                }
+                refNode = db.getReferenceNode( refName );
+            }
+            finally
+            {
+                doneLatch.countDown();
+            }
+        }
     }
 }

@@ -82,7 +82,7 @@ public class TestProperties extends AbstractNeo4jTestCase
          * PropertyIndexStore on disk when reading it back.
          */
         String path = TargetDirectory.forTest( TestProperties.class ).directory(
-                "empty-string" ).getCanonicalPath();
+                "empty-string", true ).getCanonicalPath();
         EmbeddedGraphDatabase db = new EmbeddedGraphDatabase( path );
         Transaction tx = db.beginTx();
         Node node = db.createNode();

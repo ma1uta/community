@@ -42,6 +42,7 @@ import org.neo4j.graphdb.event.TransactionData;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Triplet;
+import org.neo4j.helpers.collection.IterableWrapper;
 import org.neo4j.helpers.collection.PrefetchingIterator;
 import org.neo4j.kernel.PropertyTracker;
 import org.neo4j.kernel.impl.cache.AdaptiveCacheManager;
@@ -1021,6 +1022,18 @@ public class NodeManager
     public Iterable<RelationshipType> getRelationshipTypes()
     {
         return relTypeHolder.getRelationshipTypes();
+    }
+    
+    public Iterable<Node> getReferenceNodes()
+    {
+        return new IterableWrapper<Node, String>( refNodeHolder.getNames() )
+        {
+            @Override
+            protected Node underlyingObjectToObject( String name )
+            {
+                return getNodeById( refNodeHolder.get( name ).getPayload().longValue() );
+            }
+        };
     }
 
     ArrayMap<Integer,PropertyData> deleteNode( NodeImpl node )

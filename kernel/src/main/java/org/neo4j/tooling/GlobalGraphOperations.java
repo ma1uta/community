@@ -107,4 +107,13 @@ public class GlobalGraphOperations
     {
         return nodeManager.getRelationshipTypes();
     }
+    
+    /**
+     * @return all reference nodes. Reference nodes are added to the database from
+     * {@link GraphDatabaseService#getReferenceNode(String)} if they don't exist at the time.
+     */
+    public Iterable<Node> getAllReferenceNodes()
+    {
+        return nodeManager.getReferenceNodes();
+    }
 }
