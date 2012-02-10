@@ -67,7 +67,13 @@ public final class EmbeddedReadOnlyGraphDatabase extends AbstractGraphDatabase
     public EmbeddedReadOnlyGraphDatabase( String storeDir,
             Map<String, String> params )
     {
-        super( storeDir, readOnlyParams );
+        super( storeDir, addReadOnly(params) );
+    }
+
+    private static Map<String, String> addReadOnly( Map<String, String> params )
+    {
+        params.putAll( readOnlyParams );
+        return params;
     }
 
     public KernelEventHandler registerKernelEventHandler(
