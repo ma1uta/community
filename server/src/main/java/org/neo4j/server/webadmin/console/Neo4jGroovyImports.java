@@ -17,17 +17,22 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.cypher.internal.pipes.aggregation
+package org.neo4j.server.webadmin.console;
 
-import org.junit.Test
-import org.junit.Assert._
-import org.neo4j.cypher.internal.commands.Expression
+import java.util.Arrays;
+import java.util.List;
 
-class CollectFunctionTest extends AggregateTest {
+public class Neo4jGroovyImports
+{
 
-  def createAggregator(inner: Expression) = new CollectFunction(inner)
+    public static List<String> getImports()
+    {
+        String[] result = { "org.neo4j.graphdb.index.*",
+                "org.neo4j.graphdb.event.*", "org.neo4j.graphdb.traversal.*",
+                "org.neo4j.graphdb.helpers.*",
+                "org.neo4j.graphdb.helpers.collection.*",
+                "org.neo4j.graphdb.kernel.*", "org.neo4j.graphdb.*" };
+        return Arrays.asList( result );
+    }
 
-  @Test def singleOne() {
-    assertEquals(Seq(1), aggregateOn(1))
-  }
 }

@@ -17,17 +17,33 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.cypher.internal.pipes.aggregation
+package org.neo4j.cypher.internal
 
+import commands._
+import org.scalatest.Assertions
 import org.junit.Test
-import org.junit.Assert._
-import org.neo4j.cypher.internal.commands.Expression
 
-class CollectFunctionTest extends AggregateTest {
+class OrderByRewriterTest extends Assertions {
 
-  def createAggregator(inner: Expression) = new CollectFunction(inner)
+  @Test
+  def rewriteOrderBy() {
+    // start a=node(0) return a, count(*) order by COUNT(*)
 
-  @Test def singleOne() {
-    assertEquals(Seq(1), aggregateOn(1))
+    val q = Query.
+      start(NodeById("a", 1)).
+      aggregation(CountStar()).
+      columns("count(*)").
+      orderBy(SortItem(CountStar("apa"), true)).
+      returns()
+
+    val expected = Query.
+      start(NodeById("a", 1)).
+      aggregation(CountStar()).
+      columns("count(*)").
+      orderBy(SortItem(CountStar(), true)).
+      returns()
+
+    assert(OrderByRewriter(q) === expected)
+
   }
 }

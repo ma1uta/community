@@ -54,7 +54,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
     testQuery("start s = NODE(1) return s as somethingElse",
       Query.
         start(NodeById("s", 1)).
-        returns(AliasReturnItem(ExpressionReturnItem(Entity("s")), "somethingElse")))
+        returns(ExpressionReturnItem(Entity("s"), "somethingElse")))
   }
 
   @Test def sourceIsAnIndex() {
@@ -249,7 +249,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       "start a = node(1) where \"Andres\" =~ /And.*/ return a",
       Query.
         start(NodeById("a", 1)).
-        where(RegularExpression(Literal("Andres"), Literal("And.*"))).
+        where(LiteralRegularExpression(Literal("Andres"), Literal("And.*"))).
         returns(ExpressionReturnItem(Entity("a")))
     )
   }
@@ -259,7 +259,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       """start a = node(1) where a.name =~ /And.*/ AND a.name =~ /And.*/ return a""",
       Query.
         start(NodeById("a", 1)).
-        where(And(RegularExpression(Property("a", "name"), Literal("And.*")), RegularExpression(Property("a", "name"), Literal("And.*")))).
+        where(And(LiteralRegularExpression(Property("a", "name"), Literal("And.*")), LiteralRegularExpression(Property("a", "name"), Literal("And.*")))).
         returns(ExpressionReturnItem(Entity("a")))
     )
   }
@@ -269,7 +269,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
       """start a = node(1) where a.name =~ /And\/.*/ return a""",
       Query.
         start(NodeById("a", 1)).
-        where(RegularExpression(Property("a", "name"), Literal("And\\/.*"))).
+        where(LiteralRegularExpression(Property("a", "name"), Literal("And\\/.*"))).
         returns(ExpressionReturnItem(Entity("a")))
     )
   }
@@ -317,7 +317,7 @@ class CypherParserTest extends JUnitSuite with Assertions {
 
   @Test def shouldCreateNotEqualsQuery() {
     testQuery(
-      "start a = NODE(1) where 35 != a.age return a",
+      "start a = NODE(1) where 35 <> a.age return a",
       Query.
         start(NodeById("a", 1)).
         where(Not(Equals(Literal(35), Property("a", "age")))).
@@ -438,6 +438,17 @@ class CypherParserTest extends JUnitSuite with Assertions {
         aggregation(CountStar()).
         columns("a", "b", "count(*)").
         returns(ExpressionReturnItem(Entity("a")), ExpressionReturnItem(Entity("b"))))
+  }
+
+  @Test def countStar() {
+    testQuery(
+      "start a = NODE(1) return count(*) order by count(*)",
+      Query.
+        start(NodeById("a", 1)).
+        aggregation(CountStar()).
+        columns("count(*)").
+        orderBy(SortItem(CountStar(), true)).
+        returns())
   }
 
   @Test def distinct() {
@@ -803,6 +814,24 @@ class CypherParserTest extends JUnitSuite with Assertions {
         start(NodeById("a", 1)).
         matches(RelatedTo("a", "b", "  UNNAMED1", None, Direction.OUTGOING, true, True())).
         returns(ExpressionReturnItem(Entity("b"))))
+  }
+
+  @Test def questionMarkOperator() {
+    testQuery(
+      "start a = node(1) where a.prop? = 42 return a",
+      Query.
+        start(NodeById("a", 1)).
+        where(NullablePredicate(Equals(Nullable(Property("a", "prop")), Literal(42)), Seq((Nullable(Property("a", "prop")), true)))).
+        returns(ExpressionReturnItem(Entity("a"))))
+  }
+
+  @Test def exclamationMarkOperator() {
+    testQuery(
+      "start a = node(1) where a.prop! = 42 return a",
+      Query.
+        start(NodeById("a", 1)).
+        where(NullablePredicate(Equals(Nullable(Property("a", "prop")), Literal(42)), Seq((Nullable(Property("a", "prop")), false)))).
+        returns(ExpressionReturnItem(Entity("a"))))
   }
 
   @Test def optionalTypedRelationship() {

@@ -17,17 +17,28 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.cypher.internal.pipes.aggregation
+package org.neo4j.server.rest.repr;
 
-import org.junit.Test
-import org.junit.Assert._
-import org.neo4j.cypher.internal.commands.Expression
+import static org.junit.Assert.assertTrue;
 
-class CollectFunctionTest extends AggregateTest {
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Map;
 
-  def createAggregator(inner: Expression) = new CollectFunction(inner)
+import org.junit.Test;
+import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.server.rest.repr.formats.JsonFormat;
 
-  @Test def singleOne() {
-    assertEquals(Seq(1), aggregateOn(1))
-  }
+public class MapRepresentationTest
+{
+    @Test
+    public void shouldHaveKeys() throws BadInputException, URISyntaxException
+    {
+        Map map = MapUtil.map( "name","John","age",23 );
+        MapRepresentation rep = new MapRepresentation( map  );
+        OutputFormat format = new OutputFormat( new JsonFormat(), new URI( "http://localhost/" ), null );
+        assertTrue(format.format( rep ).contains( "\"age\" : 23" ));
+    }
+
+
 }

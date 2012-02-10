@@ -1614,7 +1614,7 @@ RETURN x0.name?
   @Test def shouldAllowComparisonsOfNodes() {
     val a = createNode()
 
-    val result = parseAndExecute("start a=node(0,1),b=node(1,0) where a != b return a,b")
+    val result = parseAndExecute("start a=node(0,1),b=node(1,0) where a <> b return a,b")
     assert(List(Map("a" -> refNode, "b" -> a), Map("b" -> refNode, "a" -> a)) === result.toList)
   }
 
@@ -1663,12 +1663,24 @@ RETURN x0.name?
     assert(List(Map("abs(-1)" -> 1)) === result.toList)
   }
 
-  @Ignore("Exposes #201")
-  @Test def shouldHandleRegexpOnMissingProperty() {
+  @Test def shouldHandleAllOperatorsWithNull() {
     val a = createNode()
 
-    val result = parseAndExecute("start a=node(1) where a.foo? =~ /.*?blah.*?/ return a")
+    val result = parseAndExecute("start a=node(1) where a.x? =~ /.*?blah.*?/ and a.x? = 13 and a.x? <> 13 and a.x? > 13 return a")
     assert(List(Map("a" -> a)) === result.toList)
+  }
+
+  @Test def shouldBeAbleToDoDistinctOnNull() {
+    val a = createNode()
+
+    val result = parseAndExecute("start a=node(1) match a-[?]->b return count(distinct b)")
+    assert(List(Map("count(distinct b)" -> 0)) === result.toList)
+  }
+
+  @Test def exposesIssue198() {
+    createNode()
+
+    parseAndExecute("start a=node(*) return a, count(*) order by COUNT(*)").toList
   }
 
   @Test def shouldAggregateOnArrayValues() {
@@ -1680,9 +1692,9 @@ RETURN x0.name?
     result.foreach(x => {
       val c = x("a.color").asInstanceOf[Array[_]]
       if (c.deep == Array("red").deep)
-        assertEquals(x("count(*)"), 2)
+        assertEquals(2L, x("count(*)"))
       else if (c.deep == Array("blue").deep)
-        assertEquals(x("count(*)"), 1)
+        assertEquals(1L, x("count(*)"))
       else fail("wut?")
     })
   }
