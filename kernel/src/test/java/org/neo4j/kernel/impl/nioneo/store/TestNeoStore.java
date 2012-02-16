@@ -51,7 +51,6 @@ import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.kernel.CommonFactories;
 import org.neo4j.kernel.ConfigProxy;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
-import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.impl.AbstractNeo4jTestCase;
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.core.PropertyIndex;

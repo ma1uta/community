@@ -19,13 +19,10 @@
  */
 package org.neo4j.kernel.impl.core;
 
-import java.util.Collection;
-
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
 import org.neo4j.graphdb.event.ErrorState;
-import org.neo4j.graphdb.event.KernelEventHandler;
 import org.neo4j.kernel.KernelEventHandlers;
 
 public class KernelPanicEventGenerator

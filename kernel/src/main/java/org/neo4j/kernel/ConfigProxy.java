@@ -26,7 +26,6 @@ import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.logging.Logger;
-import org.neo4j.kernel.impl.core.NodeManager;
 
 /**
  * This class is used to create dynamic proxies that implement a configuration interface. Method calls are mapped to

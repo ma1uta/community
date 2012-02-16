@@ -27,8 +27,6 @@ import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.CommonFactories;
 import org.neo4j.kernel.Config;
 import org.neo4j.kernel.IdGeneratorFactory;
-import org.neo4j.kernel.impl.nioneo.xa.NeoStoreXaDataSource;
-import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
 
 /**
  * Not thread safe (since DiffRecordStore is not thread safe), intended for

@@ -19,19 +19,14 @@
  */
 package org.neo4j.kernel;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Map;
-import org.neo4j.kernel.impl.nioneo.store.FileLock;
+
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.nioneo.store.IdGenerator;
 import org.neo4j.kernel.impl.nioneo.store.IdGeneratorImpl;
 import org.neo4j.kernel.impl.transaction.xaframework.DefaultLogBufferFactory;
 import org.neo4j.kernel.impl.transaction.xaframework.LogBufferFactory;
-import org.neo4j.kernel.impl.util.FileUtils;
 
 public class CommonFactories
 {

@@ -20,15 +20,14 @@
 
 package org.neo4j.kernel;
 
-import org.hamcrest.CoreMatchers;
-import org.junit.Assert;
-import org.junit.Test;
+import static org.hamcrest.CoreMatchers.equalTo;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.neo4j.helpers.collection.MapUtil;
 
-import static org.hamcrest.CoreMatchers.equalTo;
+import org.junit.Assert;
+import org.junit.Test;
+import org.neo4j.helpers.collection.MapUtil;
 
 /**
  * ConfigProxy tests

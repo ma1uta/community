@@ -23,11 +23,12 @@ package org.neo4j.kernel;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArraySet;
+
 import javax.transaction.Status;
 import javax.transaction.TransactionManager;
+
 import org.neo4j.graphdb.event.TransactionData;
 import org.neo4j.graphdb.event.TransactionEventHandler;
-import org.neo4j.kernel.impl.transaction.AbstractTransactionManager;
 
 /**
  * Handle the collection of transaction event handlers, and fire events as needed.

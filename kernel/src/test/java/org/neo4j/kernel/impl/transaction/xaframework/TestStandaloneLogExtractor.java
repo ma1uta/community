@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 import static org.neo4j.test.TargetDirectory.forTest;
 
 import org.junit.Test;
-import org.neo4j.kernel.Config;
 import org.neo4j.kernel.EmbeddedGraphDatabase;
 import org.neo4j.test.DbRepresentation;
 import org.neo4j.test.TargetDirectory;

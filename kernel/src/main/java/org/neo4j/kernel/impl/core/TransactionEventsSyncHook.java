@@ -20,7 +20,6 @@
 package org.neo4j.kernel.impl.core;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import javax.transaction.Status;
@@ -29,7 +28,6 @@ import javax.transaction.SystemException;
 import javax.transaction.TransactionManager;
 
 import org.neo4j.graphdb.event.TransactionData;
-import org.neo4j.graphdb.event.TransactionEventHandler;
 import org.neo4j.kernel.TransactionEventHandlers;
 
 public class TransactionEventsSyncHook implements Synchronization

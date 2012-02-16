@@ -21,7 +21,6 @@ package org.neo4j.kernel.impl.index;
 
 import java.util.Map;
 
-import javax.transaction.Transaction;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.kernel.impl.transaction.xaframework.XaConnectionHelpImpl;
 import org.neo4j.kernel.impl.transaction.xaframework.XaResourceManager;
