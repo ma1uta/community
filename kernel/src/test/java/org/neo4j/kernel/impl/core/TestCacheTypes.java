@@ -20,7 +20,6 @@
 package org.neo4j.kernel.impl.core;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import java.io.File;
 
@@ -98,11 +97,9 @@ public class TestCacheTypes extends AbstractNeo4jTestCase
     @Test
     public void testInvalidCache()
     {
-        try
-        {
-            newDb( "whatever" );
-            fail( "Should've failed" );
-        }
-        catch ( IllegalArgumentException e ) { /* Good */ }
+        // invalid cache type should use default and print a warning
+        EmbeddedGraphDatabase db = newDb( "whatever" );
+        assertEquals( CacheType.soft, db.getNodeManager().getCacheType() );
+        db.shutdown();
     }
 }

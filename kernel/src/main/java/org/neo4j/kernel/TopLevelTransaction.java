@@ -22,7 +22,6 @@ package org.neo4j.kernel;
 import javax.transaction.RollbackException;
 import javax.transaction.Status;
 import javax.transaction.SystemException;
-import javax.transaction.TransactionManager;
 
 import org.neo4j.graphdb.Lock;
 import org.neo4j.graphdb.PropertyContainer;
