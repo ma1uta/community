@@ -21,7 +21,6 @@
 package org.neo4j.helpers.collection;
 
 import java.lang.reflect.Array;
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,6 +31,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+
 import org.neo4j.helpers.Function;
 import org.neo4j.helpers.Specification;
 

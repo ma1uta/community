@@ -22,10 +22,9 @@ package org.neo4j.kernel;
 
 import java.util.HashMap;
 import java.util.Map;
+
 import org.neo4j.helpers.Args;
 import org.neo4j.kernel.impl.util.StringLogger;
-
-import static org.neo4j.kernel.Config.*;
 
 /**
  * Migration of configuration settings. This allows old configurations to be read and converted into the new format.

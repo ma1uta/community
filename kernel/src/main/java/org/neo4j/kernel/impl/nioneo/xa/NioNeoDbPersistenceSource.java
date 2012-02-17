@@ -19,9 +19,6 @@
  */
 package org.neo4j.kernel.impl.nioneo.xa;
 
-import javax.transaction.xa.XAResource;
-
-import org.neo4j.kernel.Config;
 import org.neo4j.kernel.Lifecycle;
 import org.neo4j.kernel.impl.core.ReadOnlyDbException;
 import org.neo4j.kernel.impl.persistence.EntityIdGenerator;
