@@ -4,11 +4,15 @@ Cypher Query Language
 
 include::introduction.txt[]
 
+:leveloffset: 2
+
 include::ql/operators/index.txt[]
 
 include::parameters.txt[]
 
 include::identifiers.txt[]
+
+include::comments.txt[]
 
 :leveloffset: 2
 

@@ -24,7 +24,6 @@ import collection.Seq
 import scala.collection.JavaConverters._
 import org.neo4j.graphdb.{DynamicRelationshipType, Node, Direction, PropertyContainer}
 import org.neo4j.cypher.internal.pipes.Dependant
-import java.util.regex.{Pattern=>RegexPattern}
 import org.neo4j.cypher.internal.symbols._
 
 abstract class Predicate extends Dependant {
@@ -36,8 +35,34 @@ abstract class Predicate extends Dependant {
   // together
   def atoms: Seq[Predicate]
 
-  def containsIsNull: Boolean
+  def exists(f:Expression=>Boolean):Boolean
+
+  def containsIsNull:Boolean
 }
+
+case class NullablePredicate(inner: Predicate, exp: Seq[(Expression, Boolean)]) extends Predicate {
+  def isMatch(m: Map[String, Any]) = {
+    val nullValue = exp.find {
+      case (e, res) => e(m) == null
+    }
+
+    nullValue match {
+      case Some((_, res)) => res
+      case _ => inner.isMatch(m)
+    }
+  }
+
+  def atoms = Seq(this)
+
+  def dependencies = inner.dependencies
+
+  override def toString = "nullable([" + exp.mkString(",") +"],["  +inner.toString+"])"
+
+  def exists(f: (Expression) => Boolean) = inner.exists(f)
+
+  def containsIsNull = inner.containsIsNull
+}
+
 
 case class And(a: Predicate, b: Predicate) extends Predicate {
   def isMatch(m: Map[String, Any]): Boolean = a.isMatch(m) && b.isMatch(m)
@@ -48,7 +73,9 @@ case class And(a: Predicate, b: Predicate) extends Predicate {
 
   override def toString: String = "(" + a + " AND " + b + ")"
 
-  def containsIsNull: Boolean = a.containsIsNull || b.containsIsNull
+  def exists(f: (Expression) => Boolean) = a.exists(f) || b.exists(f)
+
+  def containsIsNull = a.containsIsNull||b.containsIsNull
 }
 
 case class Or(a: Predicate, b: Predicate) extends Predicate {
@@ -60,7 +87,8 @@ case class Or(a: Predicate, b: Predicate) extends Predicate {
 
   override def toString: String = "(" + a + " OR " + b + ")"
 
-  def containsIsNull: Boolean = a.containsIsNull || b.containsIsNull
+  def exists(f: (Expression) => Boolean) = a.exists(f) || b.exists(f)
+  def containsIsNull = a.containsIsNull||b.containsIsNull
 }
 
 case class Not(a: Predicate) extends Predicate {
@@ -72,7 +100,8 @@ case class Not(a: Predicate) extends Predicate {
 
   override def toString: String = "NOT(" + a + ")"
 
-  def containsIsNull: Boolean = a.containsIsNull
+  def exists(f: (Expression) => Boolean) = a.exists(f)
+  def containsIsNull = a.containsIsNull
 }
 
 case class HasRelationshipTo(from: Expression, to: Expression, dir: Direction, relType: Option[String]) extends Predicate {
@@ -87,9 +116,11 @@ case class HasRelationshipTo(from: Expression, to: Expression, dir: Direction, r
 
   def atoms: Seq[Predicate] = Seq(this)
 
-  def containsIsNull: Boolean = false
+  def exists(f: (Expression) => Boolean) = from.exists(f) || to.exists(f)
 
   def dependencies: Seq[Identifier] = from.dependencies(NodeType()) ++ to.dependencies(NodeType())
+
+  def containsIsNull = false
 }
 
 case class HasRelationship(from: Expression, dir: Direction, relType: Option[String]) extends Predicate {
@@ -103,21 +134,25 @@ case class HasRelationship(from: Expression, dir: Direction, relType: Option[Str
 
   def atoms: Seq[Predicate] = Seq(this)
 
-  def containsIsNull: Boolean = false
+  def exists(f: (Expression) => Boolean) = from.exists(f)
 
   def dependencies: Seq[Identifier] = from.dependencies(NodeType())
+
+  def containsIsNull = false
 }
 
-case class IsNull(value: Expression) extends Predicate {
-  def isMatch(m: Map[String, Any]): Boolean = value(m) == null
+case class IsNull(expression: Expression) extends Predicate {
+  def isMatch(m: Map[String, Any]): Boolean = expression(m) == null
 
-  def dependencies: Seq[Identifier] = value.dependencies(AnyType())
+  def dependencies: Seq[Identifier] = expression.dependencies(AnyType())
 
   def atoms: Seq[Predicate] = Seq(this)
 
-  override def toString: String = value + " IS NULL"
+  override def toString: String = expression + " IS NULL"
 
-  def containsIsNull: Boolean = true
+  def exists(f: (Expression) => Boolean) = expression.exists(f)
+
+  def containsIsNull = true
 }
 
 case class True() extends Predicate {
@@ -129,7 +164,9 @@ case class True() extends Predicate {
 
   override def toString: String = "true"
 
-  def containsIsNull: Boolean = false
+  def exists(f: (Expression) => Boolean) = false
+
+  def containsIsNull = false
 }
 
 case class Has(property: Property) extends Predicate {
@@ -146,24 +183,31 @@ case class Has(property: Property) extends Predicate {
 
   override def toString: String = "hasProp(" + property + ")"
 
-  def containsIsNull: Boolean = false
+  def containsIsNull = false
+
+  def exists(f: (Expression) => Boolean) = false
+}
+
+case class  LiteralRegularExpression(a: Expression, regex: Literal) extends Predicate {
+  lazy val pattern = regex(Map()).asInstanceOf[String].r.pattern
+  
+  def isMatch(m: Map[String, Any]) = pattern.matcher(a(m).asInstanceOf[String]).matches()
+
+  def atoms = Seq(this)
+
+  def exists(f: (Expression) => Boolean) = a.exists(f) || regex.exists(f)
+
+  def dependencies = a.dependencies(AnyType())
+
+  def containsIsNull = false
 }
 
 case class RegularExpression(a: Expression, regex: Expression) extends Predicate {
-
-  val pat: (Map[String, Any]) => RegexPattern = getPattern
-
-  private def getPattern: (Map[String, Any]) => RegexPattern = regex match {
-    case Literal(x) => {
-      val pattern = x.toString.r.pattern
-      (x: Map[String, Any]) => pattern
-    }
-    case _ =>  (x: Map[String, Any]) => regex(x).toString.r.pattern
-  }
-
   def isMatch(m: Map[String, Any]): Boolean = {
-    val value = a.apply(m).asInstanceOf[String]
-    getPattern(m).matcher(value).matches()
+    val value = a(m).asInstanceOf[String]
+    val regularExp = regex(m).asInstanceOf[String]
+
+    regularExp.r.pattern.matcher(value).matches()
   }
 
   def dependencies: Seq[Identifier] = a.dependencies(StringType()) ++ regex.dependencies(StringType())
@@ -172,5 +216,7 @@ case class RegularExpression(a: Expression, regex: Expression) extends Predicate
 
   override def toString: String = a.toString() + " ~= /" + regex.toString() + "/"
 
-  def containsIsNull: Boolean = false
+  def exists(f: (Expression) => Boolean) = a.exists(f)||regex.exists(f)
+
+  def containsIsNull = false
 }
