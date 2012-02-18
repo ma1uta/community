@@ -27,13 +27,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.management.MBeanServer;
 import javax.management.remote.JMXServiceURL;
+
 import org.neo4j.helpers.Service;
 import org.neo4j.kernel.KernelData;
 import org.neo4j.kernel.KernelExtension;
-
-import static java.lang.management.ManagementFactory.*;
 
 @Service.Implementation( KernelExtension.class )
 public final class JmxExtension extends KernelExtension<JmxExtension.JmxData>
