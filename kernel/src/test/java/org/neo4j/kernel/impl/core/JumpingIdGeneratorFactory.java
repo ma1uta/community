@@ -67,12 +67,6 @@ public class JumpingIdGeneratorFactory implements IdGeneratorFactory
     public void create( String fileName )
     {
     }
-    
-    @Override
-    public boolean shouldUpdateIdGenerators()
-    {
-        return false;
-    }
 
     private class JumpingIdGenerator implements IdGenerator
     {

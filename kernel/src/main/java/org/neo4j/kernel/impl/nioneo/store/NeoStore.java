@@ -584,14 +584,11 @@ public class NeoStore extends AbstractStore
 
     public void updateIdGenerators()
     {
-        if (idGeneratorFactory.shouldUpdateIdGenerators())
-        {
-            this.updateHighId();
-            relTypeStore.updateIdGenerators();
-            propStore.updateIdGenerators();
-            relStore.updateHighId();
-            nodeStore.updateHighId();
-        }
+        this.updateHighId();
+        relTypeStore.updateIdGenerators();
+        propStore.updateIdGenerators();
+        relStore.updateHighId();
+        nodeStore.updateHighId();
     }
 
     public int getRelationshipGrabSize()

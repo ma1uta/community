@@ -51,13 +51,6 @@ public class CommonFactories
         {
             IdGeneratorImpl.createGenerator( fileName );
         }
-        
-
-        @Override
-        public boolean shouldUpdateIdGenerators()
-        {
-            return true;
-        }
     }
     
     public static IdGeneratorFactory defaultIdGeneratorFactory()

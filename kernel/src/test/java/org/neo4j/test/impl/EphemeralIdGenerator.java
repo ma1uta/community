@@ -59,12 +59,6 @@ public class EphemeralIdGenerator implements IdGenerator
         {
             return generators.get( idType );
         }
-
-        @Override
-        public boolean shouldUpdateIdGenerators()
-        {
-            return true;
-        }
     }
     
     private final AtomicLong nextId = new AtomicLong();
