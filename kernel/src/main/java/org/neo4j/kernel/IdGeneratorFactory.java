@@ -28,6 +28,4 @@ public interface IdGeneratorFactory
     void create( String fileName );
     
     IdGenerator get( IdType idType );
-
-    boolean shouldUpdateIdGenerators();
 }
