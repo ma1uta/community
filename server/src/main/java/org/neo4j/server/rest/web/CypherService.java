@@ -63,10 +63,6 @@ public class CypherService {
         
         String query =  (String) command.get(QUERY_KEY);
         Map<String,Object> params = (Map<String, Object>) (command.containsKey(PARAMS_KEY) ? command.get(PARAMS_KEY) : new HashMap<String, Object>());
-<<<<<<< HEAD
-=======
-
->>>>>>> Refactoring of kernel to use DI, configuration interfaces, and lots and lots of other cleanups
         try {
             ExecutionResult result = executionEngine.execute(  query, params );
             return output.ok(new CypherResultRepresentation( result ));

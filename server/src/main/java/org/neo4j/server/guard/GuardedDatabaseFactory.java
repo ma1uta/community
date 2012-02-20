@@ -19,16 +19,10 @@
  */
 package org.neo4j.server.guard;
 
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
+import java.util.Map;
+
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.server.database.GraphDatabaseFactory;
-import org.neo4j.tooling.wrap.WrappedGraphDatabase;
-import org.neo4j.tooling.wrap.WrappedNode;
-import org.neo4j.tooling.wrap.WrappedRelationship;
-
-import java.util.Map;
 
 public class GuardedDatabaseFactory implements GraphDatabaseFactory {
 
@@ -42,7 +36,8 @@ public class GuardedDatabaseFactory implements GraphDatabaseFactory {
 
     @Override
     public AbstractGraphDatabase createDatabase(String databaseStoreDirectory, Map<String, String> databaseProperties) {
-        final GraphDatabaseService db = dbFactory.createDatabase(databaseStoreDirectory, databaseProperties);
+        throw new RuntimeException( "Needs to be implemented." );
+/*        final GraphDatabaseService db = dbFactory.createDatabase(databaseStoreDirectory, databaseProperties);
 
         return new WrappedGraphDatabase(db) {
             // private int cnt = 0;
@@ -73,6 +68,6 @@ public class GuardedDatabaseFactory implements GraphDatabaseFactory {
                     }
                 };
             }
-        };
+        };*/
     }
 }
