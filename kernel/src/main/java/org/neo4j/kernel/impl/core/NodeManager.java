@@ -346,7 +346,7 @@ public class NodeManager
 //        return rest <= 3 ?
 //                new LowRelationshipImpl( id, startNodeId, endNodeId, type, newRel ) :
 //                new HighRelationshipImpl( id, startNodeId, endNodeId, type, newRel );
-        return new LowRelationshipImpl( id, startNodeId, endNodeId, typeId, newRel );
+        return new RelationshipImpl( id, startNodeId, endNodeId, typeId, newRel );
     }
 
     private ReentrantLock lockId( long id )

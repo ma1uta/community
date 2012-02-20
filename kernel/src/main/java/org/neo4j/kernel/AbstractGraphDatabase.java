@@ -342,15 +342,12 @@ public abstract class AbstractGraphDatabase
             neoDataSource = new NeoStoreXaDataSource( ConfigProxy.config( params, NeoStoreXaDataSource.Configuration.class ),
                     storeFactory, lockManager, lockReleaser, msgLog, xaFactory, providers, new DependencyResolverImpl());
             xaDataSourceManager.registerDataSource( neoDataSource );
-
-            storeId = neoDataSource.getStoreId();
-
-            KernelDiagnostics.register( diagnosticsManager, this,
-                                        neoDataSource );
         } catch (IOException e)
         {
             throw new IllegalStateException("Could not create Neo XA datasource", e);
         }
+        
+        life.add( new StuffToDoAfterRecovery() );
 
         // This is how we lock the entire database to avoid threads using it during lifecycle events
         life.add( new DatabaseAvailability() );
@@ -1152,6 +1149,33 @@ public abstract class AbstractGraphDatabase
             throws Throwable
         {
             // We have shutdown. Do nothing, as we don't want anyone to be able to use it anyway
+        }
+    }
+    
+    // TODO Probably change name
+    class StuffToDoAfterRecovery implements Lifecycle
+    {
+        @Override
+        public void init() throws Throwable
+        {
+        }
+
+        @Override
+        public void start() throws Throwable
+        {
+            storeId = neoDataSource.getStoreId();
+            KernelDiagnostics.register( diagnosticsManager, AbstractGraphDatabase.this,
+                    neoDataSource );
+        }
+
+        @Override
+        public void stop() throws Throwable
+        {
+        }
+
+        @Override
+        public void shutdown() throws Throwable
+        {
         }
     }
 }
