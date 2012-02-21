@@ -291,6 +291,10 @@ public abstract class AbstractGraphDatabase
         // END SMELL
 
         config = new Config( this.storeDir,  params );
+        
+        // Config can auto-configure memory mapping settings and what not, so reassign params
+        // after we've instantiated Config.
+        params = config.getParams();
 
         /*
          *  LogBufferFactory needs access to the parameters so it has to be added after the default and
