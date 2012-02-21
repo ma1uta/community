@@ -100,8 +100,9 @@ public class NodeManager
     private final RelationshipTypeHolder relTypeHolder;
     private final PersistenceManager persistenceManager;
     private final EntityIdGenerator idGenerator;
-    private NodeProxy.NodeLookup nodeLookup;
-    private RelationshipProxy.RelationshipLookups relationshipLookups;
+
+    private final NodeProxy.NodeLookup nodeLookup;
+    private final RelationshipProxy.RelationshipLookups relationshipLookups;
 
     private final List<PropertyTracker<Node>> nodePropertyTrackers;
     private final List<PropertyTracker<Relationship>> relationshipPropertyTrackers;

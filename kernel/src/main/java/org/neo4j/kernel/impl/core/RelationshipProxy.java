@@ -31,6 +31,7 @@ public class RelationshipProxy implements Relationship
     public interface RelationshipLookups
     {
         Node lookupNode(long nodeId);
+        Node newNodeProxy( long nodeId );
         RelationshipImpl lookupRelationship(long relationshipId);
         GraphDatabaseService getGraphDatabaseService();
         NodeManager getNodeManager();
@@ -64,7 +65,7 @@ public class RelationshipProxy implements Relationship
     public Node[] getNodes()
     {
         RelationshipImpl relationship = relationshipLookups.lookupRelationship( relId );
-        return new Node[]{ relationshipLookups.lookupNode( relationship.getStartNodeId() ), relationshipLookups.lookupNode( relationship.getEndNodeId() )};
+        return new Node[]{ relationshipLookups.newNodeProxy( relationship.getStartNodeId() ), relationshipLookups.newNodeProxy( relationship.getEndNodeId() )};
     }
 
     public Node getOtherNode( Node node )
@@ -72,11 +73,11 @@ public class RelationshipProxy implements Relationship
         RelationshipImpl relationship = relationshipLookups.lookupRelationship( relId );
         if ( relationship.getStartNodeId() == node.getId() )
         {
-            return relationshipLookups.lookupNode( relationship.getEndNodeId() );
+            return relationshipLookups.newNodeProxy( relationship.getEndNodeId() );
         }
         if ( relationship.getEndNodeId() == node.getId() )
         {
-            return relationshipLookups.lookupNode( relationship.getStartNodeId() );
+            return relationshipLookups.newNodeProxy( relationship.getStartNodeId() );
         }
         throw new NotFoundException( "Node[" + node.getId()
             + "] not connected to this relationship[" + getId() + "]" );
@@ -84,12 +85,12 @@ public class RelationshipProxy implements Relationship
 
     public Node getStartNode()
     {
-        return relationshipLookups.lookupNode( relationshipLookups.lookupRelationship( relId ).getStartNodeId() );
+        return relationshipLookups.newNodeProxy( relationshipLookups.lookupRelationship( relId ).getStartNodeId() );
     }
 
     public Node getEndNode()
     {
-        return relationshipLookups.lookupNode( relationshipLookups.lookupRelationship( relId ).getEndNodeId() );
+        return relationshipLookups.newNodeProxy( relationshipLookups.lookupRelationship( relId ).getEndNodeId() );
     }
 
     public RelationshipType getType()
