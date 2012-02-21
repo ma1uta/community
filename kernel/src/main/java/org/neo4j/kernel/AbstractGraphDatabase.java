@@ -35,9 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.transaction.TransactionManager;
 
@@ -161,10 +158,6 @@ public abstract class AbstractGraphDatabase
     protected RelationshipAutoIndexerImpl relAutoIndexer;
     protected KernelData extensions;
 
-    // Any incoming calls have to acquire this lock as read.
-    // During stop/shutdown a writelock will be acquired to ensure noone is using db at that time
-    private ReadWriteLock databaseLock = new ReentrantReadWriteLock(  );
-    
     private LifeSupport life = new LifeSupport();
 
     protected AbstractGraphDatabase(String storeDir, Map<String, String> params)
@@ -393,48 +386,18 @@ public abstract class AbstractGraphDatabase
     {
         return new RelationshipProxy.RelationshipLookups()
         {
-            private int LOCK_TIMEOUT = 5; // This should be made configurable
-            
             @Override
             public Node lookupNode( long nodeId )
             {
-                try
-                {
-                    databaseLock.readLock().tryLock( 5, TimeUnit.SECONDS );
-                }
-                catch( InterruptedException e )
-                {
-                    throw new IllegalStateException( "Could not access database. Is it shutdown?" );
-                }
-                try
-                {
-                    return nodeManager.getNodeById( nodeId );
-                }
-                finally
-                {
-                    databaseLock.readLock().unlock();
-                }
+                // TODO: add CAS check here for requests not in tx to guard against shutdown
+                return nodeManager.getNodeById( nodeId );
             }
 
             @Override
             public RelationshipImpl lookupRelationship( long relationshipId )
             {
-                try
-                {
-                    databaseLock.readLock().tryLock( 5, TimeUnit.SECONDS );
-                }
-                catch( InterruptedException e )
-                {
-                    throw new IllegalStateException( "Could not access database. Is it shutdown?" );
-                }
-                try
-                {
-                    return nodeManager.getRelationshipForProxy( relationshipId );
-                }
-                finally
-                {
-                    databaseLock.readLock().unlock();
-                }
+                // TODO: add CAS check here for requests not in tx to guard against shutdown
+                return nodeManager.getRelationshipForProxy( relationshipId );
             }
 
             @Override
@@ -448,6 +411,13 @@ public abstract class AbstractGraphDatabase
             {
                 return nodeManager;
             }
+
+            @Override
+            public Node newNodeProxy( long nodeId )
+            {
+                // only used by relationship already checked as valid in cache
+                return nodeManager.newNodeProxyById( nodeId );
+            }
         };
     }
 
@@ -458,22 +428,8 @@ public abstract class AbstractGraphDatabase
             @Override
             public NodeImpl lookup( long nodeId )
             {
-                try
-                {
-                    databaseLock.readLock().tryLock( 5, TimeUnit.SECONDS );
-                }
-                catch( InterruptedException e )
-                {
-                    throw new IllegalStateException( "Could not access database. Is it shutdown?" );
-                }
-                try
-                {
-                    return nodeManager.getNodeForProxy( nodeId );
-                }
-                finally
-                {
-                    databaseLock.readLock().unlock();
-                }
+                // TODO: add CAS check here for requests not in tx to guard against shutdown
+                return nodeManager.getNodeForProxy( nodeId );
             }
 
             @Override
@@ -1124,31 +1080,28 @@ public abstract class AbstractGraphDatabase
         public void init()
             throws Throwable
         {
-            // Starting database. Make sure noone can access it
-            databaseLock.writeLock().lock();
+            // TODO: Starting database. Make sure none can access it through lock or CAS
         }
 
         @Override
         public void start()
             throws Throwable
         {
-            // Started. Now others can use this database
-            databaseLock.writeLock().unlock();
+            // TODO: Starting database. Make sure none can access it through lock or CAS
         }
 
         @Override
         public void stop()
             throws Throwable
         {
-            // We're stopping. Lock database
-            databaseLock.writeLock().lock();
+            // TODO: Starting database. Make sure none can access it through lock or CAS
         }
 
         @Override
         public void shutdown()
             throws Throwable
         {
-            // We have shutdown. Do nothing, as we don't want anyone to be able to use it anyway
+            // TODO: Starting database. Make sure none can access it through lock or CAS
         }
     }
     
