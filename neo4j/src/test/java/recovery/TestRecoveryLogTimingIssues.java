@@ -22,10 +22,13 @@ package recovery;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 import org.junit.Ignore;
 =======
 >>>>>>> Added ConfigurationMigrator
+=======
+>>>>>>> 82865074c6a59d1ced94f330de6f6fc0c0d5b972
 import org.junit.Test;
 import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.Node;
@@ -39,6 +42,10 @@ import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
 import org.neo4j.test.AbstractSubProcessTestBase;
 import org.neo4j.test.subprocess.BreakPoint;
 import org.neo4j.test.subprocess.BreakPoint.Event;
+
+import static org.neo4j.graphdb.DynamicRelationshipType.*;
+import static org.neo4j.helpers.collection.MapUtil.*;
+import static org.neo4j.kernel.Config.*;
 
 import static org.neo4j.graphdb.DynamicRelationshipType.*;
 import static org.neo4j.helpers.collection.MapUtil.*;

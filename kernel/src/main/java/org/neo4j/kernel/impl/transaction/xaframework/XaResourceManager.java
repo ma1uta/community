@@ -744,6 +744,10 @@ public class XaResourceManager
     {
         long txId = TxIdGenerator.DEFAULT.generate( dataSource, 0 );
         log.applyTransactionWithoutTxId( transaction, txId, getForceMode() );
+
+//        long txId = txIdGenerator.generate( dataSource, 0 );
+//        int masterId = txIdGenerator.getCurrentMasterId();
+//        log.applyTransactionWithoutTxId( transaction, txId, masterId, getForceMode() );
         return txId;
     }
 

@@ -97,6 +97,7 @@ import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.info.DiagnosticsManager;
 import org.neo4j.tooling.GlobalGraphOperations;
 
+
 /**
  * Exposes the methods {@link #getManagementBeans(Class)}() a.s.o.
  */
@@ -291,6 +292,10 @@ public abstract class AbstractGraphDatabase
         // END SMELL
 
         config = new Config( this.storeDir,  params );
+        
+        // Config can auto-configure memory mapping settings and what not, so reassign params
+        // after we've instantiated Config.
+        params = config.getParams();
 
         /*
          *  LogBufferFactory needs access to the parameters so it has to be added after the default and

@@ -575,6 +575,7 @@ public class NodeManager
         return relTypeHolder.getRelationshipType( id );
     }
 
+
     public RelationshipImpl getRelationshipForProxy( long relId, LockType lock )
     {
         if ( lock != null ) 
@@ -582,7 +583,10 @@ public class NodeManager
             acquireTxBoundLock( new RelationshipProxy( relId, relationshipLookups ), lock );
         }
         RelationshipImpl relationship = relCache.get( relId );
-        if ( relationship != null ) return relationship;
+        if ( relationship != null ) 
+        {
+            return relationship;
+        }
         ReentrantLock loadLock = lockId( relId );
         try
         {

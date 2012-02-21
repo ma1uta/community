@@ -209,13 +209,6 @@ public class Config implements DiagnosticsProvider
 
     private Map<String, String> params;
 
-//<<<<<<< HEAD
-//    private final boolean readOnly;
-//    private final boolean ephemeral;
-//    private final boolean backupSlave;
-//
-//=======
-//>>>>>>> Added ConfigurationMigrator
     private final AutoConfigurator autoConfigurator;
 
     Config(String storeDir, Map<String, String> inputParams)
